@@ -1,21 +1,23 @@
 {
-  "name": "kothabhada-frontend",
-  "version": "0.1.0",
+  "name": "frontend",
   "private": true,
-  "dependencies": {
-    "axios": "^1.4.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^6.14.1",
-    "react-scripts": "^5.0.1"
-  },
+  "version": "0.0.0",
+  "type": "module",
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "preact": "^10.27.2",
+    "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
-    "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.18"
+    "@preact/preset-vite": "^2.10.2",
+    "vite": "^8.0.0-beta.13"
+  },
+  "overrides": {
+    "vite": "^8.0.0-beta.13"
   }
 }
