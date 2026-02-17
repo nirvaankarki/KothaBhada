@@ -3,7 +3,7 @@ import { getAllRooms, createRooms, updateRooms, deleteRooms} from '../controller
 
 const router = express.Router();
 
-router.get('/', getAllRooms);
+router.get('/demo', getAllRooms);
 router.post('/', createRooms);
 router.put('/:id', updateRooms);
 router.delete('/:id', deleteRooms);
