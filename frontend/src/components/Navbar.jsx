@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const Navbar = () => {
   return (
@@ -11,24 +12,24 @@ const Navbar = () => {
 
       {/* Navigation Links */}
       <div className="flex space-x-12 items-center">
-        <a 
-          href="#" 
-          className="text-sm font-medium tracking-widest border-b-4 border-[#3b82f6] pb-1"
+        <Link 
+          to="/" 
+          className="text-sm font-bold tracking-widest border-b-4 border-[#3b82f6] pb-1"
         >
           HOME
-        </a>
-        <a 
-          href="#" 
-          className="text-sm font-medium tracking-widest hover:text-gray-400 transition-colors"
+        </Link>
+        <Link 
+          to="/explore" 
+          className="text-sm font-bold tracking-widest hover:text-gray-400 transition-colors"
         >
           EXPLORE 3D
-        </a>
-        <a 
-          href="#" 
-          className="text-sm font-medium tracking-widest hover:text-gray-400 transition-colors"
+        </Link>
+        <Link 
+          to="/about" 
+          className="text-sm font-bold tracking-widest hover:text-gray-400 transition-colors"
         >
           ABOUT
-        </a>
+        </Link>
         <a 
           href="#" 
           className="text-sm font-medium tracking-widest hover:text-gray-400 transition-colors"
