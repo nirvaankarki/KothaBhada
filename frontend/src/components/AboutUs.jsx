@@ -1,20 +1,16 @@
 import React from 'react';
 import buildingIllustration from '../assets/aboutUs-Img.png';
 
-
 const AboutUs = () => {
   return (
-    <section className="relative flex-grow bg-[#e5e7eb] py-20 px-6 md:px-20 overflow-hidden">
+    /* Removed 'bg-[#e5e7eb]' so parent background shows through */
+    <section className="relative flex-grow py-20 px-6 md:px-20 overflow-hidden">
       
-      {/* Subtle Diagonal Pattern Overlay */}
-      <div 
-        className="absolute inset-0 opacity-10 pointer-events-none" 
-        style={{ 
-        //   backgroundImage : `url(${backgroundImage})`,
-          backgroundSize: '60px 60px',
-          backgroundPosition: '0 0, 30px 30px'
-        }}
-      ></div>
+      {/* 
+         Note: We keep this empty or remove it if the parent background 
+         already contains the diagonal pattern. 
+      */}
+      <div className="absolute inset-0 opacity-10 pointer-events-none"></div>
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center relative z-10">
         

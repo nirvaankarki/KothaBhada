@@ -1,11 +1,13 @@
-import { render } from 'preact'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
 import './styles/index.css'
 import { App } from './app.jsx'
 import { BrowserRouter } from 'react-router-dom'
 
-render(
-  <BrowserRouter>
-    <App />
-  </BrowserRouter>,
-  document.getElementById('app')
+ReactDOM.createRoot(document.getElementById('app')).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </React.StrictMode>,
 )

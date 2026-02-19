@@ -3,6 +3,7 @@ import './styles/App.css';
 import MainLayout from './layouts/MainLayout';
 import LandingPage from './pages/LandingPage';
 import AboutPage from './pages/AboutPage';
+import ContactPage from './pages/ContactPage';
 import { Routes, Route } from 'react-router-dom';
 
 export function App() {
@@ -11,7 +12,7 @@ export function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/about" element={<AboutPage />} />
-        {/* add additional routes here */}
+        <Route path="/contact" element={<ContactPage />} />
       </Routes>
     </MainLayout>
   );

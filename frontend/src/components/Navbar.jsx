@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 const Navbar = () => {
   return (
@@ -12,30 +12,39 @@ const Navbar = () => {
 
       {/* Navigation Links */}
       <div className="flex space-x-12 items-center">
-        <Link 
+        <NavLink 
           to="/" 
-          className="text-sm font-bold tracking-widest border-b-4 border-[#3b82f6] pb-1"
+          end
+          className={({ isActive }) =>
+            `text-sm font-medium tracking-widest pb-1 ${isActive ? 'border-b-4 border-[#3b82f6]' : 'hover:text-gray-400 transition-colors'}`
+          }
         >
           HOME
-        </Link>
-        <Link 
-          to="/explore" 
-          className="text-sm font-bold tracking-widest hover:text-gray-400 transition-colors"
+        </NavLink>
+        <NavLink 
+          to="/explore3d" 
+          className={({ isActive }) =>
+            `text-sm font-medium tracking-widest pb-1 ${isActive ? 'border-b-4 border-[#3b82f6]' : 'hover:text-gray-400 transition-colors'}`
+          }
         >
           EXPLORE 3D
-        </Link>
-        <Link 
+        </NavLink>
+        <NavLink 
           to="/about" 
-          className="text-sm font-bold tracking-widest hover:text-gray-400 transition-colors"
+          className={({ isActive }) =>
+            `text-sm font-medium tracking-widest pb-1 ${isActive ? 'border-b-4 border-[#3b82f6]' : 'hover:text-gray-400 transition-colors'}`
+          }
         >
           ABOUT
-        </Link>
-        <a 
-          href="#" 
-          className="text-sm font-medium tracking-widest hover:text-gray-400 transition-colors"
+        </NavLink>
+        <NavLink 
+          to="/contact" 
+          className={({ isActive }) =>
+            `text-sm font-medium tracking-widest pb-1 ${isActive ? 'border-b-4 border-[#3b82f6]' : 'hover:text-gray-400 transition-colors'}`
+          }
         >
           CONTACT
-        </a>
+        </NavLink>
       </div>
 
       {/* Sign Up Section */}
