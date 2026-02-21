@@ -2,51 +2,74 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Login from '../components/Login';
 import Signup from '../components/Signup';
-import buildingImg from '../assets/building-bg-auth.png'; // Make sure this is a transparent PNG if possible
+// Import your video and fallback image
+import authVideo from '../assets/interiorArchitecture.mp4'; 
+import buildingImg from '../assets/building-bg-auth.png'; 
 
 const AuthPage = () => {
-  // read current URL so we can decide which panel to show
   const location = useLocation();
   const navigate = useNavigate();
-
-  // determine mode from path instead of component state
   const isLogin = location.pathname === '/login';
 
   const toggle = () => {
-    // flip the path so router shows the opposite view
     navigate(isLogin ? '/signup' : '/login');
   };
 
   return (
-    // Base page color is light gray to match the image context
-    <div className="relative min-h-screen w-full flex items-center justify-center bg-[#ebedef] overflow-hidden font-sans">
+    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden font-sans p-4 animate-fadeIn">
       
-      {/* 1. THE BUILDING IMAGE: Pinned to Bottom-Left */}
-      <div className="absolute bottom-0 left-0 w-full h-full pointer-events-none">
-        <img 
-          src={buildingImg} 
-          alt="Building background" 
-          className="absolute bottom-0 left-[-20px] w-[45%] max-w-[300px] h-auto object-contain opacity-90"
-        />
+      {/* 1. FULL SCREEN VIDEO BACKGROUND LAYER */}
+      <div className="absolute inset-0 z-0">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          poster={buildingImg}
+          className="w-full h-full object-cover"
+        >
+          <source src={authVideo} type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+        
+        {/* 2. CINEMATIC OVERLAYS */}
+        {/* Dark navy tint to match KothaBhada branding */}
+        <div className="absolute inset-0 bg-[#1a222e]/60 mix-blend-multiply"></div>
+        
+        {/* Vignette effect (darker edges) for a high-profile look */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60"></div>
       </div>
 
-      {/* 2. THE MAIN AUTH CARD (Floating in the center) */}
-      <div className="relative z-10 w-full max-w-5xl h-[650px] bg-white rounded-lg shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden">
-        {/* container that holds both panels next to each other; width=200% so we can slide */}
+      {/* 3. THE MAIN AUTH CARD (Floating in the center) */}
+      <div 
+        className={`relative z-10 w-full max-w-5xl bg-white rounded-2xl shadow-[0_35px_100px_rgba(0,0,0,0.5)] overflow-hidden transition-all duration-500 ease-in-out ${
+          isLogin ? 'h-[650px]' : 'h-[750px]'
+        }`}
+      >
+        {/* Sliding Container */}
         <div
           className={`flex w-[200%] h-full transition-transform duration-700 ease-in-out ${
             isLogin ? 'translate-x-0' : '-translate-x-1/2'
           }`}
         >
-          {/* left half = login, right half = signup */}
+          {/* Left half = Login */}
           <div className="w-1/2 h-full flex-shrink-0">
             <Login onToggle={toggle} />
           </div>
+          
+          {/* Right half = Signup */}
           <div className="w-1/2 h-full flex-shrink-0">
             <Signup onToggle={toggle} />
           </div>
         </div>
       </div>
+
+      {/* 4. OPTIONAL: Subtle Brand Watermark in corner */}
+      {/* <div className="absolute bottom-10 right-10 z-20 pointer-events-none opacity-20 hidden lg:block">
+        <h1 className="text-white text-4xl font-black tracking-widest uppercase">
+          KothaBhada
+        </h1>
+      </div> */}
     </div>
   );
 };

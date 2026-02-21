@@ -5,3 +5,21 @@
 * {
   font-family: 'Poppins', sans-serif;
 }
+
+/* Tailwind v4 Custom Theme Section */
+@theme {
+  /* Define Animations */
+  --animate-fadeIn: fade-in 0.5s ease-out forwards;
+  --animate-bounce-short: bounce-short 0.5s ease-in-out;
+
+  /* Define Keyframes */
+  @keyframes fade-in {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes bounce-short {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+}
