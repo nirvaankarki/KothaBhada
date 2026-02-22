@@ -5,7 +5,8 @@ import LandingPage from './pages/LandingPage';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
 import AuthPage from './pages/AuthPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage'; // New Import
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import Explore3DPage from './pages/Explore3DPage';
 import { Routes, Route } from 'react-router-dom';
 
 export function App() {
@@ -23,6 +24,7 @@ export function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/explore3d" element={<Explore3DPage />} />
       </Route>
     </Routes>
   );
