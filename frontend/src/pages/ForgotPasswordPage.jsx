@@ -4,8 +4,10 @@ import CodeSentSuccess from '../components/auth/CodeSentSuccess';
 import VerifyOTP from '../components/auth/VerifyOTP';
 import ResetPasswordForm from '../components/auth/ResetPasswordForm';
 // Import your video file
-import authVideo from '../assets/passRecovery-Cin-Vid.mp4'; 
-import buildingImg from '../assets/building-bg-auth.png'; 
+// import authVideo from '../assets/passRecovery-Cin-Vid.mp4'; 
+const AUTH_VIDEO_URL = "https://res.cloudinary.com/dqp0mzdwf/video/upload/v1771742182/passRecovery-Cin-Vid_bcmgjt.mp4";
+
+// import buildingImg from '../assets/building-bg-auth.png'; 
 import { CheckCircle } from 'lucide-react';
 
 const ForgotPasswordPage = () => {
@@ -36,10 +38,10 @@ const ForgotPasswordPage = () => {
           loop
           muted
           playsInline
-          poster={buildingImg}
+          // poster={buildingImg}
           className="absolute inset-0 w-full h-full object-cover"
         >
-          <source src={authVideo} type="video/mp4" />
+          <source src={AUTH_VIDEO_URL} type="video/mp4" />
           Your browser does not support the video tag.
         </video>
 

@@ -1,6 +1,8 @@
 import React from 'react';
-import heroVideo from '../assets/landipage_vid.mp4'; // Ensure your cinematic video is in assets
-import heroBg from '../assets/hero-bg.jpg'; // Still used as a poster/fallback
+// import heroVideo from '../assets/landipage_vid.mp4'; // Ensure your cinematic video is in assets
+// import heroBg from '../assets/hero-bg.jpg'; // Still used as a poster/fallback
+
+const AUTH_VIDEO_URL = "https://res.cloudinary.com/dqp0mzdwf/video/upload/v1771742169/landipage_vid_mjlvq2.mp4";
 
 const HeroSection = () => {
   return (
@@ -13,10 +15,10 @@ const HeroSection = () => {
           loop
           muted
           playsInline
-          poster={heroBg} // Fallback image while video loads
+          // poster={heroBg} // Fallback image while video loads
           className="w-full h-full object-cover brightness-[0.7] contrast-[1.1]"
         >
-          <source src={heroVideo} type="video/mp4" />
+          <source src={AUTH_VIDEO_URL} type="video/mp4" />
           Your browser does not support the video tag.
         </video>
 

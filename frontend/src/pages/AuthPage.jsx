@@ -3,8 +3,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Login from '../components/Login';
 import Signup from '../components/Signup';
 // Import your video and fallback image
-import authVideo from '../assets/interiorArchitecture.mp4'; 
-import buildingImg from '../assets/building-bg-auth.png'; 
+// import authVideo from '../assets/interiorArchitecture.mp4'; 
+// import buildingImg from '../assets/building-bg-auth.png';
+
+const AUTH_VIDEO_URL = "https://res.cloudinary.com/dqp0mzdwf/video/upload/v1771742187/interiorArchitecture_cfqk2g.mp4";
 
 const AuthPage = () => {
   const location = useLocation();
@@ -25,10 +27,10 @@ const AuthPage = () => {
           loop
           muted
           playsInline
-          poster={buildingImg}
+          // poster={buildingImg}
           className="w-full h-full object-cover"
         >
-          <source src={authVideo} type="video/mp4" />
+          <source src={AUTH_VIDEO_URL} type="video/mp4" />
           Your browser does not support the video tag.
         </video>
         
