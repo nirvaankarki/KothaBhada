@@ -141,6 +141,7 @@
 import React, { useState } from 'react';
 import { MapPin, Phone, Mail, Clock, Facebook, Instagram, Twitter, Linkedin, Loader2 } from 'lucide-react';
 import api from '../utils/api'; // Ensure this points to your axios instance
+import { useAutoDismiss } from '../hooks/useAutoDismiss';
 
 const ContactForm = () => {
   const [formData, setFormData] = useState({
@@ -153,6 +154,8 @@ const ContactForm = () => {
 
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState({ type: '', msg: '' }); // { type: 'success' | 'error', msg: '' }
+
+  useAutoDismiss(status.msg, () => setStatus({ type: '', msg: '' }));
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });

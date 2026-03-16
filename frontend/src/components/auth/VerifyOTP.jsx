@@ -1,11 +1,16 @@
 import React, { useState, useRef } from 'react';
 import api from '../../utils/api';
+import { useAutoDismiss } from '../../hooks/useAutoDismiss';
 
 const VerifyOTP = ({ email, onVerifySuccess, onCancel }) => {
   const [otp, setOtp] = useState(new Array(6).fill(""));
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const inputs = useRef([]);
+
+  useAutoDismiss(error, () => setError(''));
+  useAutoDismiss(success, () => setSuccess(''));
 
   const handleChange = (element, index) => {
     if (isNaN(element.value)) return;
@@ -31,7 +36,7 @@ const VerifyOTP = ({ email, onVerifySuccess, onCancel }) => {
     setError('');
     try {
         await api.post('/auth/forgot-password', { email });
-        alert("New code sent to " + email);
+      setSuccess(`New code sent to ${email}`);
     } catch (err) { setError("Failed to resend code"); }
   };
 
@@ -41,6 +46,7 @@ const VerifyOTP = ({ email, onVerifySuccess, onCancel }) => {
       <p className="text-gray-500 text-sm mb-8">We've sent a code to <span className="font-bold">{email}</span></p>
 
       {error && <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded">{error}</div>}
+      {success && <div className="mb-6 p-3 bg-green-50 border border-green-200 text-green-700 text-xs rounded">{success}</div>}
 
       <div className="flex justify-between gap-2 mb-10">
         {otp.map((data, index) => (

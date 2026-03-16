@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import api from '../../utils/api';
+import { useAutoDismiss } from '../../hooks/useAutoDismiss';
 
 const ResetPasswordForm = ({ email, verificationCode }) => {
   const [passwords, setPasswords] = useState({ newPassword: '', confirmPassword: '' });
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useAutoDismiss(error, () => setError(''));
+  useAutoDismiss(success, () => setSuccess(''));
 
   const handleReset = async (e) => {
     e.preventDefault();
@@ -21,8 +29,8 @@ const ResetPasswordForm = ({ email, verificationCode }) => {
         newPassword: passwords.newPassword, 
         confirmPassword: passwords.confirmPassword 
       });
-      alert("Password reset successfully! Please login.");
-      navigate('/login');
+      setSuccess('Password reset successfully! Redirecting to login...');
+      setTimeout(() => navigate('/login'), 1500);
     } catch (err) {
       setError(err.response?.data?.message || "Reset failed");
     } finally { setLoading(false); }
@@ -34,13 +42,34 @@ const ResetPasswordForm = ({ email, verificationCode }) => {
       <p className="text-gray-500 text-sm mb-10">Create a new password</p>
 
       {error && <div className="w-full mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded">{error}</div>}
+      {success && <div className="w-full mb-4 p-3 bg-green-50 border border-green-200 text-green-700 text-xs rounded">{success}</div>}
 
       <form onSubmit={handleReset} className="w-full space-y-4">
-        <input type="password" placeholder="New password" required className="w-full p-4 bg-gray-50 border border-gray-200 outline-none focus:ring-2 focus:ring-blue-400"
-          onChange={(e) => setPasswords({...passwords, newPassword: e.target.value})} />
+        <div className="relative">
+          <input type={showNewPassword ? 'text' : 'password'} placeholder="New password" required className="w-full p-4 pr-12 bg-gray-50 border border-gray-200 outline-none focus:ring-2 focus:ring-blue-400"
+            onChange={(e) => setPasswords({...passwords, newPassword: e.target.value})} />
+          <button
+            type="button"
+            onClick={() => setShowNewPassword((prev) => !prev)}
+            className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition-colors"
+            aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
+          >
+            {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
         
-        <input type="password" placeholder="Confirm password" required className="w-full p-4 bg-gray-50 border border-gray-200 outline-none focus:ring-2 focus:ring-blue-400"
-          onChange={(e) => setPasswords({...passwords, confirmPassword: e.target.value})} />
+        <div className="relative">
+          <input type={showConfirmPassword ? 'text' : 'password'} placeholder="Confirm password" required className="w-full p-4 pr-12 bg-gray-50 border border-gray-200 outline-none focus:ring-2 focus:ring-blue-400"
+            onChange={(e) => setPasswords({...passwords, confirmPassword: e.target.value})} />
+          <button
+            type="button"
+            onClick={() => setShowConfirmPassword((prev) => !prev)}
+            className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition-colors"
+            aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+          >
+            {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
 
         <div className="flex items-center gap-3 pt-6 pb-4 text-left">
           <input type="checkbox" id="terms" className="w-5 h-5 accent-[#3b66ff]" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />

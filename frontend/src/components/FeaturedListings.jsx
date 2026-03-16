@@ -1,23 +1,40 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapPin, Calendar, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Listing1 from '../assets/featuredListings-Img1.jpg';
 import Listing2 from '../assets/featuredListings-Img2.jpg';
 import Listing3 from '../assets/featuredListings-Img3.jpg';
 import { useAuth } from '../context/AuthContext';
+import api from '../utils/api';
 
-const ListingCard = ({ listing }) => {
-  const [isFavorite, setIsFavorite] = useState(false);
+const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
 
-  const handleFavoriteClick = () => {
+  const trackViewHistory = async () => {
+    if (!isAuthenticated) return;
+
+    try {
+      await api.post('/user/history', {
+        listingId: `featured-${listing.id}`,
+        title: listing.title,
+        location: listing.location,
+        price: listing.price,
+        image: listing.image,
+        source: 'featured-listings'
+      });
+    } catch {
+      // Ignore history tracking failure in UI.
+    }
+  };
+
+  const handleFavoriteClick = async () => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
 
-    setIsFavorite((prev) => !prev);
+    onToggleFavorite(listing);
   };
 
   return (
@@ -48,7 +65,10 @@ const ListingCard = ({ listing }) => {
 
         {/* Explore 3D Overlay Button */}
         <div className="absolute inset-0 flex items-center justify-center">
-            <button className="bg-[#ff5a3c] text-white flex items-center gap-2 px-3 py-1.5 rounded-md font-bold text-[9px] uppercase shadow-lg hover:bg-[#e04a2e] transition-colors">
+            <button
+              onClick={trackViewHistory}
+              className="bg-[#ff5a3c] text-white flex items-center gap-2 px-3 py-1.5 rounded-md font-bold text-[9px] uppercase shadow-lg hover:bg-[#e04a2e] transition-colors"
+            >
                 Explore <span className="bg-white text-[#ff5a3c] px-1 rounded-sm text-[8px]">3D</span>
             </button>
         </div>
@@ -86,6 +106,9 @@ const ListingCard = ({ listing }) => {
 };
 
 const FeaturedListings = () => {
+  const { isAuthenticated, token } = useAuth();
+  const [favoriteIds, setFavoriteIds] = useState(new Set());
+
   const listings = [
     {
       id: 1,
@@ -116,6 +139,58 @@ const FeaturedListings = () => {
     }
   ];
 
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadFavorites() {
+      if (!isAuthenticated || !token) {
+        setFavoriteIds(new Set());
+        return;
+      }
+
+      try {
+        const res = await api.get('/user/favorites');
+        if (!ignore) {
+          setFavoriteIds(new Set((res.data?.favorites || []).map((item) => item.listingId)));
+        }
+      } catch {
+        if (!ignore) {
+          setFavoriteIds(new Set());
+        }
+      }
+    }
+
+    loadFavorites();
+    return () => {
+      ignore = true;
+    };
+  }, [isAuthenticated, token]);
+
+  const handleToggleFavorite = async (listing) => {
+    try {
+      const response = await api.post('/user/favorites/toggle', {
+        listingId: `featured-${listing.id}`,
+        title: listing.title,
+        location: listing.location,
+        price: listing.price,
+        image: listing.image,
+        source: 'featured-listings'
+      });
+
+      setFavoriteIds((prev) => {
+        const next = new Set(prev);
+        if (response.data?.isFavorite) {
+          next.add(`featured-${listing.id}`);
+        } else {
+          next.delete(`featured-${listing.id}`);
+        }
+        return next;
+      });
+    } catch {
+      // Keep current state if save fails.
+    }
+  };
+
   return (
     <section className="py-24 px-6 md:px-10 lg:px-20 bg-white">
       <div className="max-w-[1400px] mx-auto">
@@ -127,7 +202,12 @@ const FeaturedListings = () => {
         {/* Grid Updated to 3 columns for Desktop */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {listings.map(listing => (
-            <ListingCard key={listing.id} listing={listing} />
+            <ListingCard
+              key={listing.id}
+              listing={listing}
+              isFavorite={favoriteIds.has(`featured-${listing.id}`)}
+              onToggleFavorite={handleToggleFavorite}
+            />
           ))}
         </div>
       </div>

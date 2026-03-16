@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { useAutoDismiss } from '../../hooks/useAutoDismiss';
 
 const RequestCode = ({ onNext }) => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useAutoDismiss(error, () => setError(''));
 
   const handleSendCode = async () => {
     if (!email) return setError('Please enter your email address');

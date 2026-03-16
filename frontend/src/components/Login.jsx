@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
-import { Mail, Lock } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom'; // Added Link to imports
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { useAutoDismiss } from '../hooks/useAutoDismiss';
 
 const Login = ({ onToggle }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  useAutoDismiss(error, () => setError(''));
 
   const handleInputChange = (setter) => (e) => {
     setter(e.target.value);
@@ -64,13 +68,21 @@ const Login = ({ onToggle }) => {
             <div className="relative">
               <Lock className="absolute left-4 top-4 text-gray-400" size={18} />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 placeholder="Password"
                 value={password}
                 onChange={handleInputChange(setPassword)}
                 required
-                className="w-full pl-12 pr-4 py-4 bg-gray-100/70 rounded-sm outline-none focus:ring-2 focus:ring-blue-400 font-medium"
+                className="w-full pl-12 pr-12 py-4 bg-gray-100/70 rounded-sm outline-none focus:ring-2 focus:ring-blue-400 font-medium"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
             <div className="text-right mt-3">
               {/* Updated to use Link for redirection */}

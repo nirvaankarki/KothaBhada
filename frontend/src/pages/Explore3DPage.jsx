@@ -1,12 +1,72 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   RotateCw, RefreshCcw, Maximize, Bed, Bath, Ruler, 
   Heart, Share2, CheckCircle2, User, Phone, Mail, 
   MessageSquare, Home, Info, MousePointer2, Move, Search,
   MapPin // Imported MapPin
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import api from '../utils/api';
+import { useAutoDismiss } from '../hooks/useAutoDismiss';
 
 const Explore3DPage = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated, token } = useAuth();
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const listing = {
+    listingId: 'explore3d-modern-studio-apartment',
+    title: 'Modern Studio Apartment',
+    location: 'Kalopul, Kathmandu-30, Kathmandu',
+    price: 12000,
+    image: 'https://images.unsplash.com/photo-1554995207-c18c203602cb?q=80&w=1200',
+    source: 'explore3d-page'
+  };
+
+  useAutoDismiss(message, () => setMessage(''));
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadFavoriteState() {
+      if (!isAuthenticated || !token) {
+        setIsFavorite(false);
+        return;
+      }
+
+      try {
+        const res = await api.get('/user/favorites');
+        const favoriteSet = new Set((res.data?.favorites || []).map((item) => item.listingId));
+        if (!ignore) {
+          setIsFavorite(favoriteSet.has(listing.listingId));
+        }
+      } catch {
+        if (!ignore) {
+          setIsFavorite(false);
+        }
+      }
+    }
+
+    async function trackView() {
+      if (!isAuthenticated || !token) return;
+
+      try {
+        await api.post('/user/history', listing);
+      } catch {
+        // Ignore history tracking errors in UI.
+      }
+    }
+
+    loadFavoriteState();
+    trackView();
+
+    return () => {
+      ignore = true;
+    };
+  }, [isAuthenticated, token]);
+
   const similarProperties = [
     {
       id: 1,
@@ -30,6 +90,22 @@ const Explore3DPage = () => {
       image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?q=80&w=800"
     }
   ];
+
+  const handleToggleFavorite = async () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const response = await api.post('/user/favorites/toggle', listing);
+      const nextState = Boolean(response.data?.isFavorite);
+      setIsFavorite(nextState);
+      setMessage(nextState ? 'Added to favorites' : 'Removed from favorites');
+    } catch {
+      setMessage('Could not update favorite right now');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f3f4f6] font-sans p-4 md:p-8">
@@ -111,6 +187,12 @@ const Explore3DPage = () => {
         {/* RIGHT COLUMN: PROPERTY DETAILS */}
         <div className="w-full lg:w-[380px] flex flex-col gap-6">
           <div className="bg-white rounded-sm shadow-md p-8">
+            {message && (
+              <div className={`mb-5 p-3 rounded-sm text-sm font-semibold ${message.includes('Could not') ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'}`}>
+                {message}
+              </div>
+            )}
+
             <div className="flex items-center gap-3 mb-8 border-b border-gray-100 pb-4">
               <Home size={24} className="text-[#1a222e]" fill="#1a222e" />
               <h2 className="text-2xl font-black text-[#1a222e] tracking-tight uppercase">Property Details</h2>
@@ -151,8 +233,13 @@ const Explore3DPage = () => {
 
             {/* Action Buttons */}
             <div className="flex gap-3 mb-10">
-              <button className="flex-1 flex items-center justify-center gap-2 border border-gray-300 py-2 rounded font-bold text-sm hover:bg-gray-50 transition-colors">
-                <Heart size={16} /> Save
+              <button
+                type="button"
+                onClick={handleToggleFavorite}
+                className="flex-1 flex items-center justify-center gap-2 border border-gray-300 py-2 rounded font-bold text-sm hover:bg-gray-50 transition-colors"
+              >
+                <Heart size={16} className={isFavorite ? 'fill-red-500 text-red-500' : ''} />
+                {isFavorite ? 'Saved' : 'Save'}
               </button>
               <button className="flex-1 flex items-center justify-center gap-2 border border-gray-300 py-2 rounded font-bold text-sm hover:bg-gray-50 transition-colors">
                 <Share2 size={16} /> Share

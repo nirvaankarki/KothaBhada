@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
-import { User, Mail, Lock, ChevronDown, UserCircle } from 'lucide-react';
+import { User, Mail, Lock, ChevronDown, UserCircle, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import { useAutoDismiss } from '../hooks/useAutoDismiss';
 
 const Signup = ({ onToggle }) => {
   const [formData, setFormData] = useState({ name: '', email: '', role: '', password: '', confirmPassword: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  useAutoDismiss(error, () => setError(''));
 
   const handleChange = (key) => (e) => {
     setFormData((s) => ({ ...s, [key]: e.target.value }));
@@ -77,11 +82,27 @@ const Signup = ({ onToggle }) => {
           </div>
           <div className="relative">
             <Lock className="absolute left-4 top-3.5 text-gray-400" size={18} />
-            <input type="password" placeholder="Password" value={formData.password} onChange={handleChange('password')} required className="w-full pl-12 pr-4 py-3 bg-gray-100/70 rounded-sm outline-none focus:ring-2 focus:ring-blue-400 font-medium" />
+            <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={formData.password} onChange={handleChange('password')} required className="w-full pl-12 pr-10 py-3 bg-gray-100/70 rounded-sm outline-none focus:ring-2 focus:ring-blue-400 font-medium" />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+            </button>
           </div>
           <div className="relative">
             <Lock className="absolute left-4 top-3.5 text-gray-400" size={18} />
-            <input type="password" placeholder="Confirm Password" value={formData.confirmPassword} onChange={handleChange('confirmPassword')} required className="w-full pl-12 pr-4 py-3 bg-gray-100/70 rounded-sm outline-none focus:ring-2 focus:ring-blue-400 font-medium" />
+            <input type={showConfirmPassword ? 'text' : 'password'} placeholder="Confirm Password" value={formData.confirmPassword} onChange={handleChange('confirmPassword')} required className="w-full pl-12 pr-10 py-3 bg-gray-100/70 rounded-sm outline-none focus:ring-2 focus:ring-blue-400 font-medium" />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword((prev) => !prev)}
+              className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+            >
+              {showConfirmPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+            </button>
           </div>
 
           <div className="flex justify-center mt-8">

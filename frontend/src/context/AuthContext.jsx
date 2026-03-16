@@ -39,18 +39,27 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (!token) return;
+    let cancelled = false;
 
     async function syncUser() {
       try {
         const res = await api.get('/auth/me');
-        setUser(res.data?.user || null);
+        if (!cancelled) {
+          setUser(res.data?.user || null);
+        }
       } catch {
-        setToken('');
-        setUser(null);
+        if (!cancelled) {
+          setToken('');
+          setUser(null);
+        }
       }
     }
 
     syncUser();
+
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   const login = (authToken, authUser) => {
@@ -59,6 +68,9 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    delete api.defaults.headers.common.Authorization;
     setToken('');
     setUser(null);
   };

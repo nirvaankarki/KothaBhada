@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { useAutoDismiss } from '../hooks/useAutoDismiss';
 
 const VerifyEmailPage = () => {
   const navigate = useNavigate();
@@ -15,6 +16,9 @@ const VerifyEmailPage = () => {
   const [resendLoading, setResendLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  useAutoDismiss(error, () => setError(''));
+  useAutoDismiss(success, () => setSuccess(''));
 
   const handleVerify = async (e) => {
     e.preventDefault();

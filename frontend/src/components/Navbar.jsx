@@ -3,6 +3,7 @@ import { NavLink, Link } from 'react-router-dom';
 import { UserCircle2, Pencil, Check, X } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { useAutoDismiss } from '../hooks/useAutoDismiss';
 
 const Navbar = () => {
   const { isAuthenticated, user, logout, updateUser } = useAuth();
@@ -13,6 +14,8 @@ const Navbar = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const menuRef = useRef(null);
+
+  useAutoDismiss(saveError, () => setSaveError(''));
 
   useEffect(() => {
     setNameInput(user?.name || '');
@@ -256,6 +259,14 @@ const Navbar = () => {
               </div>
 
               {saveError && <p className="mt-3 text-xs text-red-400">{saveError}</p>}
+
+              <Link
+                to="/dashboard"
+                onClick={() => setIsMenuOpen(false)}
+                className="mt-4 block text-sm font-medium text-blue-300 hover:text-blue-200"
+              >
+                Go to Dashboard
+              </Link>
 
               <button
                 type="button"

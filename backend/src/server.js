@@ -33,6 +33,7 @@ import dotenv from 'dotenv';
 import roomsRoutes from './routes/roomsRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import contactRoutes from './routes/contactRoutes.js'; // FIX: Added missing import
+import userDashboardRoutes from './routes/userDashboardRoutes.js';
 import { connectDB } from "./config/db.js";
 
 dotenv.config();
@@ -52,6 +53,7 @@ connectDB();
 app.use("/api/auth", authRoutes);
 app.use("/api/rooms", roomsRoutes);
 app.use("/api/contact", contactRoutes); // Full path will be /api/contact/...
+app.use("/api/user", userDashboardRoutes);
 
 app.listen(5001, () => {
     console.log('Server is running on port 5001');
