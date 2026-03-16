@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Lock } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom'; // Added Link to imports
 import api from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 const Login = ({ onToggle }) => {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ const Login = ({ onToggle }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleInputChange = (setter) => (e) => {
     setter(e.target.value);
@@ -20,9 +22,17 @@ const Login = ({ onToggle }) => {
     setError('');
     setLoading(true);
     try {
-      await api.post('/auth/login', { email, password });
+      const response = await api.post('/auth/login', { email, password });
+      login(response.data?.token, response.data?.user);
       navigate('/');
     } catch (err) {
+      if (err?.response?.data?.requiresEmailVerification) {
+        navigate('/verify-email', {
+          state: { email: err?.response?.data?.email || email },
+        });
+        return;
+      }
+
       setError(err?.response?.data?.message || 'Invalid credentials');
     } finally {
       setLoading(false);

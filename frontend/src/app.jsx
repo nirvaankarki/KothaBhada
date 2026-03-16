@@ -7,6 +7,7 @@ import ContactPage from './pages/ContactPage';
 import AuthPage from './pages/AuthPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import Explore3DPage from './pages/Explore3DPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import { Routes, Route } from 'react-router-dom';
 
 export function App() {
@@ -17,6 +18,7 @@ export function App() {
         <Route path="/login" element={<AuthPage />} />
         <Route path="/signup" element={<AuthPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} /> {/* New Route */}
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
       </Route>
       
       {/* Main pages - with navbar/footer */}

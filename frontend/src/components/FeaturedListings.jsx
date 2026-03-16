@@ -1,11 +1,24 @@
 import React, { useState } from 'react';
 import { MapPin, Calendar, Heart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Listing1 from '../assets/featuredListings-Img1.jpg';
 import Listing2 from '../assets/featuredListings-Img2.jpg';
 import Listing3 from '../assets/featuredListings-Img3.jpg';
+import { useAuth } from '../context/AuthContext';
 
 const ListingCard = ({ listing }) => {
   const [isFavorite, setIsFavorite] = useState(false);
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
+  const handleFavoriteClick = () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    setIsFavorite((prev) => !prev);
+  };
 
   return (
     <div className="bg-white rounded-sm shadow-xl border border-gray-100 overflow-hidden flex flex-col h-full">
@@ -24,7 +37,7 @@ const ListingCard = ({ listing }) => {
 
         {/* Favorite Button */}
         <button 
-          onClick={() => setIsFavorite(!isFavorite)}
+          onClick={handleFavoriteClick}
           className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-md transition-all active:scale-90 hover:bg-gray-50 z-10"
         >
           <Heart 

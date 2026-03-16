@@ -22,8 +22,13 @@ const Signup = ({ onToggle }) => {
     }
     setLoading(true);
     try {
-      await api.post('/auth/signup', formData);
-      navigate('/login');
+      const response = await api.post('/auth/signup', formData);
+      navigate('/verify-email', {
+        state: {
+          email: response.data?.email || formData.email,
+          devVerificationCode: response.data?.devVerificationCode || '',
+        },
+      });
     } catch (err) {
       setError(err?.response?.data?.message || 'Error creating account');
     } finally {

@@ -22,6 +22,14 @@ export async function login(req, res) {
             return res.status(400).json({ message: 'Invalid email or password' });
         }
 
+        if (!user.isEmailVerified) {
+            return res.status(403).json({
+                message: 'Please verify your email before logging in',
+                requiresEmailVerification: true,
+                email: user.email
+            });
+        }
+
         // Generate JWT token
         const token = jwt.sign(
             { userId: user._id, email: user.email, role: user.role },
@@ -36,7 +44,9 @@ export async function login(req, res) {
                 id: user._id,
                 name: user.name,
                 email: user.email,
-                role: user.role
+                role: user.role,
+                phone: user.phone || '',
+                isEmailVerified: user.isEmailVerified
             }
         });
     } catch (error) {

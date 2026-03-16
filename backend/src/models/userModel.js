@@ -20,11 +20,27 @@ const userSchema = new mongoose.Schema({
         enum: ['user', 'landlord', 'admin'],
         default: 'user'
     },
+    phone: {
+        type: String,
+        default: ''
+    },
     resetCode: {
         type: String,
         default: null
     },
     resetCodeExpiry: {
+        type: Date,
+        default: null
+    },
+    isEmailVerified: {
+        type: Boolean,
+        default: true
+    },
+    emailVerificationCode: {
+        type: String,
+        default: null
+    },
+    emailVerificationCodeExpiry: {
         type: Date,
         default: null
     },

@@ -29,10 +29,13 @@
 
 import express from "express";
 import cors from "cors";
+import dotenv from 'dotenv';
 import roomsRoutes from './routes/roomsRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import contactRoutes from './routes/contactRoutes.js'; // FIX: Added missing import
 import { connectDB } from "./config/db.js";
+
+dotenv.config();
 
 const app = express();
 
