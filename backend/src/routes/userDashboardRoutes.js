@@ -10,7 +10,10 @@ import {
     getInquiries,
     addInquiryMessage,
     createBooking,
-    getBookings
+    getBookings,
+    getOwnerInquiries,
+    addOwnerInquiryMessage,
+    getOwnerBookings
 } from '../controllers/userDashboardController.js';
 
 const router = express.Router();
@@ -25,5 +28,8 @@ router.post('/inquiries', authenticate, createInquiry);
 router.post('/inquiries/:inquiryId/messages', authenticate, addInquiryMessage);
 router.get('/bookings', authenticate, getBookings);
 router.post('/bookings', authenticate, createBooking);
+router.get('/owner/inquiries', authenticate, getOwnerInquiries);
+router.post('/owner/inquiries/:inquiryId/messages', authenticate, addOwnerInquiryMessage);
+router.get('/owner/bookings', authenticate, getOwnerBookings);
 
 export default router;

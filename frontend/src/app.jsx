@@ -10,8 +10,22 @@ import Explore3DPage from './pages/Explore3DPage';
 import ViewListingPage from './pages/ViewListingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import UserDashboardPage from './pages/UserDashboardPage';
+import LandlordDashboardPage from './pages/LandlordDashboardPage';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
+import { useAuth } from './context/AuthContext';
+import { isLandlordRole, resolveRole } from './utils/roles';
+
+function DashboardRouteEntry() {
+  const { user, token } = useAuth();
+  const activeRole = resolveRole(user?.role, token);
+
+  if (isLandlordRole(activeRole)) {
+    return <Navigate to="/landlord/dashboard" replace />;
+  }
+
+  return <UserDashboardPage />;
+}
 
 export function App() {
   return (
@@ -23,6 +37,19 @@ export function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} /> {/* New Route */}
         <Route path="/verify-email" element={<VerifyEmailPage />} />
       </Route>
+
+      {/* Landlord dashboard - no navbar/footer */}
+      <Route
+        path="/landlord/dashboard"
+        element={(
+          <ProtectedRoute
+            message="Please log in as a landlord to access landlord dashboard."
+            allowedRoles={['landlord']}
+          >
+            <LandlordDashboardPage />
+          </ProtectedRoute>
+        )}
+      />
       
       {/* Main pages - with navbar/footer */}
       <Route element={<MainLayout />}>
@@ -40,8 +67,22 @@ export function App() {
         />
         <Route path="/view-listing" element={<Navigate to="/viewlisting" replace />} />
         <Route path="/view-listing/:listingId" element={<Navigate to="/listing-details" replace />} />
-        <Route path="/dashboard" element={<UserDashboardPage />} />
-        <Route path="/user/dashboard" element={<UserDashboardPage />} />
+        <Route
+          path="/dashboard"
+          element={(
+            <ProtectedRoute message="Please log in to access your dashboard.">
+              <DashboardRouteEntry />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/user/dashboard"
+          element={(
+            <ProtectedRoute message="Please log in to access your dashboard.">
+              <DashboardRouteEntry />
+            </ProtectedRoute>
+          )}
+        />
       </Route>
     </Routes>
   );

@@ -1,6 +1,24 @@
 import mongoose from 'mongoose';
 
 const roomSchema = new mongoose.Schema({
+    ownerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+        index: true
+    },
+    ownerName: {
+        type: String,
+        default: 'Property Owner'
+    },
+    ownerEmail: {
+        type: String,
+        default: ''
+    },
+    ownerPhone: {
+        type: String,
+        default: ''
+    },
     title: {
         type: String,
         required: true
@@ -13,7 +31,32 @@ const roomSchema = new mongoose.Schema({
         type: String
     },
     location: {
-        type: String
+        type: String,
+        required: true
+    },
+    bedrooms: {
+        type: Number,
+        default: 1,
+        min: 0
+    },
+    bathrooms: {
+        type: Number,
+        default: 1,
+        min: 0
+    },
+    areaSqFt: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
+    image: {
+        type: String,
+        default: ''
+    },
+    status: {
+        type: String,
+        enum: ['active', 'inactive'],
+        default: 'active'
     },
     createdAt: {
         type: Date,

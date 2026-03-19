@@ -23,6 +23,12 @@ const inquirySchema = new mongoose.Schema({
         required: true,
         index: true
     },
+    ownerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null,
+        index: true
+    },
     listingId: {
         type: String,
         required: true
@@ -69,5 +75,6 @@ const inquirySchema = new mongoose.Schema({
 });
 
 inquirySchema.index({ userId: 1, updatedAt: -1 });
+inquirySchema.index({ ownerId: 1, updatedAt: -1 });
 
 export const Inquiry = mongoose.model('Inquiry', inquirySchema);

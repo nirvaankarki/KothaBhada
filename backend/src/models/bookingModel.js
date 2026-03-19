@@ -7,6 +7,12 @@ const bookingSchema = new mongoose.Schema({
         required: true,
         index: true
     },
+    ownerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null,
+        index: true
+    },
     listingId: {
         type: String,
         required: true
@@ -57,5 +63,6 @@ const bookingSchema = new mongoose.Schema({
 });
 
 bookingSchema.index({ userId: 1, createdAt: -1 });
+bookingSchema.index({ ownerId: 1, createdAt: -1 });
 
 export const Booking = mongoose.model('Booking', bookingSchema);

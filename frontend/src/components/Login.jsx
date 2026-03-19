@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'; // Added Link to imports
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
+import { isLandlordRole } from '../utils/roles';
 
 const Login = ({ onToggle }) => {
   const [email, setEmail] = useState('');
@@ -27,8 +28,9 @@ const Login = ({ onToggle }) => {
     setLoading(true);
     try {
       const response = await api.post('/auth/login', { email, password });
-      await login(response.data?.token, response.data?.user);
-      navigate('/');
+      const nextUser = await login(response.data?.token, response.data?.user);
+      const role = nextUser?.role || response.data?.user?.role;
+      navigate(isLandlordRole(role) ? '/landlord/dashboard' : '/');
     } catch (err) {
       if (err?.response?.data?.requiresEmailVerification) {
         navigate('/verify-email', {

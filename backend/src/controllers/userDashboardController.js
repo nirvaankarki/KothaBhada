@@ -2,6 +2,20 @@ import { Favorite } from '../models/favoriteModel.js';
 import { ViewHistory } from '../models/viewHistoryModel.js';
 import { Inquiry } from '../models/inquiryModel.js';
 import { Booking } from '../models/bookingModel.js';
+import { Room } from '../models/roomModel.js';
+
+async function resolveRoomOwner(listingId) {
+    if (!listingId) {
+        return null;
+    }
+
+    const room = await Room.findById(listingId).select('ownerId ownerName ownerPhone ownerEmail title location price image');
+    if (!room) {
+        return null;
+    }
+
+    return room;
+}
 
 export async function getFavorites(req, res) {
     try {
@@ -108,15 +122,18 @@ export async function createInquiry(req, res) {
             return res.status(400).json({ message: 'listingId, title and message are required' });
         }
 
+        const room = await resolveRoomOwner(listingId);
+
         const inquiry = await Inquiry.create({
             userId: req.user.userId,
+            ownerId: room?.ownerId || null,
             listingId,
-            title,
-            location: location || '',
-            price: Number(price) || 0,
-            image: image || '',
-            ownerName: ownerName || 'Property Owner',
-            ownerContact: ownerContact || '',
+            title: room?.title || title,
+            location: room?.location || location || '',
+            price: room?.price || Number(price) || 0,
+            image: room?.image || image || '',
+            ownerName: room?.ownerName || ownerName || 'Property Owner',
+            ownerContact: room?.ownerPhone || ownerContact || '',
             status: 'open',
             messages: [
                 {
@@ -189,15 +206,18 @@ export async function createBooking(req, res) {
             return res.status(400).json({ message: 'listingId, title and preferredVisitDate are required' });
         }
 
+        const room = await resolveRoomOwner(listingId);
+
         const booking = await Booking.create({
             userId: req.user.userId,
+            ownerId: room?.ownerId || null,
             listingId,
-            title,
-            location: location || '',
-            price: Number(price) || 0,
-            image: image || '',
-            ownerName: ownerName || 'Property Owner',
-            ownerContact: ownerContact || '',
+            title: room?.title || title,
+            location: room?.location || location || '',
+            price: room?.price || Number(price) || 0,
+            image: room?.image || image || '',
+            ownerName: room?.ownerName || ownerName || 'Property Owner',
+            ownerContact: room?.ownerPhone || ownerContact || '',
             preferredVisitDate,
             note: note || '',
             status: 'pending'
@@ -215,5 +235,70 @@ export async function getBookings(req, res) {
         return res.status(200).json({ bookings });
     } catch (error) {
         return res.status(500).json({ message: 'Failed to fetch bookings', error: error.message });
+    }
+}
+
+export async function getOwnerInquiries(req, res) {
+    try {
+        if (req.user.role !== 'landlord') {
+            return res.status(403).json({ message: 'Only landlords can access owner inquiries' });
+        }
+
+        const inquiries = await Inquiry.find({ ownerId: req.user.userId })
+            .populate('userId', 'name email')
+            .sort({ updatedAt: -1 });
+
+        return res.status(200).json({ inquiries });
+    } catch (error) {
+        return res.status(500).json({ message: 'Failed to fetch owner inquiries', error: error.message });
+    }
+}
+
+export async function addOwnerInquiryMessage(req, res) {
+    try {
+        if (req.user.role !== 'landlord') {
+            return res.status(403).json({ message: 'Only landlords can reply to inquiries' });
+        }
+
+        const { inquiryId } = req.params;
+        const { message } = req.body;
+
+        if (!message || !message.trim()) {
+            return res.status(400).json({ message: 'Message is required' });
+        }
+
+        const inquiry = await Inquiry.findOne({ _id: inquiryId, ownerId: req.user.userId }).populate('userId', 'name email');
+        if (!inquiry) {
+            return res.status(404).json({ message: 'Inquiry not found' });
+        }
+
+        inquiry.messages.push({
+            senderType: 'owner',
+            text: message.trim(),
+            sentAt: new Date()
+        });
+        inquiry.status = 'responded';
+        inquiry.lastMessageAt = new Date();
+        await inquiry.save();
+
+        return res.status(200).json({ message: 'Reply sent', inquiry });
+    } catch (error) {
+        return res.status(500).json({ message: 'Failed to send owner reply', error: error.message });
+    }
+}
+
+export async function getOwnerBookings(req, res) {
+    try {
+        if (req.user.role !== 'landlord') {
+            return res.status(403).json({ message: 'Only landlords can access owner bookings' });
+        }
+
+        const bookings = await Booking.find({ ownerId: req.user.userId })
+            .populate('userId', 'name email')
+            .sort({ createdAt: -1 });
+
+        return res.status(200).json({ bookings });
+    } catch (error) {
+        return res.status(500).json({ message: 'Failed to fetch owner bookings', error: error.message });
     }
 }

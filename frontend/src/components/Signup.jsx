@@ -3,6 +3,8 @@ import { User, Mail, Lock, ChevronDown, UserCircle, Eye, EyeOff } from 'lucide-r
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
+import { useAuth } from '../context/AuthContext';
+import { isLandlordRole } from '../utils/roles';
 
 const Signup = ({ onToggle }) => {
   const [formData, setFormData] = useState({ name: '', email: '', role: '', password: '', confirmPassword: '' });
@@ -11,6 +13,7 @@ const Signup = ({ onToggle }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   useAutoDismiss(error, () => setError(''));
 
@@ -28,10 +31,18 @@ const Signup = ({ onToggle }) => {
     setLoading(true);
     try {
       const response = await api.post('/auth/signup', formData);
+
+      if (response.data?.token && isLandlordRole(response.data?.user?.role)) {
+        await login(response.data.token, response.data.user);
+        navigate('/landlord/dashboard');
+        return;
+      }
+
       navigate('/verify-email', {
         state: {
           email: response.data?.email || formData.email,
           devVerificationCode: response.data?.devVerificationCode || '',
+          intendedRole: formData.role,
         },
       });
     } catch (err) {

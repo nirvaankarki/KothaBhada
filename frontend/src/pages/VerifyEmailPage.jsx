@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
+import { isLandlordRole } from '../utils/roles';
 
 const VerifyEmailPage = () => {
   const navigate = useNavigate();
@@ -37,8 +38,9 @@ const VerifyEmailPage = () => {
         verificationCode: code.trim(),
       });
 
-      await login(response.data?.token, response.data?.user);
-      navigate('/');
+      const nextUser = await login(response.data?.token, response.data?.user);
+      const role = nextUser?.role || response.data?.user?.role || location.state?.intendedRole;
+      navigate(isLandlordRole(role) ? '/landlord/dashboard' : '/');
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to verify email');
     } finally {

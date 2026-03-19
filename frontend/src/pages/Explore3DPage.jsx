@@ -21,13 +21,29 @@ const Explore3DPage = () => {
 
   // Get listing from route state, fallback to default
   const passedListing = location.state?.listing;
-  const listing = passedListing || {
+  const listing = passedListing ? {
+    ...passedListing,
+    listingId: String(passedListing.listingId || passedListing._id || passedListing.id || passedListing.title || 'listing').trim(),
+    source: passedListing.source || 'listing-details-page',
+    bedrooms: Number(passedListing.bedrooms || 1),
+    bathrooms: Number(passedListing.bathrooms || 1),
+    areaSqFt: Number(passedListing.areaSqFt || 450),
+    ownerName: passedListing.ownerName || 'Property Owner',
+    ownerPhone: passedListing.ownerPhone || '',
+    ownerEmail: passedListing.ownerEmail || '',
+  } : {
     listingId: 'explore3d-modern-studio-apartment',
     title: 'Modern Studio Apartment',
     location: 'Kalopul, Kathmandu-30, Kathmandu',
     price: 12000,
     image: 'https://images.unsplash.com/photo-1554995207-c18c203602cb?q=80&w=1200',
-    source: 'explore3d-page'
+    source: 'explore3d-page',
+    bedrooms: 3,
+    bathrooms: 1,
+    areaSqFt: 450,
+    ownerName: 'Mr. Rajesh Hamal',
+    ownerPhone: '+977-9834987654',
+    ownerEmail: 'rajeshhamal@gmail.com',
   };
 
   useAutoDismiss(message, () => setMessage(''));
@@ -120,7 +136,7 @@ const Explore3DPage = () => {
 
             <div className="relative aspect-video bg-[#2a2a2a] flex items-center justify-center overflow-hidden">
               <img 
-                src="https://images.unsplash.com/photo-1554995207-c18c203602cb?q=80&w=1200" 
+                src={listing.image || 'https://images.unsplash.com/photo-1554995207-c18c203602cb?q=80&w=1200'} 
                 className="w-full h-full object-cover opacity-40 blur-sm" 
                 alt="3D Placeholder"
               />
@@ -172,13 +188,13 @@ const Explore3DPage = () => {
             {/* Specs Badges */}
             <div className="flex flex-wrap gap-2 mb-8">
               <div className="flex items-center gap-2 bg-blue-50 text-[#3b82f6] px-4 py-2 rounded-full text-xs font-bold">
-                <Bed size={14} /> 3 Bedroom
+                <Bed size={14} /> {listing.bedrooms} Bedroom
               </div>
               <div className="flex items-center gap-2 bg-blue-50 text-[#3b66ff] px-4 py-2 rounded-full text-xs font-bold">
-                <Bath size={14} /> Bathroom
+                <Bath size={14} /> {listing.bathrooms} Bathroom
               </div>
               <div className="flex items-center gap-2 bg-blue-50 text-[#3b66ff] px-4 py-2 rounded-full text-xs font-bold">
-                <Ruler size={14} /> 450 sq.ft.
+                <Ruler size={14} /> {listing.areaSqFt} sq.ft.
               </div>
             </div>
 
@@ -231,13 +247,13 @@ const Explore3DPage = () => {
               </div>
               <div className="space-y-3 mb-8">
                 <div className="flex items-center gap-3 text-sm font-semibold text-gray-600">
-                  <User size={16} className="text-gray-400" /> Mr. Rajesh Hamal
+                  <User size={16} className="text-gray-400" /> {listing.ownerName || 'Property Owner'}
                 </div>
                 <div className="flex items-center gap-3 text-sm font-semibold text-gray-600">
-                  <Phone size={16} className="text-gray-400" /> +977-9834987654
+                  <Phone size={16} className="text-gray-400" /> {listing.ownerPhone || 'Not provided'}
                 </div>
                 <div className="flex items-center gap-3 text-sm font-semibold text-gray-600">
-                  <Mail size={16} className="text-gray-400" /> rajeshhamal@gmail.com
+                  <Mail size={16} className="text-gray-400" /> {listing.ownerEmail || 'Not provided'}
                 </div>
               </div>
 
