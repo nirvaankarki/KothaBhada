@@ -28,17 +28,33 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
     }
   };
 
-  const handleFavoriteClick = async () => {
+  const handleFavoriteClick = (e) => {
+    e.stopPropagation();
+    
     if (!isAuthenticated) {
-      navigate('/login');
+      navigate('/', {
+        state: {
+          requireAuthModal: true,
+          authNotice: 'Please log in or sign up to save listings to favorites.',
+          from: '/viewlisting',
+        },
+      });
       return;
     }
 
     onToggleFavorite(listing);
   };
 
+  const handleCardClick = async () => {
+    await trackViewHistory();
+    navigate('/explore3d', { state: { listing } });
+  };
+
   return (
-    <div className="bg-white rounded-sm shadow-xl border border-gray-100 overflow-hidden flex flex-col h-full">
+    <div 
+      onClick={handleCardClick}
+      className="bg-white rounded-sm shadow-xl border border-gray-100 overflow-hidden flex flex-col h-full cursor-pointer hover:shadow-2xl transition-shadow"
+    >
       {/* Image Section */}
       <div className="relative h-64 w-full overflow-hidden group">
         <img 
@@ -66,7 +82,10 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
         {/* Explore 3D Overlay Button */}
         <div className="absolute inset-0 flex items-center justify-center">
             <button
-              onClick={trackViewHistory}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCardClick();
+              }}
               className="bg-[#ff5a3c] text-white flex items-center gap-2 px-3 py-1.5 rounded-md font-bold text-[9px] uppercase shadow-lg hover:bg-[#e04a2e] transition-colors"
             >
                 Explore <span className="bg-white text-[#ff5a3c] px-1 rounded-sm text-[8px]">3D</span>

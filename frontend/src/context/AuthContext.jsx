@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import api from '../utils/api';
 
 const AuthContext = createContext(null);
@@ -7,12 +7,28 @@ const TOKEN_KEY = 'kothabhada_token';
 const USER_KEY = 'kothabhada_user';
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) || '');
-  const [user, setUser] = useState(() => {
-    const raw = localStorage.getItem(USER_KEY);
-    if (!raw) return null;
+  const syncRequestRef = useRef(0);
+  const [authLoading, setAuthLoading] = useState(false);
 
+  // Initialize token from localStorage
+  const [token, setToken] = useState(() => {
     try {
+      const storedToken = localStorage.getItem(TOKEN_KEY);
+      return storedToken || '';
+    } catch {
+      return '';
+    }
+  });
+
+  // Initialize user from localStorage only if token exists
+  const [user, setUser] = useState(() => {
+    try {
+      const storedToken = localStorage.getItem(TOKEN_KEY);
+      if (!storedToken) return null;
+
+      const raw = localStorage.getItem(USER_KEY);
+      if (!raw) return null;
+
       return JSON.parse(raw);
     } catch {
       return null;
@@ -21,10 +37,8 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (token) {
-      api.defaults.headers.common.Authorization = `Bearer ${token}`;
       localStorage.setItem(TOKEN_KEY, token);
     } else {
-      delete api.defaults.headers.common.Authorization;
       localStorage.removeItem(TOKEN_KEY);
     }
   }, [token]);
@@ -38,23 +52,39 @@ export function AuthProvider({ children }) {
   }, [user]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      // If no token, ensure user is cleared immediately
+      setUser(null);
+      setAuthLoading(false);
+      return;
+    }
+
     let cancelled = false;
+    const requestId = ++syncRequestRef.current;
+    setAuthLoading(true);
 
     async function syncUser() {
       try {
         const res = await api.get('/auth/me');
-        if (!cancelled) {
-          setUser(res.data?.user || null);
+        if (!cancelled && requestId === syncRequestRef.current && res.data?.user) {
+          setUser(res.data.user);
         }
-      } catch {
-        if (!cancelled) {
+      } catch (error) {
+        if (!cancelled && requestId === syncRequestRef.current) {
+          // Token is invalid, clear everything
           setToken('');
           setUser(null);
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
+        }
+      } finally {
+        if (!cancelled && requestId === syncRequestRef.current) {
+          setAuthLoading(false);
         }
       }
     }
 
+    // Always sync user when token changes
     syncUser();
 
     return () => {
@@ -62,31 +92,76 @@ export function AuthProvider({ children }) {
     };
   }, [token]);
 
-  const login = (authToken, authUser) => {
-    setToken(authToken || '');
-    setUser(authUser || null);
+  const login = async (authToken, authUser) => {
+    const requestId = ++syncRequestRef.current;
+
+    if (!authToken) {
+      setToken('');
+      setUser(null);
+      setAuthLoading(false);
+      return null;
+    }
+
+    setAuthLoading(true);
+
+    // Force a clean switch before setting the next account.
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    setUser(null);
+
+    // Set the new token immediately so dependent effects and API calls use it.
+    localStorage.setItem(TOKEN_KEY, authToken);
+    setToken(authToken);
+
+    try {
+      const res = await api.get('/auth/me', {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const nextUser = res.data?.user || authUser || null;
+      if (requestId === syncRequestRef.current) {
+        setUser(nextUser);
+      }
+      return nextUser;
+    } catch {
+      const fallbackUser = authUser || null;
+      if (requestId === syncRequestRef.current) {
+        setUser(fallbackUser);
+      }
+      return fallbackUser;
+    } finally {
+      if (requestId === syncRequestRef.current) {
+        setAuthLoading(false);
+      }
+    }
   };
 
   const logout = () => {
+    ++syncRequestRef.current;
+
+    // Clear storage synchronously BEFORE state changes
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
-    delete api.defaults.headers.common.Authorization;
-    setToken('');
+    localStorage.removeItem('kothabhada_logout_success'); // Clear logout flag
+    
+    // THEN update state to trigger immediate re-renders everywhere
     setUser(null);
+    setToken('');
+    setAuthLoading(false);
   };
 
   const updateUser = (nextUser) => {
     setUser(nextUser || null);
   };
 
-  const value = useMemo(() => ({
+  const value = {
     token,
     user,
+    authLoading,
     isAuthenticated: Boolean(token && user),
     login,
     logout,
     updateUser,
-  }), [token, user]);
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

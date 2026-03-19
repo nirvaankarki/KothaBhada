@@ -46,6 +46,7 @@ export async function login(req, res) {
                 email: user.email,
                 role: user.role,
                 phone: user.phone || '',
+                profilePhoto: user.profilePhoto || null,
                 isEmailVerified: user.isEmailVerified
             }
         });

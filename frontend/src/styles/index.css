@@ -23,3 +23,18 @@
     50% { transform: scale(1.1); }
   }
 }
+
+.logout-success-toast {
+  animation: logout-toast-enter 320ms ease-out;
+}
+
+@keyframes logout-toast-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

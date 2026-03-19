@@ -24,6 +24,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    profilePhoto: {
+        type: String,
+        default: null
+    },
     resetCode: {
         type: String,
         default: null

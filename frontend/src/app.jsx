@@ -7,9 +7,11 @@ import ContactPage from './pages/ContactPage';
 import AuthPage from './pages/AuthPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import Explore3DPage from './pages/Explore3DPage';
+import ViewListingPage from './pages/ViewListingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import UserDashboardPage from './pages/UserDashboardPage';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
 
 export function App() {
   return (
@@ -28,6 +30,16 @@ export function App() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/explore3d" element={<Explore3DPage />} />
+        <Route
+          path="/viewlisting"
+          element={(
+            <ProtectedRoute message="Please log in or sign up to view listings.">
+              <ViewListingPage />
+            </ProtectedRoute>
+          )}
+        />
+        <Route path="/view-listing" element={<Navigate to="/viewlisting" replace />} />
+        <Route path="/view-listing/:listingId" element={<Navigate to="/explore3d" replace />} />
         <Route path="/dashboard" element={<UserDashboardPage />} />
         <Route path="/user/dashboard" element={<UserDashboardPage />} />
       </Route>

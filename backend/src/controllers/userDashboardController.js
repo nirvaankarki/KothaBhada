@@ -79,6 +79,18 @@ export async function getViewHistory(req, res) {
     }
 }
 
+export async function clearViewHistory(req, res) {
+    try {
+        const result = await ViewHistory.deleteMany({ userId: req.user.userId });
+        return res.status(200).json({
+            message: 'Viewing history cleared successfully',
+            deletedCount: result.deletedCount
+        });
+    } catch (error) {
+        return res.status(500).json({ message: 'Failed to clear view history', error: error.message });
+    }
+}
+
 export async function createInquiry(req, res) {
     try {
         const {

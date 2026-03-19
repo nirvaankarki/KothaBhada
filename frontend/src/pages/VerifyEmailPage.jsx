@@ -37,7 +37,7 @@ const VerifyEmailPage = () => {
         verificationCode: code.trim(),
       });
 
-      login(response.data?.token, response.data?.user);
+      await login(response.data?.token, response.data?.user);
       navigate('/');
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to verify email');

@@ -27,7 +27,7 @@ const Login = ({ onToggle }) => {
     setLoading(true);
     try {
       const response = await api.post('/auth/login', { email, password });
-      login(response.data?.token, response.data?.user);
+      await login(response.data?.token, response.data?.user);
       navigate('/');
     } catch (err) {
       if (err?.response?.data?.requiresEmailVerification) {

@@ -47,7 +47,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-app.use(express.json());
+// Increase payload size limit for image uploads (50MB max)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 connectDB(); 
 
 app.use("/api/auth", authRoutes);

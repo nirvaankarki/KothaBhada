@@ -2,6 +2,7 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Login from '../components/Login';
 import Signup from '../components/Signup';
+import { useAutoDismiss } from '../hooks/useAutoDismiss';
 // Import your video and fallback image
 // import authVideo from '../assets/interiorArchitecture.mp4'; 
 // import buildingImg from '../assets/building-bg-auth.png';
@@ -12,6 +13,13 @@ const AuthPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const isLogin = location.pathname === '/login';
+  const [authNotice, setAuthNotice] = React.useState(location.state?.authNotice || '');
+
+  React.useEffect(() => {
+    setAuthNotice(location.state?.authNotice || '');
+  }, [location.state]);
+
+  useAutoDismiss(authNotice, () => setAuthNotice(''), 3500);
 
   const toggle = () => {
     navigate(isLogin ? '/signup' : '/login');
@@ -48,6 +56,12 @@ const AuthPage = () => {
           isLogin ? 'h-[650px]' : 'h-[750px]'
         }`}
       >
+        {authNotice && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-sm bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold shadow-sm">
+            {authNotice}
+          </div>
+        )}
+
         {/* Sliding Container */}
         <div
           className={`flex w-[200%] h-full transition-transform duration-700 ease-in-out ${

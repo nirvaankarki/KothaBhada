@@ -14,7 +14,8 @@ export async function getCurrentUser(req, res) {
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                phone: user.phone || ''
+                phone: user.phone || '',
+                profilePhoto: user.profilePhoto || null
             }
         });
     } catch (error) {
@@ -24,7 +25,7 @@ export async function getCurrentUser(req, res) {
 
 export async function updateCurrentUser(req, res) {
     try {
-        const { name, phone } = req.body;
+        const { name, phone, profilePhoto } = req.body;
         const updatePayload = {};
 
         if (name !== undefined) {
@@ -40,6 +41,21 @@ export async function updateCurrentUser(req, res) {
                 return res.status(400).json({ message: 'Invalid contact number format' });
             }
             updatePayload.phone = normalizedPhone;
+        }
+
+        if (profilePhoto !== undefined) {
+            // profilePhoto should be base64 string or null
+            if (profilePhoto === null) {
+                updatePayload.profilePhoto = null;
+            } else if (typeof profilePhoto === 'string' && profilePhoto.startsWith('data:image')) {
+                // Limit base64 size to 5MB
+                if (profilePhoto.length > 5242880) {
+                    return res.status(400).json({ message: 'Photo size exceeds 5MB limit' });
+                }
+                updatePayload.profilePhoto = profilePhoto;
+            } else {
+                return res.status(400).json({ message: 'Invalid photo format' });
+            }
         }
 
         if (Object.keys(updatePayload).length === 0) {
@@ -63,7 +79,8 @@ export async function updateCurrentUser(req, res) {
                 name: updatedUser.name,
                 email: updatedUser.email,
                 role: updatedUser.role,
-                phone: updatedUser.phone || ''
+                phone: updatedUser.phone || '',
+                profilePhoto: updatedUser.profilePhoto || null
             }
         });
     } catch (error) {

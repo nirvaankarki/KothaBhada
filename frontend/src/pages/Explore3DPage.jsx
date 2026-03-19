@@ -3,20 +3,25 @@ import {
   RotateCw, RefreshCcw, Maximize, Bed, Bath, Ruler, 
   Heart, Share2, CheckCircle2, User, Phone, Mail, 
   MessageSquare, Home, Info, MousePointer2, Move, Search,
-  MapPin // Imported MapPin
+  MapPin
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
+import AuthRequiredModal from '../components/AuthRequiredModal';
 
 const Explore3DPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, token } = useAuth();
   const [isFavorite, setIsFavorite] = useState(false);
   const [message, setMessage] = useState('');
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const listing = {
+  // Get listing from route state, fallback to default
+  const passedListing = location.state?.listing;
+  const listing = passedListing || {
     listingId: 'explore3d-modern-studio-apartment',
     title: 'Modern Studio Apartment',
     location: 'Kalopul, Kathmandu-30, Kathmandu',
@@ -67,33 +72,9 @@ const Explore3DPage = () => {
     };
   }, [isAuthenticated, token]);
 
-  const similarProperties = [
-    {
-      id: 1,
-      title: "Modern Studio Apartment",
-      location: "Kalopul, Kathmandu",
-      price: "Rs. 34,000/month",
-      image: "https://images.unsplash.com/photo-1600607687940-4e524cb35a3a?q=80&w=800"
-    },
-    {
-      id: 2,
-      title: "Single Room",
-      location: "Naxal, Kathmandu",
-      price: "Rs. 12,000/month",
-      image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=800"
-    },
-    {
-      id: 3,
-      title: "Luxury Apartment",
-      location: "Naxal, Kathmandu",
-      price: "Rs. 45,000/month",
-      image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?q=80&w=800"
-    }
-  ];
-
   const handleToggleFavorite = async () => {
     if (!isAuthenticated) {
-      navigate('/login');
+      setShowAuthModal(true);
       return;
     }
 
@@ -109,6 +90,13 @@ const Explore3DPage = () => {
 
   return (
     <div className="min-h-screen bg-[#f3f4f6] font-sans p-4 md:p-8">
+      <AuthRequiredModal
+        open={showAuthModal}
+        message="Please log in or sign up to save this listing to favorites."
+        onCancel={() => setShowAuthModal(false)}
+        onConfirm={() => navigate('/login', { state: { from: '/explore3d' } })}
+      />
+
       <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-6">
         
         {/* LEFT COLUMN */}
@@ -157,31 +145,6 @@ const Explore3DPage = () => {
               </div>
             </div>
           </div>
-
-          {/* Similar Properties */}
-          <div className="bg-white rounded-sm shadow-md p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="bg-black p-1.5 rounded text-white"><Home size={18} fill="white" /></div>
-              <h3 className="text-xl font-bold text-[#1a222e]">Similar Properties</h3>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {similarProperties.map((prop) => (
-                <div key={prop.id} className="border border-gray-200 rounded overflow-hidden hover:shadow-lg transition-shadow">
-                  <img src={prop.image} className="h-40 w-full object-cover" alt={prop.title} />
-                  <div className="p-4 bg-gray-50/50">
-                    <h4 className="font-bold text-sm text-[#1a222e] mb-1">{prop.title}</h4>
-                    {/* UPDATED: MapPin Icon in Cards */}
-                    <div className="flex items-center gap-1 text-gray-500 mb-3">
-                      <MapPin size={12} className="text-[#ff5a3c]" />
-                      <p className="text-[11px]">{prop.location}</p>
-                    </div>
-                    <p className="text-[#3b82f6] font-extrabold text-sm">{prop.price}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* RIGHT COLUMN: PROPERTY DETAILS */}
@@ -199,11 +162,10 @@ const Explore3DPage = () => {
             </div>
 
             <div className="mb-6">
-              <h1 className="text-3xl font-black text-[#1a222e] leading-tight mb-2">Modern Studio Apartment</h1>
-              {/* UPDATED: MapPin Icon in Sidebar */}
+              <h1 className="text-3xl font-black text-[#1a222e] leading-tight mb-2">{listing.title || 'Listing Details'}</h1>
               <div className="flex items-center gap-2 text-gray-500">
                 <MapPin size={16} className="text-[#ff5a3c]" />
-                <p className="text-sm font-medium">Kalopul, Kathmandu-30, Kathmandu</p>
+                <p className="text-sm font-medium">{listing.location || 'Location not specified'}</p>
               </div>
             </div>
 
@@ -223,7 +185,7 @@ const Explore3DPage = () => {
             {/* Pricing */}
             <div className="mb-8 border-t border-gray-100 pt-6">
               <div className="flex items-baseline gap-1">
-                <span className="text-[#3b82f6] text-3xl font-black italic">Rs. 12,000</span>
+                <span className="text-[#3b66ff] text-3xl font-black">Rs. {Number(listing.price || 0).toLocaleString()}</span>
                 <span className="text-gray-500 font-bold text-sm">/month</span>
               </div>
               <p className="text-gray-400 text-xs font-bold mt-2 flex items-center gap-1 uppercase tracking-wider">

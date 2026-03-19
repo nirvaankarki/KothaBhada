@@ -82,6 +82,28 @@ const UserDashboardPage = () => {
     }
   };
 
+  const handleClearHistory = async () => {
+    if (history.length === 0) {
+      return;
+    }
+
+    const shouldClear = window.confirm('Remove all viewing history? This action cannot be undone.');
+    if (!shouldClear) {
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+
+    try {
+      await api.delete('/user/history');
+      setHistory([]);
+      setSuccess('Viewing history removed successfully');
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Could not remove viewing history');
+    }
+  };
+
   const sourceListings = [...favorites, ...history].reduce((acc, item) => {
     if (!acc.find((entry) => entry.listingId === item.listingId)) {
       acc.push(item);
@@ -295,6 +317,18 @@ const UserDashboardPage = () => {
           <div className="text-sm text-gray-500 font-medium">Loading dashboard...</div>
         ) : (
           <>
+            {activeTab === 'history' && history.length > 0 && (
+              <div className="mb-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleClearHistory}
+                  className="px-4 py-2 text-xs font-bold text-red-600 border border-red-200 rounded-sm hover:bg-red-50"
+                >
+                  Remove All History
+                </button>
+              </div>
+            )}
+
             {activeTab === 'favorites' && renderListingCards(favorites, 'favorites')}
             {activeTab === 'history' && renderListingCards(history, 'history')}
 
