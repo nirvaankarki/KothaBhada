@@ -29,7 +29,7 @@ export function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
-        <Route path="/explore3d" element={<Explore3DPage />} />
+        <Route path="/listing-details" element={<Explore3DPage />} />
         <Route
           path="/viewlisting"
           element={(
@@ -39,7 +39,7 @@ export function App() {
           )}
         />
         <Route path="/view-listing" element={<Navigate to="/viewlisting" replace />} />
-        <Route path="/view-listing/:listingId" element={<Navigate to="/explore3d" replace />} />
+        <Route path="/view-listing/:listingId" element={<Navigate to="/listing-details" replace />} />
         <Route path="/dashboard" element={<UserDashboardPage />} />
         <Route path="/user/dashboard" element={<UserDashboardPage />} />
       </Route>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Filter, ArrowUpDown, Box } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -135,7 +135,7 @@ const ViewListingPage = () => {
       }
     }
 
-    navigate('/explore3d', { state: { listing } });
+    navigate('/listing-details', { state: { listing } });
   };
 
   return (
@@ -281,9 +281,6 @@ const ViewListingPage = () => {
           )}
         </section>
 
-        <div className="mt-10 text-center text-sm text-gray-500">
-          Need immersive preview? <Link to="/explore3d" className="text-[#1d4ed8] font-semibold hover:underline">Go to Explore 3D</Link>
-        </div>
       </div>
     </div>
   );

@@ -94,7 +94,7 @@ const Explore3DPage = () => {
         open={showAuthModal}
         message="Please log in or sign up to save this listing to favorites."
         onCancel={() => setShowAuthModal(false)}
-        onConfirm={() => navigate('/login', { state: { from: '/explore3d' } })}
+        onConfirm={() => navigate('/login', { state: { from: '/listing-details' } })}
       />
 
       <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-6">

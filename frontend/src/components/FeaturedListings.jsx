@@ -47,7 +47,7 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
 
   const handleCardClick = async () => {
     await trackViewHistory();
-    navigate('/explore3d', { state: { listing } });
+    navigate('/listing-details', { state: { listing } });
   };
 
   return (
