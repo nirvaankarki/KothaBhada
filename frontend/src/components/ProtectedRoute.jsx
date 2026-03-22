@@ -4,9 +4,14 @@ import { useAuth } from '../context/AuthContext';
 import { hasAllowedRole, resolveRole } from '../utils/roles';
 
 const ProtectedRoute = ({ children, message, allowedRoles = [] }) => {
-  const { isAuthenticated, token, user } = useAuth();
+  const { isAuthenticated, authLoading, token, user } = useAuth();
   const location = useLocation();
   const activeRole = resolveRole(user?.role, token);
+
+  // Wait for /auth/me sync so refreshes don't redirect with stale/empty auth state.
+  if (authLoading) {
+    return null;
+  }
 
   if (!isAuthenticated) {
     return (
@@ -23,17 +28,7 @@ const ProtectedRoute = ({ children, message, allowedRoles = [] }) => {
   }
 
   if (!hasAllowedRole(activeRole, allowedRoles)) {
-    return (
-      <Navigate
-        to="/"
-        replace
-        state={{
-          requireAuthModal: true,
-          authNotice: 'You do not have permission to access this page.',
-          from: location.pathname,
-        }}
-      />
-    );
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;

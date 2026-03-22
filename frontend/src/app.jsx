@@ -14,17 +14,17 @@ import LandlordDashboardPage from './pages/LandlordDashboardPage';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
-import { isLandlordRole, resolveRole } from './utils/roles';
+import { isLandlordRole, normalizeRole } from './utils/roles';
 
 function DashboardRouteEntry() {
-  const { user, token } = useAuth();
-  const activeRole = resolveRole(user?.role, token);
+  const { user } = useAuth();
+  const activeRole = normalizeRole(user?.role);
 
   if (isLandlordRole(activeRole)) {
     return <Navigate to="/landlord/dashboard" replace />;
   }
 
-  return <UserDashboardPage />;
+  return <Navigate to="/user/dashboard" replace />;
 }
 
 export function App() {
@@ -50,7 +50,7 @@ export function App() {
           </ProtectedRoute>
         )}
       />
-      
+
       {/* Main pages - with navbar/footer */}
       <Route element={<MainLayout />}>
         <Route path="/" element={<LandingPage />} />
@@ -78,8 +78,11 @@ export function App() {
         <Route
           path="/user/dashboard"
           element={(
-            <ProtectedRoute message="Please log in to access your dashboard.">
-              <DashboardRouteEntry />
+            <ProtectedRoute
+              message="Please log in as a user to access your dashboard."
+              allowedRoles={['user']}
+            >
+              <UserDashboardPage />
             </ProtectedRoute>
           )}
         />

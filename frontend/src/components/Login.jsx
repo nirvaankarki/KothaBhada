@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom'; // Added Link to imports
+import { Mail, Lock, Eye, EyeOff, House, Building2 } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
-import { isLandlordRole } from '../utils/roles';
+import { isLandlordRole, normalizeRole } from '../utils/roles';
 
 const Login = ({ onToggle }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loginIntentRole, setLoginIntentRole] = useState('user');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
 
   useAutoDismiss(error, () => setError(''));
 
@@ -27,10 +28,27 @@ const Login = ({ onToggle }) => {
     setError('');
     setLoading(true);
     try {
+      const selectedRole = loginIntentRole === 'landlord' ? 'landlord' : 'user';
+      const selectedRoleLabel = selectedRole === 'landlord' ? 'Landlord' : 'Renter';
       const response = await api.post('/auth/login', { email, password });
+      const responseRole = normalizeRole(response.data?.user?.role);
+
+      if (responseRole && responseRole !== selectedRole) {
+        setError(`This account is not a ${selectedRoleLabel} account. Please switch role and try again.`);
+        return;
+      }
+
       const nextUser = await login(response.data?.token, response.data?.user);
-      const role = nextUser?.role || response.data?.user?.role;
-      navigate(isLandlordRole(role) ? '/landlord/dashboard' : '/');
+      const activeRole = normalizeRole(nextUser?.role || response.data?.user?.role);
+
+      if (activeRole && activeRole !== selectedRole) {
+        logout();
+        setError(`This account is not a ${selectedRoleLabel} account. Please switch role and try again.`);
+        return;
+      }
+
+      const postLoginPath = isLandlordRole(activeRole) ? '/landlord/dashboard' : '/';
+      navigate(postLoginPath, { replace: true });
     } catch (err) {
       if (err?.response?.data?.requiresEmailVerification) {
         navigate('/verify-email', {
@@ -54,6 +72,41 @@ const Login = ({ onToggle }) => {
         </h1>
 
         <form className="w-full max-w-sm space-y-5" onSubmit={handleSubmit}>
+          <div>
+            <label className="block text-xs font-bold tracking-widest text-gray-500 uppercase mb-2">
+              Account Type
+            </label>
+            <div className="grid grid-cols-2 gap-2 rounded-sm bg-gray-100 p-1">
+              <button
+                type="button"
+                onClick={() => setLoginIntentRole('user')}
+                className={`flex items-center justify-center gap-2 rounded-sm py-2 text-sm font-semibold transition-colors ${
+                  loginIntentRole === 'user'
+                    ? 'bg-[#3b66ff] text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <House size={16} />
+                Renter
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoginIntentRole('landlord')}
+                className={`flex items-center justify-center gap-2 rounded-sm py-2 text-sm font-semibold transition-colors ${
+                  loginIntentRole === 'landlord'
+                    ? 'bg-[#3b66ff] text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <Building2 size={16} />
+                Landlord
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              {loginIntentRole === 'landlord'}
+            </p>
+          </div>
+
           <div className="relative">
             <Mail className="absolute left-4 top-4 text-gray-400" size={18} />
             <input
@@ -109,7 +162,7 @@ const Login = ({ onToggle }) => {
               disabled={loading}
               className="w-full bg-[#3b66ff] text-white px-20 py-3.5 rounded-sm font-bold uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg active:scale-95"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Signing in...' : `Sign In as ${loginIntentRole === 'landlord' ? 'Landlord' : 'Renter'}`}
             </button>
           </div>
         </form>

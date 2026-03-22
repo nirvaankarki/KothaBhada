@@ -1,0 +1,342 @@
+import React from 'react';
+import {
+  PlusCircle,
+  ImagePlus,
+  XCircle,
+  Building2,
+  MapPin,
+  Bed,
+  Bath,
+  Square,
+  Box,
+  PencilLine,
+  Eye,
+  Trash2,
+} from 'lucide-react';
+
+const ListingsTab = ({
+  stats,
+  form,
+  handleChange,
+  handleSubmit,
+  submitting,
+  fileInputRef,
+  handleImageSelect,
+  openImagePicker,
+  clearSelectedImage,
+  imageName,
+  loading,
+  listings,
+  handleViewListing,
+  handleEditDraft,
+  handleDelete,
+  deletingId,
+  formatDate,
+}) => {
+  return (
+    <>
+      <section className="bg-white p-6 rounded-2xl shadow-sm mb-6">
+        <h3 className="text-xl font-bold text-[#132238]">My Listings</h3>
+        <p className="mt-1 text-sm text-gray-500">
+          Total listings published by you: <span className="font-bold text-[#1d4ed8]">{stats.totalListings}</span>
+        </p>
+      </section>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2 space-y-6">
+          <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm">
+            <div className="flex items-center gap-2 mb-5">
+              <PlusCircle size={18} className="text-[#2563eb]" />
+              <h3 className="text-xl font-bold text-[#132238]">Create New Listing</h3>
+            </div>
+
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+              <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Title</label>
+                  <input
+                    type="text"
+                    value={form.title}
+                    onChange={handleChange('title')}
+                    placeholder="e.g. Modern 2BHK Flat in Baneshwor"
+                    className="mt-1 w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Location</label>
+                  <input
+                    type="text"
+                    value={form.location}
+                    onChange={handleChange('location')}
+                    placeholder="e.g. Kalopul, Kathmandu"
+                    className="mt-1 w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Monthly Rent (Rs)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={form.price}
+                    onChange={handleChange('price')}
+                    placeholder="e.g. 25000"
+                    className="mt-1 w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Bedrooms</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.bedrooms}
+                    onChange={handleChange('bedrooms')}
+                    className="mt-1 w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Bathrooms</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.bathrooms}
+                    onChange={handleChange('bathrooms')}
+                    className="mt-1 w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Area (sq.ft)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.areaSqFt}
+                    onChange={handleChange('areaSqFt')}
+                    placeholder="e.g. 450"
+                    className="mt-1 w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Contact Number</label>
+                  <input
+                    type="text"
+                    value={form.ownerPhone}
+                    onChange={handleChange('ownerPhone')}
+                    placeholder="e.g. +977-98XXXXXXXX"
+                    className="mt-1 w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Description</label>
+                  <textarea
+                    value={form.description}
+                    onChange={handleChange('description')}
+                    rows={4}
+                    placeholder="Describe the property, amenities, and neighborhood."
+                    className="mt-1 w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                </div>
+              </div>
+
+              <div className="lg:col-span-4">
+                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Room Image</label>
+                <div className="mt-1 p-3 border border-dashed border-gray-300 rounded-xl bg-gray-50">
+                  <button
+                    type="button"
+                    onClick={openImagePicker}
+                    className="h-44 w-full rounded-xl overflow-hidden bg-white border border-gray-200 flex items-center justify-center cursor-pointer hover:border-blue-300 transition-colors"
+                  >
+                    {form.image ? (
+                      <img src={form.image} alt="Selected room" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="text-center text-gray-500 text-xs">
+                        <ImagePlus size={22} className="mx-auto mb-2 text-gray-400" />
+                        <p>No image selected</p>
+                        <p className="mt-1 text-[11px] text-gray-400">Click here to upload</p>
+                      </div>
+                    )}
+                  </button>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {form.image && (
+                      <button
+                        type="button"
+                        onClick={clearSelectedImage}
+                        className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-50"
+                      >
+                        <XCircle size={14} /> Remove
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-2 text-[11px] text-gray-500">{imageName || 'PNG, JPG, JPEG up to 5MB'}</p>
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#2563eb] text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    <Building2 size={15} /> {submitting ? 'Publishing...' : 'Publish Listing'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </section>
+
+          <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm">
+            <h3 className="text-xl font-bold text-[#132238] mb-4">Your Listings</h3>
+
+            {loading ? (
+              <p className="text-sm text-gray-500">Loading your listings...</p>
+            ) : listings.length === 0 ? (
+              <p className="text-sm text-gray-500">You have not published any listings yet.</p>
+            ) : (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {listings.map((item) => (
+                  <article key={item._id} className="w-full max-w-99.25 md:w-99.25 h-128.5 mx-auto bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 flex flex-col">
+                    <div className="relative h-52 w-full shrink-0">
+                      <img
+                        src={item.image || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=1000'}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                      />
+
+                      <div className="absolute top-4 right-4 bg-orange-500 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-md">
+                        Featured
+                      </div>
+
+                      <div className="absolute bottom-4 left-4">
+                        <button
+                          type="button"
+                          onClick={() => handleViewListing(item)}
+                          className="flex items-center gap-2 bg-blue-600/90 hover:bg-blue-700 text-white px-4 py-2 rounded-xl backdrop-blur-sm transition-colors text-sm font-medium"
+                        >
+                          <Box size={18} />
+                          3D Tour Available
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-5 flex-1 flex flex-col">
+                      <div className="flex justify-between items-start mb-2 gap-3">
+                        <h4 className="text-xl font-bold text-gray-800 line-clamp-2 leading-tight">{item.title}</h4>
+                        <div className="text-right shrink-0">
+                          <span className="text-xl font-bold text-blue-700">Rs. {Number(item.price || 0).toLocaleString()}</span>
+                          <span className="text-gray-500 font-medium text-base">/month</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1 text-gray-500 mb-4">
+                        <MapPin size={18} className="text-gray-400" />
+                        <span className="text-sm font-medium line-clamp-1">{item.location || 'Location not specified'}</span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-4 mb-4">
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Bed size={18} className="text-blue-600" />
+                          <span className="text-sm font-semibold">{item.bedrooms ?? 0} Beds</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Bath size={18} className="text-blue-600" />
+                          <span className="text-sm font-semibold">{item.bathrooms ?? 0} Baths</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Square size={16} className="text-blue-600" />
+                          <span className="text-sm font-semibold">{item.areaSqFt ?? 0} sqft</span>
+                        </div>
+                      </div>
+
+                      <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-2">
+                        {item.description || 'No description provided for this property yet.'}
+                      </p>
+
+                      <hr className="border-gray-200 mb-4" />
+
+                      <div className="flex justify-between items-center mt-auto">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${item.status === 'inactive' ? 'bg-gray-400' : 'bg-green-500'}`} />
+                          <span className="text-sm font-medium text-gray-700 capitalize">{item.status || 'active'}</span>
+                        </div>
+
+                        <div className="flex gap-3">
+                          <button
+                            type="button"
+                            onClick={() => handleEditDraft(item)}
+                            className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition-colors"
+                            aria-label="Load listing into form"
+                            title="Load listing into form"
+                          >
+                            <PencilLine size={20} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleViewListing(item)}
+                            className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition-colors"
+                            aria-label="View listing"
+                            title="View listing"
+                          >
+                            <Eye size={20} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(item._id)}
+                            disabled={deletingId === item._id}
+                            className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition-colors disabled:opacity-60"
+                            aria-label="Delete listing"
+                            title="Delete listing"
+                          >
+                            <Trash2 size={20} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 text-[11px] text-gray-500">Published: {formatDate(item.createdAt)}</div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+
+        <div className="space-y-6">
+          <section className="bg-white p-6 rounded-2xl shadow-sm">
+            <h3 className="text-lg font-bold text-[#132238] mb-4">Listing Tips</h3>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                <ImagePlus size={16} className="text-indigo-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-700">Add clear images</p>
+                  <p className="text-xs text-gray-500">Bright photos increase click-through rate.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                <MapPin size={16} className="text-teal-600" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-700">Use exact locality</p>
+                  <p className="text-xs text-gray-500">Detailed location improves discoverability.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default ListingsTab;

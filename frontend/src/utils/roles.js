@@ -19,9 +19,12 @@ export const getRoleFromToken = (token) => {
 };
 
 export const resolveRole = (role, token) => {
+  const normalizedRole = normalizeRole(role);
+  if (normalizedRole) return normalizedRole;
+
   const tokenRole = getRoleFromToken(token);
   if (tokenRole) return tokenRole;
-  return normalizeRole(role);
+  return '';
 };
 
 export const isLandlordRole = (role) => normalizeRole(role) === 'landlord';

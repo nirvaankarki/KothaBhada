@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
-import { isLandlordRole } from '../utils/roles';
+import { isLandlordRole, resolveRole } from '../utils/roles';
 
 const VerifyEmailPage = () => {
   const navigate = useNavigate();
@@ -39,8 +39,16 @@ const VerifyEmailPage = () => {
       });
 
       const nextUser = await login(response.data?.token, response.data?.user);
-      const role = nextUser?.role || response.data?.user?.role || location.state?.intendedRole;
-      navigate(isLandlordRole(role) ? '/landlord/dashboard' : '/');
+      const activeRole = resolveRole(
+        nextUser?.role || response.data?.user?.role || location.state?.intendedRole,
+        response.data?.token,
+      );
+      const fromPath = location.state?.from;
+      if (fromPath && !['/login', '/signup', '/forgot-password', '/verify-email'].includes(fromPath)) {
+        navigate(fromPath, { replace: true });
+      } else {
+        navigate(isLandlordRole(activeRole) ? '/landlord/dashboard' : '/', { replace: true });
+      }
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to verify email');
     } finally {

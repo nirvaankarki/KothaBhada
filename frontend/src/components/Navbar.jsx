@@ -4,10 +4,13 @@ import { UserCircle2, Pencil, Check, X, Upload, Trash2 } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
+import { isLandlordRole, normalizeRole } from '../utils/roles';
 
 const Navbar = () => {
   const navigate = useNavigate();
   const { isAuthenticated, authLoading, user, logout, updateUser } = useAuth();
+  const activeRole = normalizeRole(user?.role);
+  const dashboardPath = isLandlordRole(activeRole) ? '/landlord/dashboard' : '/user/dashboard';
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [editingField, setEditingField] = useState('');
   const [nameInput, setNameInput] = useState(user?.name || '');
@@ -201,13 +204,12 @@ const Navbar = () => {
       {/* Navigation Links */}
       <div className="flex space-x-12 items-center">
         <NavLink 
-          to="/" 
-          end
+          to="/about" 
           className={({ isActive }) =>
             `text-sm font-medium tracking-widest pb-1 ${isActive ? 'border-b-4 border-[#3b82f6]' : 'hover:text-gray-400 transition-colors'}`
           }
         >
-          HOME
+          ABOUT
         </NavLink>
         <NavLink
           to="/viewlisting"
@@ -217,14 +219,16 @@ const Navbar = () => {
         >
           VIEW LISTING
         </NavLink>
-        <NavLink 
-          to="/about" 
-          className={({ isActive }) =>
-            `text-sm font-medium tracking-widest pb-1 ${isActive ? 'border-b-4 border-[#3b82f6]' : 'hover:text-gray-400 transition-colors'}`
-          }
-        >
-          ABOUT
-        </NavLink>
+        {isAuthenticated && (
+          <NavLink
+            to={dashboardPath}
+            className={({ isActive }) =>
+              `text-sm font-medium tracking-widest pb-1 ${isActive ? 'border-b-4 border-[#3b82f6]' : 'hover:text-gray-400 transition-colors'}`
+            }
+          >
+            DASHBOARD
+          </NavLink>
+        )}
         <NavLink 
           to="/contact" 
           className={({ isActive }) =>
@@ -475,14 +479,6 @@ const Navbar = () => {
               </div>
 
               {saveError && <p className="mt-3 text-xs text-red-400">{saveError}</p>}
-
-              <Link
-                to="/dashboard"
-                onClick={() => setIsMenuOpen(false)}
-                className="mt-4 block text-sm font-medium text-blue-300 hover:text-blue-200"
-              >
-                Go to Dashboard
-              </Link>
 
               <button
                 type="button"
