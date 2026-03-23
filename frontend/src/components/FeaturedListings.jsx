@@ -46,6 +46,17 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
   };
 
   const handleCardClick = async () => {
+    if (!isAuthenticated) {
+      navigate('/', {
+        state: {
+          requireAuthModal: true,
+          authNotice: 'Please log in or sign up to view property details.',
+          from: '/listing-details',
+        },
+      });
+      return;
+    }
+
     await trackViewHistory();
     navigate('/listing-details', { state: { listing } });
   };

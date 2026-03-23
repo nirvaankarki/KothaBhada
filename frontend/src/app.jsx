@@ -9,22 +9,22 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import Explore3DPage from './pages/Explore3DPage';
 import ViewListingPage from './pages/ViewListingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
-import UserDashboardPage from './pages/UserDashboardPage';
+import RentalDashboardPage from './pages/RentalDashboardPage';
 import LandlordDashboardPage from './pages/LandlordDashboardPage';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
-import { isLandlordRole, normalizeRole } from './utils/roles';
+import { isLandlordRole, resolveRole } from './utils/roles';
 
 function DashboardRouteEntry() {
-  const { user } = useAuth();
-  const activeRole = normalizeRole(user?.role);
+  const { token, user } = useAuth();
+  const activeRole = resolveRole(user?.role, token);
 
   if (isLandlordRole(activeRole)) {
     return <Navigate to="/landlord/dashboard" replace />;
   }
 
-  return <Navigate to="/user/dashboard" replace />;
+  return <Navigate to="/rental/dashboard" replace />;
 }
 
 export function App() {
@@ -76,16 +76,17 @@ export function App() {
           )}
         />
         <Route
-          path="/user/dashboard"
+          path="/rental/dashboard"
           element={(
             <ProtectedRoute
               message="Please log in as a user to access your dashboard."
               allowedRoles={['user']}
             >
-              <UserDashboardPage />
+              <RentalDashboardPage />
             </ProtectedRoute>
           )}
         />
+        <Route path="/user/dashboard" element={<Navigate to="/rental/dashboard" replace />} />
       </Route>
     </Routes>
   );

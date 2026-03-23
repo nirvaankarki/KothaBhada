@@ -19,11 +19,11 @@ export const getRoleFromToken = (token) => {
 };
 
 export const resolveRole = (role, token) => {
-  const normalizedRole = normalizeRole(role);
-  if (normalizedRole) return normalizedRole;
-
   const tokenRole = getRoleFromToken(token);
   if (tokenRole) return tokenRole;
+
+  const normalizedRole = normalizeRole(role);
+  if (normalizedRole) return normalizedRole;
   return '';
 };
 

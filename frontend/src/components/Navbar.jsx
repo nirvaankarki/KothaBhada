@@ -4,13 +4,13 @@ import { UserCircle2, Pencil, Check, X, Upload, Trash2 } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
-import { isLandlordRole, normalizeRole } from '../utils/roles';
+import { isLandlordRole, resolveRole } from '../utils/roles';
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, authLoading, user, logout, updateUser } = useAuth();
-  const activeRole = normalizeRole(user?.role);
-  const dashboardPath = isLandlordRole(activeRole) ? '/landlord/dashboard' : '/user/dashboard';
+  const { isAuthenticated, authLoading, token, user, logout, updateUser } = useAuth();
+  const activeRole = resolveRole(user?.role, token);
+  const dashboardPath = isLandlordRole(activeRole) ? '/landlord/dashboard' : '/rental/dashboard';
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [editingField, setEditingField] = useState('');
   const [nameInput, setNameInput] = useState(user?.name || '');
