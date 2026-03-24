@@ -57,11 +57,14 @@ const LandlordDashboardPage = () => {
 
         {state.activeTab === 'chat' && (
           <ChatTab
-            ownerInquiries={state.ownerInquiries}
+            ownerChats={state.ownerChats}
+            selectedOwnerChatId={state.selectedOwnerChatId}
             chatDrafts={state.chatDrafts}
             setChatDrafts={handlers.setChatDrafts}
+            handleOpenOwnerChat={handlers.handleOpenOwnerChat}
             handleOwnerReply={handlers.handleOwnerReply}
-            sendingInquiryId={state.sendingInquiryId}
+            sendingChatId={state.sendingChatId}
+            isChatUnread={handlers.isChatUnread}
           />
         )}
 

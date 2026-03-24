@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAutoDismiss } from './useAutoDismiss';
@@ -29,12 +29,14 @@ export const useLandlordDashboardController = () => {
   const [listings, setListings] = useState([]);
   const [ownerInquiries, setOwnerInquiries] = useState([]);
   const [ownerBookings, setOwnerBookings] = useState([]);
+  const [ownerChats, setOwnerChats] = useState([]);
+  const [selectedOwnerChatId, setSelectedOwnerChatId] = useState('');
   const [chatDrafts, setChatDrafts] = useState({});
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
-  const [sendingInquiryId, setSendingInquiryId] = useState('');
+  const [sendingChatId, setSendingChatId] = useState('');
   const [deletingId, setDeletingId] = useState('');
   const [imageName, setImageName] = useState('');
   const [error, setError] = useState('');
@@ -43,6 +45,15 @@ export const useLandlordDashboardController = () => {
   useAutoDismiss(error, () => setError(''));
   useAutoDismiss(success, () => setSuccess(''));
 
+  const refreshOwnerChats = useCallback(async () => {
+    try {
+      const chatsRes = await api.get('/user/owner/chats');
+      setOwnerChats(chatsRes.data?.chats || []);
+    } catch {
+      // Silent fail for background refresh; main load and actions surface errors.
+    }
+  }, []);
+
   useEffect(() => {
     let ignore = false;
 
@@ -50,16 +61,18 @@ export const useLandlordDashboardController = () => {
       setLoading(true);
       setError('');
       try {
-        const [listingsRes, inquiriesRes, bookingsRes] = await Promise.all([
+        const [listingsRes, inquiriesRes, bookingsRes, chatsRes] = await Promise.all([
           api.get('/rooms/mine'),
           api.get('/user/owner/inquiries'),
           api.get('/user/owner/bookings'),
+          api.get('/user/owner/chats'),
         ]);
 
         if (!ignore) {
           setListings(Array.isArray(listingsRes.data) ? listingsRes.data : []);
           setOwnerInquiries(inquiriesRes.data?.inquiries || []);
           setOwnerBookings(bookingsRes.data?.bookings || []);
+          setOwnerChats(chatsRes.data?.chats || []);
         }
       } catch (err) {
         if (!ignore) {
@@ -77,6 +90,81 @@ export const useLandlordDashboardController = () => {
       ignore = true;
     };
   }, []);
+
+  useEffect(() => {
+    let stopped = false;
+
+    const pullChats = async () => {
+      if (stopped) return;
+
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
+
+      await refreshOwnerChats();
+    };
+
+    const intervalId = setInterval(pullChats, 4000);
+
+    const handleFocus = () => {
+      pullChats();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        pullChats();
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleFocus);
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    pullChats();
+
+    return () => {
+      stopped = true;
+      clearInterval(intervalId);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', handleFocus);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    };
+  }, [refreshOwnerChats]);
+
+  useEffect(() => {
+    if (activeTab !== 'chat') return;
+    if (!ownerChats.length) {
+      setSelectedOwnerChatId('');
+      return;
+    }
+
+    const alreadySelected = ownerChats.some((chat) => chat._id === selectedOwnerChatId);
+    if (!alreadySelected) {
+      setSelectedOwnerChatId(ownerChats[0]._id);
+    }
+  }, [activeTab, ownerChats, selectedOwnerChatId]);
+
+  const getLatestUserMessageAt = (chat) => {
+    if (!Array.isArray(chat?.messages)) return null;
+
+    const latest = chat.messages.reduce((acc, msg) => {
+      if (msg?.senderType !== 'user' || !msg?.sentAt) return acc;
+      if (!acc) return msg.sentAt;
+      return new Date(msg.sentAt) > new Date(acc) ? msg.sentAt : acc;
+    }, null);
+
+    return latest;
+  };
+
+  const isChatUnread = (chat) => {
+    const latestUserMessageAt = getLatestUserMessageAt(chat);
+    if (!latestUserMessageAt) return false;
+
+    if (!chat?.ownerLastSeenAt) return true;
+    return new Date(latestUserMessageAt) > new Date(chat.ownerLastSeenAt);
+  };
 
   useEffect(() => {
     setProfileForm({
@@ -262,24 +350,72 @@ export const useLandlordDashboardController = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleOwnerReply = async (inquiryId) => {
-    const message = (chatDrafts[inquiryId] || '').trim();
+  const handleOpenOwnerChat = async (chatId) => {
+    setSelectedOwnerChatId(chatId);
+
+    const currentChat = ownerChats.find((chat) => chat._id === chatId);
+    if (!currentChat || !isChatUnread(currentChat)) {
+      return;
+    }
+
+    try {
+      const response = await api.post(`/user/chats/${chatId}/seen`);
+      const updatedChat = response.data?.chat;
+      if (updatedChat) {
+        setOwnerChats((prev) => prev.map((item) => (item._id === chatId ? updatedChat : item)));
+      }
+    } catch {
+      // Avoid interrupting UI if seen marker fails.
+    }
+  };
+
+  const handleOwnerReply = async (chatId) => {
+    const message = (chatDrafts[chatId] || '').trim();
     if (!message) return;
+
+    const optimisticSentAt = new Date().toISOString();
+    const optimisticMessage = {
+      _id: `optimistic-${Date.now()}`,
+      senderId: user?._id || user?.id || '',
+      senderType: 'owner',
+      text: message,
+      sentAt: optimisticSentAt,
+    };
 
     setError('');
     setSuccess('');
-    setSendingInquiryId(inquiryId);
+    setSendingChatId(chatId);
+    setChatDrafts((prev) => ({ ...prev, [chatId]: '' }));
+
+    setOwnerChats((prev) => {
+      const current = prev.find((item) => item._id === chatId);
+      if (!current) return prev;
+
+      const optimisticChat = {
+        ...current,
+        messages: [...(current.messages || []), optimisticMessage],
+        lastMessageAt: optimisticSentAt,
+        ownerLastSeenAt: optimisticSentAt,
+      };
+
+      return prev.map((item) => (item._id === chatId ? optimisticChat : item));
+    });
+
     try {
-      const response = await api.post(`/user/owner/inquiries/${inquiryId}/messages`, { message });
-      setOwnerInquiries((prev) => prev.map((item) => (
-        item._id === inquiryId ? response.data?.inquiry || item : item
-      )));
-      setChatDrafts((prev) => ({ ...prev, [inquiryId]: '' }));
+      const response = await api.post(`/user/chats/${chatId}/reply`, { message });
+      const updatedChat = response.data?.chat;
+      if (updatedChat) {
+        setOwnerChats((prev) => prev.map((item) => (
+          item._id === chatId ? updatedChat : item
+        )));
+      }
       setSuccess('Reply sent successfully.');
     } catch (err) {
+      setChatDrafts((prev) => ({ ...prev, [chatId]: message }));
+      await refreshOwnerChats();
       setError(err?.response?.data?.message || 'Could not send reply.');
     } finally {
-      setSendingInquiryId('');
+      setSendingChatId('');
     }
   };
 
@@ -292,6 +428,8 @@ export const useLandlordDashboardController = () => {
     const totalValue = listings.reduce((sum, item) => sum + Number(item.price || 0), 0);
     const unreadInquiries = ownerInquiries.filter((item) => item.status === 'open').length;
     const pendingBookings = ownerBookings.filter((item) => item.status === 'pending' || !item.status).length;
+    const activeChats = ownerChats.filter((item) => item.status === 'active').length;
+    const unreadChats = ownerChats.filter((item) => isChatUnread(item)).length;
 
     return {
       totalListings,
@@ -300,8 +438,10 @@ export const useLandlordDashboardController = () => {
       totalValue,
       unreadInquiries,
       pendingBookings,
+      activeChats,
+      unreadChats,
     };
-  }, [listings, ownerInquiries, ownerBookings]);
+  }, [listings, ownerInquiries, ownerBookings, ownerChats]);
 
   const formatDate = (isoDate) => {
     if (!isoDate) return 'N/A';
@@ -320,11 +460,13 @@ export const useLandlordDashboardController = () => {
       listings,
       ownerInquiries,
       ownerBookings,
+      ownerChats,
+      selectedOwnerChatId,
       chatDrafts,
       loading,
       submitting,
       savingProfile,
-      sendingInquiryId,
+      sendingChatId,
       deletingId,
       imageName,
       error,
@@ -338,6 +480,7 @@ export const useLandlordDashboardController = () => {
     handlers: {
       setActiveTab,
       setChatDrafts,
+      handleOpenOwnerChat,
       handleChange,
       handleProfileChange,
       handleProfileImageSelect,
@@ -351,6 +494,7 @@ export const useLandlordDashboardController = () => {
       handleViewListing,
       handleEditDraft,
       handleOwnerReply,
+      isChatUnread,
       formatDate,
     },
   };

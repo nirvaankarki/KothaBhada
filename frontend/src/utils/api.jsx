@@ -12,7 +12,13 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
-    const token = window.localStorage.getItem('kothabhada_token');
+    let token = '';
+    try {
+      token = window.sessionStorage.getItem('kothabhada_token') || '';
+    } catch {
+      token = '';
+    }
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     } else if (config.headers?.Authorization) {

@@ -53,9 +53,9 @@ const LandlordSidebar = ({ activeTab, setActiveTab, stats }) => {
         >
           <MessageSquare size={18} />
           <span className="text-sm font-medium">Chat</span>
-          {stats.unreadInquiries > 0 && (
+          {stats.unreadChats > 0 && (
             <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-[11px] font-medium text-white inline-flex items-center justify-center">
-              {stats.unreadInquiries}
+              {stats.unreadChats}
             </span>
           )}
         </button>

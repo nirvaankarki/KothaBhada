@@ -3,56 +3,98 @@ import {
   RotateCw, RefreshCcw, Maximize, Bed, Bath, Ruler, 
   Heart, Share2, CheckCircle2, User, Phone, Mail, 
   MessageSquare, Home, Info, MousePointer2, Move, Search,
-  MapPin
+  MapPin, Calendar, MessageCircle
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import AuthRequiredModal from '../components/AuthRequiredModal';
+import { getListingId } from '../utils/listingData';
+import { BookingForm, ChatBox } from '../components/PropertyActions';
+
+function normalizeListing(rawListing) {
+  if (!rawListing) return null;
+
+  return {
+    ...rawListing,
+    listingId: getListingId(rawListing),
+    source: rawListing.source || 'listing-details-page',
+    bedrooms: Number(rawListing.bedrooms || 1),
+    bathrooms: Number(rawListing.bathrooms || 1),
+    areaSqFt: Number(rawListing.areaSqFt || 450),
+    ownerName: rawListing.ownerName || 'Property Owner',
+    ownerPhone: rawListing.ownerPhone || '',
+    ownerEmail: rawListing.ownerEmail || '',
+  };
+}
 
 const Explore3DPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const listingIdFromQuery = searchParams.get('id');
+  const passedListing = normalizeListing(location.state?.listing);
+  const effectiveListingId = listingIdFromQuery || passedListing?.listingId || '';
   const { isAuthenticated, token } = useAuth();
+  const [listing, setListing] = useState(passedListing);
+  const [isLoading, setIsLoading] = useState(!passedListing && Boolean(effectiveListingId));
+  const [loadError, setLoadError] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
   const [message, setMessage] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
-
-  // Get listing from route state, fallback to default
-  const passedListing = location.state?.listing;
-  const listing = passedListing ? {
-    ...passedListing,
-    listingId: String(passedListing.listingId || passedListing._id || passedListing.id || passedListing.title || 'listing').trim(),
-    source: passedListing.source || 'listing-details-page',
-    bedrooms: Number(passedListing.bedrooms || 1),
-    bathrooms: Number(passedListing.bathrooms || 1),
-    areaSqFt: Number(passedListing.areaSqFt || 450),
-    ownerName: passedListing.ownerName || 'Property Owner',
-    ownerPhone: passedListing.ownerPhone || '',
-    ownerEmail: passedListing.ownerEmail || '',
-  } : {
-    listingId: 'explore3d-modern-studio-apartment',
-    title: 'Modern Studio Apartment',
-    location: 'Kalopul, Kathmandu-30, Kathmandu',
-    price: 12000,
-    image: 'https://images.unsplash.com/photo-1554995207-c18c203602cb?q=80&w=1200',
-    source: 'explore3d-page',
-    bedrooms: 3,
-    bathrooms: 1,
-    areaSqFt: 450,
-    ownerName: 'Mr. Rajesh Hamal',
-    ownerPhone: '+977-9834987654',
-    ownerEmail: 'rajeshhamal@gmail.com',
-  };
+  const [activeTab, setActiveTab] = useState('details'); // 'details', 'booking', 'chat'
 
   useAutoDismiss(message, () => setMessage(''));
+  useAutoDismiss(loadError, () => setLoadError(''));
 
   useEffect(() => {
+    if (!effectiveListingId) {
+      setIsLoading(false);
+      return;
+    }
+
+    let ignore = false;
+
+    async function fetchListing() {
+      try {
+        // Only show blocking loader when there is no listing content to render yet.
+        if (!passedListing) {
+          setIsLoading(true);
+        }
+
+        const response = await api.get(`/rooms/${effectiveListingId}`);
+        if (!ignore) {
+          setListing(normalizeListing(response.data));
+          setLoadError('');
+        }
+      } catch {
+        if (!ignore) {
+          setLoadError('Could not refresh listing details from server.');
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    fetchListing();
+
+    return () => {
+      ignore = true;
+    };
+  }, [effectiveListingId]);
+
+  const listingKey = getListingId(listing);
+
+  useEffect(() => {
+    if (!listing || !isAuthenticated) return;
+
     let ignore = false;
 
     async function loadFavoriteState() {
-      if (!isAuthenticated || !token) {
+      if (!token) {
         setIsFavorite(false);
         return;
       }
@@ -61,7 +103,7 @@ const Explore3DPage = () => {
         const res = await api.get('/user/favorites');
         const favoriteSet = new Set((res.data?.favorites || []).map((item) => item.listingId));
         if (!ignore) {
-          setIsFavorite(favoriteSet.has(listing.listingId));
+          setIsFavorite(favoriteSet.has(listingKey));
         }
       } catch {
         if (!ignore) {
@@ -71,10 +113,17 @@ const Explore3DPage = () => {
     }
 
     async function trackView() {
-      if (!isAuthenticated || !token) return;
+      if (!token) return;
 
       try {
-        await api.post('/user/history', listing);
+        await api.post('/user/history', {
+          listingId: listingKey,
+          title: listing.title,
+          location: listing.location,
+          price: listing.price,
+          image: listing.images?.[0] || '',
+          source: 'listing-details-page',
+        });
       } catch {
         // Ignore history tracking errors in UI.
       }
@@ -86,16 +135,49 @@ const Explore3DPage = () => {
     return () => {
       ignore = true;
     };
-  }, [isAuthenticated, token]);
+  }, [listing, listingKey, isAuthenticated, token]);
+
+  if (isLoading && !listing) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div>Loading listing details...</div>
+      </div>
+    );
+  }
+
+  if (!listing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="max-w-md text-center bg-white border border-gray-200 rounded-sm shadow-sm p-6">
+          <h1 className="text-xl font-bold text-[#1a222e]">Listing not found</h1>
+          <p className="text-sm text-gray-600 mt-2">We could not find details for this listing.</p>
+          <button
+            type="button"
+            onClick={() => navigate('/viewlisting')}
+            className="mt-4 px-4 py-2 text-sm font-semibold text-[#1d4ed8] border border-blue-200 rounded-sm hover:bg-blue-50"
+          >
+            Back to Listings
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleToggleFavorite = async () => {
     if (!isAuthenticated) {
       setShowAuthModal(true);
       return;
     }
+    if (!listing) return;
 
     try {
-      const response = await api.post('/user/favorites/toggle', listing);
+      const response = await api.post('/user/favorites/toggle', {
+        listingId: listingKey,
+        title: listing.title,
+        location: listing.location,
+        price: listing.price,
+        image: listing.images?.[0] || '',
+      });
       const nextState = Boolean(response.data?.isFavorite);
       setIsFavorite(nextState);
       setMessage(nextState ? 'Added to favorites' : 'Removed from favorites');
@@ -110,10 +192,16 @@ const Explore3DPage = () => {
         open={showAuthModal}
         message="Please log in or sign up to save this listing to favorites."
         onCancel={() => setShowAuthModal(false)}
-        onConfirm={() => navigate('/login', { state: { from: '/listing-details' } })}
+        onConfirm={() => navigate('/login', { state: { from: location.pathname + location.search } })}
       />
 
-      <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-6">
+      {loadError && (
+        <div className="max-w-350 mx-auto mb-4 p-3 rounded-sm bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium">
+          {loadError}
+        </div>
+      )}
+
+      <div className="max-w-350 mx-auto flex flex-col lg:flex-row gap-6">
         
         {/* LEFT COLUMN */}
         <div className="flex-1 flex flex-col gap-6">
@@ -163,103 +251,165 @@ const Explore3DPage = () => {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: PROPERTY DETAILS */}
-        <div className="w-full lg:w-[380px] flex flex-col gap-6">
-          <div className="bg-white rounded-sm shadow-md p-8">
-            {message && (
-              <div className={`mb-5 p-3 rounded-sm text-sm font-semibold ${message.includes('Could not') ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'}`}>
-                {message}
-              </div>
-            )}
-
-            <div className="flex items-center gap-3 mb-8 border-b border-gray-100 pb-4">
-              <Home size={24} className="text-[#1a222e]" fill="#1a222e" />
-              <h2 className="text-2xl font-black text-[#1a222e] tracking-tight uppercase">Property Details</h2>
-            </div>
-
-            <div className="mb-6">
-              <h1 className="text-3xl font-black text-[#1a222e] leading-tight mb-2">{listing.title || 'Listing Details'}</h1>
-              <div className="flex items-center gap-2 text-gray-500">
-                <MapPin size={16} className="text-[#ff5a3c]" />
-                <p className="text-sm font-medium">{listing.location || 'Location not specified'}</p>
-              </div>
-            </div>
-
-            {/* Specs Badges */}
-            <div className="flex flex-wrap gap-2 mb-8">
-              <div className="flex items-center gap-2 bg-blue-50 text-[#3b82f6] px-4 py-2 rounded-full text-xs font-bold">
-                <Bed size={14} /> {listing.bedrooms} Bedroom
-              </div>
-              <div className="flex items-center gap-2 bg-blue-50 text-[#3b66ff] px-4 py-2 rounded-full text-xs font-bold">
-                <Bath size={14} /> {listing.bathrooms} Bathroom
-              </div>
-              <div className="flex items-center gap-2 bg-blue-50 text-[#3b66ff] px-4 py-2 rounded-full text-xs font-bold">
-                <Ruler size={14} /> {listing.areaSqFt} sq.ft.
-              </div>
-            </div>
-
-            {/* Pricing */}
-            <div className="mb-8 border-t border-gray-100 pt-6">
-              <div className="flex items-baseline gap-1">
-                <span className="text-[#3b66ff] text-3xl font-black">Rs. {Number(listing.price || 0).toLocaleString()}</span>
-                <span className="text-gray-500 font-bold text-sm">/month</span>
-              </div>
-              <p className="text-gray-400 text-xs font-bold mt-2 flex items-center gap-1 uppercase tracking-wider">
-                <Info size={12} /> Utilities Included
-              </p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 mb-10">
+        {/* RIGHT COLUMN: TABBED INTERFACE */}
+        <div className="w-full lg:w-95 flex flex-col gap-6">
+          <div className="bg-white rounded-sm shadow-md overflow-hidden">
+            {/* Tab Navigation */}
+            <div className="flex border-b border-gray-200">
               <button
-                type="button"
-                onClick={handleToggleFavorite}
-                className="flex-1 flex items-center justify-center gap-2 border border-gray-300 py-2 rounded font-bold text-sm hover:bg-gray-50 transition-colors"
+                onClick={() => setActiveTab('details')}
+                className={`flex-1 px-4 py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
+                  activeTab === 'details'
+                    ? 'bg-blue-50 text-[#3b66ff] border-b-2 border-[#3b66ff]'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
               >
-                <Heart size={16} className={isFavorite ? 'fill-red-500 text-red-500' : ''} />
-                {isFavorite ? 'Saved' : 'Save'}
+                <Home size={16} /> Details
               </button>
-              <button className="flex-1 flex items-center justify-center gap-2 border border-gray-300 py-2 rounded font-bold text-sm hover:bg-gray-50 transition-colors">
-                <Share2 size={16} /> Share
+              <button
+                onClick={() => setActiveTab('booking')}
+                className={`flex-1 px-4 py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
+                  activeTab === 'booking'
+                    ? 'bg-blue-50 text-[#3b66ff] border-b-2 border-[#3b66ff]'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <Calendar size={16} /> Book Visit
+              </button>
+              <button
+                onClick={() => setActiveTab('chat')}
+                className={`flex-1 px-4 py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
+                  activeTab === 'chat'
+                    ? 'bg-blue-50 text-[#3b66ff] border-b-2 border-[#3b66ff]'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <MessageCircle size={16} /> Chat
               </button>
             </div>
 
-            {/* Key Features */}
-            <div className="mb-10">
-              <div className="flex items-center gap-2 mb-6">
-                <CheckCircle2 size={20} className="text-[#3b82f6]" fill="white" />
-                <h3 className="text-lg font-bold text-[#3b66ff]">Key Features</h3>
-              </div>
-              <div className="grid grid-cols-2 gap-y-4 gap-x-2">
-                {["Fully furnished", "Security System", "Balcony with view", "High-speed internet", "Kitchen appliances", "Laundry facilities"].map(feature => (
-                  <div key={feature} className="flex items-center gap-2 text-xs font-bold text-gray-600">
-                    <CheckCircle2 size={16} className="text-gray-400" /> {feature}
+            {/* Tab Content */}
+            <div className="p-8">
+              {/* Details Tab */}
+              {activeTab === 'details' && (
+                <div>
+                  {message && (
+                    <div className={`mb-5 p-3 rounded-sm text-sm font-semibold ${message.includes('Could not') ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'}`}>
+                      {message}
+                    </div>
+                  )}
+
+                  <div className="mb-6">
+                    <h1 className="text-3xl font-black text-[#1a222e] leading-tight mb-2">{listing.title || 'Listing Details'}</h1>
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <MapPin size={16} className="text-[#ff5a3c]" />
+                      <p className="text-sm font-medium">{listing.location || 'Location not specified'}</p>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            {/* Contact Section */}
-            <div className="border-t border-gray-100 pt-8">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="bg-[#3b66ff] p-1.5 rounded-full text-white"><User size={16} /></div>
-                <h3 className="text-lg font-bold text-[#3b66ff]">Contact Owner</h3>
-              </div>
-              <div className="space-y-3 mb-8">
-                <div className="flex items-center gap-3 text-sm font-semibold text-gray-600">
-                  <User size={16} className="text-gray-400" /> {listing.ownerName || 'Property Owner'}
-                </div>
-                <div className="flex items-center gap-3 text-sm font-semibold text-gray-600">
-                  <Phone size={16} className="text-gray-400" /> {listing.ownerPhone || 'Not provided'}
-                </div>
-                <div className="flex items-center gap-3 text-sm font-semibold text-gray-600">
-                  <Mail size={16} className="text-gray-400" /> {listing.ownerEmail || 'Not provided'}
-                </div>
-              </div>
+                  {/* Specs Badges */}
+                  <div className="flex flex-wrap gap-2 mb-8">
+                    <div className="flex items-center gap-2 bg-blue-50 text-[#3b82f6] px-4 py-2 rounded-full text-xs font-bold">
+                      <Bed size={14} /> {listing.bedrooms} Bedroom
+                    </div>
+                    <div className="flex items-center gap-2 bg-blue-50 text-[#3b66ff] px-4 py-2 rounded-full text-xs font-bold">
+                      <Bath size={14} /> {listing.bathrooms} Bathroom
+                    </div>
+                    <div className="flex items-center gap-2 bg-blue-50 text-[#3b66ff] px-4 py-2 rounded-full text-xs font-bold">
+                      <Ruler size={14} /> {listing.areaSqFt} sq.ft.
+                    </div>
+                  </div>
 
-              <button className="w-full bg-[#3b66ff] hover:bg-blue-700 text-white font-black py-4 rounded-sm flex items-center justify-center gap-3 uppercase tracking-widest shadow-lg transition-all active:scale-95">
-                <MessageSquare size={18} /> Send Message
-              </button>
+                  {/* Pricing */}
+                  <div className="mb-8 border-t border-gray-100 pt-6">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-[#3b66ff] text-3xl font-black">Rs. {Number(listing.price || 0).toLocaleString()}</span>
+                      <span className="text-gray-500 font-bold text-sm">/month</span>
+                    </div>
+                    <p className="text-gray-400 text-xs font-bold mt-2 flex items-center gap-1 uppercase tracking-wider">
+                      <Info size={12} /> Utilities Included
+                    </p>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3 mb-10">
+                    <button
+                      type="button"
+                      onClick={handleToggleFavorite}
+                      className="flex-1 flex items-center justify-center gap-2 border border-gray-300 py-2 rounded font-bold text-sm hover:bg-gray-50 transition-colors"
+                    >
+                      <Heart size={16} className={isFavorite ? 'fill-red-500 text-red-500' : ''} />
+                      {isFavorite ? 'Saved' : 'Save'}
+                    </button>
+                    <button className="flex-1 flex items-center justify-center gap-2 border border-gray-300 py-2 rounded font-bold text-sm hover:bg-gray-50 transition-colors">
+                      <Share2 size={16} /> Share
+                    </button>
+                  </div>
+
+                  {/* Key Features */}
+                  <div className="mb-10">
+                    <div className="flex items-center gap-2 mb-6">
+                      <CheckCircle2 size={20} className="text-[#3b82f6]" fill="white" />
+                      <h3 className="text-lg font-bold text-[#3b66ff]">Key Features</h3>
+                    </div>
+                    <div className="grid grid-cols-2 gap-y-4 gap-x-2">
+                      {["Fully furnished", "Security System", "Balcony with view", "High-speed internet", "Kitchen appliances", "Laundry facilities"].map(feature => (
+                        <div key={feature} className="flex items-center gap-2 text-xs font-bold text-gray-600">
+                          <CheckCircle2 size={16} className="text-gray-400" /> {feature}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Contact Section */}
+                  <div className="border-t border-gray-100 pt-8">
+                    <div className="flex items-center gap-2 mb-6">
+                      <div className="bg-[#3b66ff] p-1.5 rounded-full text-white"><User size={16} /></div>
+                      <h3 className="text-lg font-bold text-[#3b66ff]">Contact Owner</h3>
+                    </div>
+                    <div className="space-y-3 mb-8">
+                      <div className="flex items-center gap-3 text-sm font-semibold text-gray-600">
+                        <User size={16} className="text-gray-400" /> {listing.ownerName || 'Property Owner'}
+                      </div>
+                      <div className="flex items-center gap-3 text-sm font-semibold text-gray-600">
+                        <Phone size={16} className="text-gray-400" /> {listing.ownerPhone || 'Not provided'}
+                      </div>
+                      <div className="flex items-center gap-3 text-sm font-semibold text-gray-600">
+                        <Mail size={16} className="text-gray-400" /> {listing.ownerEmail || 'Not provided'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Book Visit Tab */}
+              {activeTab === 'booking' && (
+                <div>
+                  <BookingForm 
+                    listingId={listingKey} 
+                    ownerId={listing?.ownerId || listing?.owner}
+                    title={listing?.title}
+                    location={listing?.location}
+                    price={listing?.price}
+                    image={listing?.image}
+                    onBookingSuccess={() => {}} 
+                  />
+                </div>
+              )}
+
+              {/* Chat Tab */}
+              {activeTab === 'chat' && (
+                <div>
+                  <ChatBox 
+                    listingId={listingKey} 
+                    ownerId={listing?.ownerId || listing?.owner}
+                    title={listing?.title}
+                    location={listing?.location}
+                    price={listing?.price}
+                    image={listing?.image}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>

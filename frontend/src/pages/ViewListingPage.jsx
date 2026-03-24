@@ -120,6 +120,8 @@ const ViewListingPage = () => {
     const listingId = getListingId(listing);
     if (!listingId) return;
 
+    navigate(`/listing-details?id=${listingId}`, { state: { listing } });
+
     if (isAuthenticated) {
       try {
         await api.post('/user/history', {
@@ -134,9 +136,9 @@ const ViewListingPage = () => {
         // Ignore tracking failures in UI.
       }
     }
-
-    navigate('/listing-details', { state: { listing } });
   };
+
+
 
   return (
     <div className="min-h-screen bg-linear-to-b from-[#f6f8fb] to-[#edf2f7] px-5 md:px-10 lg:px-16 py-10">
@@ -257,21 +259,22 @@ const ViewListingPage = () => {
                 return (
                   <article 
                     key={listingId} 
-                    onClick={() => handleOpenListing(listing)}
-                    className="bg-white border border-gray-100 rounded-sm shadow-sm overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                    className="bg-white border border-gray-100 rounded-sm shadow-sm overflow-hidden hover:shadow-lg transition-shadow"
                   >
-                    <div className="h-44 bg-linear-to-br from-[#dbeafe] via-[#f1f5f9] to-[#e2e8f0]" />
-                    <div className="p-4">
-                      <h2 className="text-lg font-bold text-[#132238] line-clamp-2">{listing.title || 'Untitled Listing'}</h2>
-                      <p className="mt-1 inline-flex items-center gap-1 text-xs text-gray-500">
-                        <MapPin size={12} /> {listing.location || 'Location not specified'}
-                      </p>
+                    <div onClick={() => handleOpenListing(listing)} className="cursor-pointer">
+                      <div className="h-44 bg-linear-to-br from-[#dbeafe] via-[#f1f5f9] to-[#e2e8f0]" />
+                      <div className="p-4">
+                        <h2 className="text-lg font-bold text-[#132238] line-clamp-2">{listing.title || 'Untitled Listing'}</h2>
+                        <p className="mt-1 inline-flex items-center gap-1 text-xs text-gray-500">
+                          <MapPin size={12} /> {listing.location || 'Location not specified'}
+                        </p>
 
-                      <p className="mt-2 text-sm text-gray-600 line-clamp-2">{listing.description || 'No description available for this listing.'}</p>
+                        <p className="mt-2 text-sm text-gray-600 line-clamp-2">{listing.description || 'No description available for this listing.'}</p>
 
-                      <div className="mt-4">
-                        <p className="text-xs uppercase tracking-wide text-gray-500">Monthly Rent</p>
-                        <p className="text-xl font-black text-[#1d4ed8]">Rs {Number(listing.price || 0).toLocaleString()}</p>
+                        <div className="mt-4">
+                          <p className="text-xs uppercase tracking-wide text-gray-500">Monthly Rent</p>
+                          <p className="text-xl font-black text-[#1d4ed8]">Rs {Number(listing.price || 0).toLocaleString()}</p>
+                        </div>
                       </div>
                     </div>
                   </article>
@@ -280,7 +283,6 @@ const ViewListingPage = () => {
             </div>
           )}
         </section>
-
       </div>
     </div>
   );

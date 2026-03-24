@@ -146,3 +146,18 @@ export async function deleteRooms(req, res) {
         res.status(500).json({ message: 'Error deleting room', error: error.message });
     }
 }
+
+export async function getRoomById(req, res) {
+    try {
+        const { id } = req.params;
+        const room = await Room.findById(id);
+
+        if (!room) {
+            return res.status(404).json({ message: 'Room not found' });
+        }
+
+        res.status(200).json(room);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching room', error: error.message });
+    }
+}

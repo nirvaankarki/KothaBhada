@@ -66,7 +66,6 @@ export function App() {
           )}
         />
         <Route path="/view-listing" element={<Navigate to="/viewlisting" replace />} />
-        <Route path="/view-listing/:listingId" element={<Navigate to="/listing-details" replace />} />
         <Route
           path="/dashboard"
           element={(

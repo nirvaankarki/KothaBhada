@@ -6,27 +6,50 @@ const AuthContext = createContext(null);
 const TOKEN_KEY = 'kothabhada_token';
 const USER_KEY = 'kothabhada_user';
 
+function getSessionStorageSafe() {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+function clearLegacySharedAuth() {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.removeItem(TOKEN_KEY);
+    window.localStorage.removeItem(USER_KEY);
+  } catch {
+    // ignore storage cleanup issues
+  }
+}
+
 export function AuthProvider({ children }) {
   const syncRequestRef = useRef(0);
   const [authLoading, setAuthLoading] = useState(false);
 
-  // Initialize token from localStorage
+  // Initialize token from per-tab sessionStorage.
   const [token, setToken] = useState(() => {
     try {
-      const storedToken = localStorage.getItem(TOKEN_KEY);
+      const storage = getSessionStorageSafe();
+      const storedToken = storage?.getItem(TOKEN_KEY);
       return storedToken || '';
     } catch {
       return '';
     }
   });
 
-  // Initialize user from localStorage only if token exists
+  // Initialize user from per-tab sessionStorage only if token exists.
   const [user, setUser] = useState(() => {
     try {
-      const storedToken = localStorage.getItem(TOKEN_KEY);
+      const storage = getSessionStorageSafe();
+      const storedToken = storage?.getItem(TOKEN_KEY);
       if (!storedToken) return null;
 
-      const raw = localStorage.getItem(USER_KEY);
+      const raw = storage?.getItem(USER_KEY);
       if (!raw) return null;
 
       return JSON.parse(raw);
@@ -36,18 +59,29 @@ export function AuthProvider({ children }) {
   });
 
   useEffect(() => {
+    // Remove old shared credentials so separate tabs cannot overwrite each other.
+    clearLegacySharedAuth();
+  }, []);
+
+  useEffect(() => {
+    const storage = getSessionStorageSafe();
+    if (!storage) return;
+
     if (token) {
-      localStorage.setItem(TOKEN_KEY, token);
+      storage.setItem(TOKEN_KEY, token);
     } else {
-      localStorage.removeItem(TOKEN_KEY);
+      storage.removeItem(TOKEN_KEY);
     }
   }, [token]);
 
   useEffect(() => {
+    const storage = getSessionStorageSafe();
+    if (!storage) return;
+
     if (user) {
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      storage.setItem(USER_KEY, JSON.stringify(user));
     } else {
-      localStorage.removeItem(USER_KEY);
+      storage.removeItem(USER_KEY);
     }
   }, [user]);
 
@@ -72,10 +106,11 @@ export function AuthProvider({ children }) {
       } catch (error) {
         if (!cancelled && requestId === syncRequestRef.current) {
           // Token is invalid, clear everything
+          const storage = getSessionStorageSafe();
           setToken('');
           setUser(null);
-          localStorage.removeItem(TOKEN_KEY);
-          localStorage.removeItem(USER_KEY);
+          storage?.removeItem(TOKEN_KEY);
+          storage?.removeItem(USER_KEY);
         }
       } finally {
         if (!cancelled && requestId === syncRequestRef.current) {
@@ -105,12 +140,13 @@ export function AuthProvider({ children }) {
     setAuthLoading(true);
 
     // Force a clean switch before setting the next account.
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    const storage = getSessionStorageSafe();
+    storage?.removeItem(TOKEN_KEY);
+    storage?.removeItem(USER_KEY);
     setUser(null);
 
     // Set the new token immediately so dependent effects and API calls use it.
-    localStorage.setItem(TOKEN_KEY, authToken);
+    storage?.setItem(TOKEN_KEY, authToken);
     setToken(authToken);
 
     try {
@@ -139,9 +175,10 @@ export function AuthProvider({ children }) {
     ++syncRequestRef.current;
 
     // Clear storage synchronously BEFORE state changes
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem('kothabhada_logout_success'); // Clear logout flag
+    const storage = getSessionStorageSafe();
+    storage?.removeItem(TOKEN_KEY);
+    storage?.removeItem(USER_KEY);
+    clearLegacySharedAuth();
     
     // THEN update state to trigger immediate re-renders everywhere
     setUser(null);

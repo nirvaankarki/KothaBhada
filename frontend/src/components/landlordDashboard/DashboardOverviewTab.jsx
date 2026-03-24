@@ -60,8 +60,8 @@ const DashboardOverviewTab = ({ stats, ownerBookings }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="border border-gray-100 rounded-xl p-5 bg-gray-50">
             <p className="text-xs uppercase tracking-widest text-gray-500 font-bold mb-2">Response Queue</p>
-            <p className="text-3xl font-black text-[#1f2937]">{stats.unreadInquiries}</p>
-            <p className="text-sm text-gray-500 mt-2">Open renter inquiries awaiting your reply.</p>
+            <p className="text-3xl font-black text-[#1f2937]">{stats.unreadChats}</p>
+            <p className="text-sm text-gray-500 mt-2">Unread renter chat messages awaiting your attention.</p>
           </div>
           <div className="border border-gray-100 rounded-xl p-5 bg-gray-50">
             <p className="text-xs uppercase tracking-widest text-gray-500 font-bold mb-2">Booking Interest</p>

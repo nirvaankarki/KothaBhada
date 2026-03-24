@@ -13,7 +13,12 @@ import {
     getBookings,
     getOwnerInquiries,
     addOwnerInquiryMessage,
-    getOwnerBookings
+    getOwnerBookings,
+    sendChatMessage,
+    getUserChats,
+    getOwnerChats,
+    replyToChat,
+    markOwnerChatSeen
 } from '../controllers/userDashboardController.js';
 
 const router = express.Router();
@@ -31,5 +36,10 @@ router.post('/bookings', authenticate, createBooking);
 router.get('/owner/inquiries', authenticate, getOwnerInquiries);
 router.post('/owner/inquiries/:inquiryId/messages', authenticate, addOwnerInquiryMessage);
 router.get('/owner/bookings', authenticate, getOwnerBookings);
+router.post('/chat/send', authenticate, sendChatMessage);
+router.get('/chats', authenticate, getUserChats);
+router.get('/owner/chats', authenticate, getOwnerChats);
+router.post('/chats/:chatId/reply', authenticate, replyToChat);
+router.post('/chats/:chatId/seen', authenticate, markOwnerChatSeen);
 
 export default router;
