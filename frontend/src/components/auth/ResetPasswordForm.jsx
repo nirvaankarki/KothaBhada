@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import api from '../../utils/api';
 import { useAutoDismiss } from '../../hooks/useAutoDismiss';
+import { useToast } from '../../context/ToastContext';
 
 const ResetPasswordForm = ({ email, verificationCode }) => {
   const [passwords, setPasswords] = useState({ newPassword: '', confirmPassword: '' });
@@ -13,9 +14,20 @@ const ResetPasswordForm = ({ email, verificationCode }) => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   useAutoDismiss(error, () => setError(''));
   useAutoDismiss(success, () => setSuccess(''));
+
+  useEffect(() => {
+    if (!error) return;
+    showToast({ type: 'error', title: 'Reset failed', message: error });
+  }, [error, showToast]);
+
+  useEffect(() => {
+    if (!success) return;
+    showToast({ type: 'success', title: 'Password updated', message: success });
+  }, [success, showToast]);
 
   const handleReset = async (e) => {
     e.preventDefault();
@@ -30,9 +42,6 @@ const ResetPasswordForm = ({ email, verificationCode }) => {
         confirmPassword: passwords.confirmPassword 
       });
       setSuccess('Password reset successfully! Redirecting to login...');
-      setTimeout(() => navigate('/login'), 1500);
-    } catch (err) {
-      setError(err.response?.data?.message || "Reset failed");
     } finally { setLoading(false); }
   };
 
@@ -40,9 +49,6 @@ const ResetPasswordForm = ({ email, verificationCode }) => {
     <div className="flex flex-col items-center text-center animate-fadeIn">
       <h2 className="text-2xl font-bold text-gray-800 mb-2">Reset Password</h2>
       <p className="text-gray-500 text-sm mb-10">Create a new password</p>
-
-      {error && <div className="w-full mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded">{error}</div>}
-      {success && <div className="w-full mb-4 p-3 bg-green-50 border border-green-200 text-green-700 text-xs rounded">{success}</div>}
 
       <form onSubmit={handleReset} className="w-full space-y-4">
         <div className="relative">

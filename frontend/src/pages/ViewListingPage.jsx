@@ -5,6 +5,7 @@ import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import { FALLBACK_LISTINGS, getListingId } from '../utils/listingData';
+import { useToast } from '../context/ToastContext';
 
 const PRICE_BUCKETS = [
   { id: 'all', label: 'All Prices' },
@@ -27,9 +28,14 @@ function inBucket(price, bucketId) {
   return price > 25000;
 }
 
+function getListingImage(listing) {
+  return String(listing?.image || listing?.images?.[0] || '').trim();
+}
+
 const ViewListingPage = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const { showToast } = useToast();
 
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +49,16 @@ const ViewListingPage = () => {
 
   useAutoDismiss(error, () => setError(''));
   useAutoDismiss(message, () => setMessage(''));
+
+  useEffect(() => {
+    if (!error) return;
+    showToast({ type: 'error', title: 'Listings unavailable', message: error });
+  }, [error, showToast]);
+
+  useEffect(() => {
+    if (!message) return;
+    showToast({ type: 'info', title: 'Notice', message });
+  }, [message, showToast]);
 
   useEffect(() => {
     let ignore = false;
@@ -129,7 +145,7 @@ const ViewListingPage = () => {
           title: listing.title,
           location: listing.location || '',
           price: Number(listing.price || 0),
-          image: '',
+          image: getListingImage(listing),
           source: 'viewlisting-page',
         });
       } catch {
@@ -137,8 +153,6 @@ const ViewListingPage = () => {
       }
     }
   };
-
-
 
   return (
     <div className="min-h-screen bg-linear-to-b from-[#f6f8fb] to-[#edf2f7] px-5 md:px-10 lg:px-16 py-10">
@@ -149,9 +163,6 @@ const ViewListingPage = () => {
             Browse rooms quickly with smart filters and open any listing in one click.
           </p>
         </div>
-
-        {error && <div className="mb-5 p-3 rounded-sm bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>}
-        {message && <div className="mb-5 p-3 rounded-sm bg-blue-50 border border-blue-200 text-blue-700 text-sm">{message}</div>}
 
         <section className="bg-white border border-gray-100 rounded-sm shadow-sm p-4 md:p-5 mb-7">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
@@ -256,13 +267,18 @@ const ViewListingPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {filteredListings.map((listing) => {
                 const listingId = getListingId(listing);
+                const listingImage = getListingImage(listing);
                 return (
-                  <article 
-                    key={listingId} 
+                  <article
+                    key={listingId}
                     className="bg-white border border-gray-100 rounded-sm shadow-sm overflow-hidden hover:shadow-lg transition-shadow"
                   >
                     <div onClick={() => handleOpenListing(listing)} className="cursor-pointer">
-                      <div className="h-44 bg-linear-to-br from-[#dbeafe] via-[#f1f5f9] to-[#e2e8f0]" />
+                      <img
+                        src={listingImage || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1000'}
+                        alt={listing.title || 'Room image'}
+                        className="h-44 w-full object-cover"
+                      />
                       <div className="p-4">
                         <h2 className="text-lg font-bold text-[#132238] line-clamp-2">{listing.title || 'Untitled Listing'}</h2>
                         <p className="mt-1 inline-flex items-center gap-1 text-xs text-gray-500">

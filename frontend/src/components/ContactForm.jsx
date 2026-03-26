@@ -138,10 +138,11 @@
 
 
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapPin, Phone, Mail, Clock, Facebook, Instagram, Twitter, Linkedin, Loader2 } from 'lucide-react';
 import api from '../utils/api'; // Ensure this points to your axios instance
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
+import { useToast } from '../context/ToastContext';
 
 const ContactForm = () => {
   const [formData, setFormData] = useState({
@@ -153,29 +154,44 @@ const ContactForm = () => {
   });
 
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState({ type: '', msg: '' }); // { type: 'success' | 'error', msg: '' }
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const { showToast } = useToast();
 
-  useAutoDismiss(status.msg, () => setStatus({ type: '', msg: '' }));
+  useAutoDismiss(error, () => setError(''));
+  useAutoDismiss(success, () => setSuccess(''));
+
+  useEffect(() => {
+    if (!error) return;
+    showToast({ type: 'error', title: 'Message not sent', message: error });
+  }, [error, showToast]);
+
+  useEffect(() => {
+    if (!success) return;
+    showToast({ type: 'success', title: 'Message sent', message: success });
+  }, [success, showToast]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    if (status.msg) setStatus({ type: '', msg: '' }); // Clear status when user types
+    if (error) setError('');
+    if (success) setSuccess('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setStatus({ type: '', msg: '' });
+    setError('');
+    setSuccess('');
 
     try {
       const response = await api.post('/contact/submit', formData);
       if (response.data.success) {
-        setStatus({ type: 'success', msg: response.data.message });
+        setSuccess(response.data.message);
         setFormData({ fullName: '', email: '', phone: '', subject: '', message: '' }); // Reset form
       }
     } catch (err) {
       const errorMsg = err?.response?.data?.message || 'Something went wrong. Please try again.';
-      setStatus({ type: 'error', msg: errorMsg });
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -201,15 +217,6 @@ const ContactForm = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-            {/* Status Feedback */}
-            {status.msg && (
-              <div className={`p-4 rounded-sm text-sm font-semibold animate-fadeIn ${
-                status.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
-              }`}>
-                {status.msg}
-              </div>
-            )}
-
             <div className="flex flex-col gap-2">
               <label className="text-sm font-semibold text-[#1a222e]">Full Name</label>
               <input name="fullName" value={formData.fullName} onChange={handleChange} type="text" placeholder="Enter Full Name" className="w-full p-4 bg-gray-50 rounded-sm outline-none focus:ring-2 focus:ring-blue-400 transition-all" required />

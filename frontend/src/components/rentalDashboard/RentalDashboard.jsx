@@ -6,6 +6,7 @@ import DashboardHeader from './DashboardHeader';
 import StatCard from './StatCard';
 import RecentActivityItem from './RecentActivityItem';
 import RevenueChartCard from './RevenueChartCard';
+import { useToast } from '../../context/ToastContext';
 
 const RentalDashboard = ({
   userName,
@@ -19,10 +20,9 @@ const RentalDashboard = ({
   history,
 }) => {
   const [activeTab, setActiveTab] = useState('favorites');
-  const [actionError, setActionError] = useState('');
-  const [actionSuccess, setActionSuccess] = useState('');
   const [localFavorites, setLocalFavorites] = useState(favorites || []);
   const [localHistory, setLocalHistory] = useState(history || []);
+  const { showToast } = useToast();
 
   const detailsRef = useRef(null);
   const hasActivities = activities.length > 0;
@@ -35,19 +35,19 @@ const RentalDashboard = ({
     setLocalHistory(history || []);
   }, [history]);
 
+  useEffect(() => {
+    if (!error) return;
+    showToast({ type: 'error', title: 'Dashboard error', message: error });
+  }, [error, showToast]);
+
   const handleOpenTab = (tab) => {
     setActiveTab(tab);
-    setActionError('');
-    setActionSuccess('');
     requestAnimationFrame(() => {
       detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   };
 
   const handleRemoveFavorite = async (item) => {
-    setActionError('');
-    setActionSuccess('');
-
     const previousFavorites = localFavorites;
     setLocalFavorites((prev) => prev.filter((fav) => fav.listingId !== item.listingId));
 
@@ -56,11 +56,11 @@ const RentalDashboard = ({
         listingId: item.listingId,
         title: item.title,
       });
-      setActionSuccess('Favorite removed successfully.');
+      showToast({ type: 'success', title: 'Success', message: 'Favorite removed successfully.' });
       onRetry();
     } catch (err) {
       setLocalFavorites(previousFavorites);
-      setActionError(err?.response?.data?.message || 'Could not remove favorite.');
+      showToast({ type: 'error', title: 'Action failed', message: err?.response?.data?.message || 'Could not remove favorite.' });
     }
   };
 
@@ -68,19 +68,16 @@ const RentalDashboard = ({
     if (localHistory.length === 0) return;
     if (!window.confirm('Remove all viewing history? This action cannot be undone.')) return;
 
-    setActionError('');
-    setActionSuccess('');
-
     const previousHistory = localHistory;
     setLocalHistory([]);
 
     try {
       await api.delete('/user/history');
-      setActionSuccess('Viewing history removed successfully.');
+      showToast({ type: 'success', title: 'Success', message: 'Viewing history removed successfully.' });
       onRetry();
     } catch (err) {
       setLocalHistory(previousHistory);
-      setActionError(err?.response?.data?.message || 'Could not clear viewing history.');
+      showToast({ type: 'error', title: 'Action failed', message: err?.response?.data?.message || 'Could not clear viewing history.' });
     }
   };
 
@@ -93,15 +90,6 @@ const RentalDashboard = ({
         </div>
 
         <DashboardHeader />
-
-        {error && (
-          <div className="mb-6 rounded-xl border border-red-600/50 bg-red-500/10 px-4 py-3 text-sm text-red-200 flex items-center justify-between gap-3">
-            <span>{error}</span>
-            <button type="button" onClick={onRetry} className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-xs font-semibold text-white">
-              Retry
-            </button>
-          </div>
-        )}
 
         {loading ? (
           <div className="rounded-2xl border border-slate-800 bg-[#1e293b]/40 p-8 text-slate-300 text-sm">Loading your renter dashboard...</div>
@@ -146,18 +134,6 @@ const RentalDashboard = ({
 
             <section ref={detailsRef} className="mt-8 rounded-3xl border border-slate-800/50 bg-[#1e293b]/40 p-6 sm:p-8">
               <h3 className="text-lg font-semibold text-white mb-6">Renter Workspace</h3>
-
-              {actionError && (
-                <div className="mb-4 rounded-xl border border-red-600/50 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                  {actionError}
-                </div>
-              )}
-
-              {actionSuccess && (
-                <div className="mb-4 rounded-xl border border-emerald-600/50 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-                  {actionSuccess}
-                </div>
-              )}
 
               <div className="mb-6 flex flex-wrap gap-2">
                 <button

@@ -70,7 +70,7 @@ const ChatTab = ({
   }, [selectedOwnerChatId, selectedChat?.messages?.length]);
 
   return (
-    <section className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm">
+    <section className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm h-[calc(100vh-180px)] min-h-[620px] max-h-[820px]">
       <div className="px-5 py-4 border-b border-slate-100 bg-white flex items-center justify-between">
         <div className="flex items-center gap-2">
           <MessageCircle size={20} className="text-[#3b66ff]" />
@@ -79,8 +79,8 @@ const ChatTab = ({
         <p className="text-xs font-semibold text-slate-500">{ownerChats.length} conversation{ownerChats.length === 1 ? '' : 's'}</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] min-h-140">
-        <aside className="border-r border-slate-100 bg-slate-50/40">
+      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] h-[calc(100%-65px)] min-h-0">
+        <aside className="border-r border-slate-100 bg-slate-50/40 min-h-0 flex flex-col">
           <div className="p-4 border-b border-slate-100">
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -97,7 +97,7 @@ const ChatTab = ({
           {filteredChats.length === 0 ? (
             <div className="p-6 text-sm text-gray-500">No direct messages yet.</div>
           ) : (
-            <div className="max-h-140 overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-y-auto">
               {filteredChats.map((chat) => {
                 const isSelected = chat._id === selectedOwnerChatId;
                 const unread = isChatUnread(chat);
@@ -151,7 +151,7 @@ const ChatTab = ({
           )}
         </aside>
 
-        <div className="flex flex-col">
+        <div className="flex flex-col min-h-0">
           {!selectedChat ? (
             <div className="flex-1 flex items-center justify-center text-center p-8 text-slate-500">
               <div>
@@ -182,7 +182,7 @@ const ChatTab = ({
                 <span className="ml-auto text-[11px] text-slate-400">{formatDateLabel(lastMessageAt)}</span>
               </header>
 
-              <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-5 space-y-3 bg-[radial-gradient(circle_at_top_left,#eef4ff_0%,#ffffff_50%)]">
+              <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto p-5 space-y-3 bg-[radial-gradient(circle_at_top_left,#eef4ff_0%,#ffffff_50%)]">
                 {(selectedChat.messages || []).length === 0 ? (
                   <p className="text-sm text-slate-500">No messages yet.</p>
                 ) : (

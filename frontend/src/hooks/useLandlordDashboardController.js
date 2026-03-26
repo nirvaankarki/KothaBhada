@@ -135,6 +135,7 @@ export const useLandlordDashboardController = () => {
 
   useEffect(() => {
     if (activeTab !== 'chat') return;
+
     if (!ownerChats.length) {
       setSelectedOwnerChatId('');
       return;
@@ -142,7 +143,7 @@ export const useLandlordDashboardController = () => {
 
     const alreadySelected = ownerChats.some((chat) => chat._id === selectedOwnerChatId);
     if (!alreadySelected) {
-      setSelectedOwnerChatId(ownerChats[0]._id);
+      setSelectedOwnerChatId('');
     }
   }, [activeTab, ownerChats, selectedOwnerChatId]);
 
@@ -383,7 +384,6 @@ export const useLandlordDashboardController = () => {
     };
 
     setError('');
-    setSuccess('');
     setSendingChatId(chatId);
     setChatDrafts((prev) => ({ ...prev, [chatId]: '' }));
 
@@ -409,7 +409,6 @@ export const useLandlordDashboardController = () => {
           item._id === chatId ? updatedChat : item
         )));
       }
-      setSuccess('Reply sent successfully.');
     } catch (err) {
       setChatDrafts((prev) => ({ ...prev, [chatId]: message }));
       await refreshOwnerChats();

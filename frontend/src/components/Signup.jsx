@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { User, Mail, Lock, ChevronDown, UserCircle, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import { useAuth } from '../context/AuthContext';
 import { isLandlordRole } from '../utils/roles';
+import { useToast } from '../context/ToastContext';
 
 const Signup = ({ onToggle }) => {
   const [formData, setFormData] = useState({ name: '', email: '', role: '', password: '', confirmPassword: '' });
@@ -14,8 +15,14 @@ const Signup = ({ onToggle }) => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { showToast } = useToast();
 
   useAutoDismiss(error, () => setError(''));
+
+  useEffect(() => {
+    if (!error) return;
+    showToast({ type: 'error', title: 'Signup failed', message: error });
+  }, [error, showToast]);
 
   const handleChange = (key) => (e) => {
     setFormData((s) => ({ ...s, [key]: e.target.value }));
@@ -62,18 +69,9 @@ const Signup = ({ onToggle }) => {
       </div>
 
       <div className="w-[55%] flex flex-col items-center justify-center p-10 bg-white">
-        <h1 className={`text-4xl font-black text-[#3b66ff] tracking-tight transition-all duration-300 ${error ? 'mb-2' : 'mb-8'}`}>
-          Create Account
-        </h1>
-
-        {error && (
-          <div className="w-full max-w-sm mb-4 p-3 bg-red-50 border border-red-200 rounded-sm text-red-700 text-sm font-medium animate-fadeIn">
-            {error}
-          </div>
-        )}
+        <h1 className="text-4xl font-black text-[#3b66ff] tracking-tight mb-8">Create Account</h1>
 
         <form className="w-full max-w-sm space-y-3.5" onSubmit={handleSubmit}>
-          {/* ... Inputs remain the same ... */}
           <div className="relative">
             <User className="absolute left-4 top-3.5 text-gray-400" size={18} />
             <input type="text" placeholder="Full Name" value={formData.name} onChange={handleChange('name')} required className="w-full pl-12 pr-4 py-3 bg-gray-100/70 rounded-sm outline-none focus:ring-2 focus:ring-blue-400 font-medium" />
@@ -123,8 +121,7 @@ const Signup = ({ onToggle }) => {
           </div>
         </form>
 
-        <div className={`w-full max-w-sm flex flex-col items-center transition-all duration-300 ${error ? 'mt-2' : 'mt-8'}`}>
-          {/* UPDATED DESIGN: OR CONTINUE WITH */}
+        <div className="w-full max-w-sm flex flex-col items-center mt-8">
           <div className="w-full flex items-center mb-6">
             <div className="flex-grow h-px bg-gray-300"></div>
             <span className="px-4 text-[12px] font-semibold text-gray-500 tracking-widest uppercase">OR CONTINUE WITH</span>

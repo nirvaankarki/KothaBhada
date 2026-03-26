@@ -1,16 +1,28 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import api from '../../utils/api';
 import { useAutoDismiss } from '../../hooks/useAutoDismiss';
+import { useToast } from '../../context/ToastContext';
 
 const VerifyOTP = ({ email, onVerifySuccess, onCancel }) => {
-  const [otp, setOtp] = useState(new Array(6).fill(""));
+  const [otp, setOtp] = useState(new Array(6).fill(''));
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const inputs = useRef([]);
+  const { showToast } = useToast();
 
   useAutoDismiss(error, () => setError(''));
   useAutoDismiss(success, () => setSuccess(''));
+
+  useEffect(() => {
+    if (!error) return;
+    showToast({ type: 'error', title: 'Verification failed', message: error });
+  }, [error, showToast]);
+
+  useEffect(() => {
+    if (!success) return;
+    showToast({ type: 'success', title: 'Code sent', message: success });
+  }, [success, showToast]);
 
   const handleChange = (element, index) => {
     if (isNaN(element.value)) return;
@@ -19,7 +31,7 @@ const VerifyOTP = ({ email, onVerifySuccess, onCancel }) => {
   };
 
   const handleVerify = async () => {
-    const code = otp.join("");
+    const code = otp.join('');
     if (code.length < 6) return setError('Please enter full 6-digit code');
     setLoading(true);
     try {
@@ -35,9 +47,11 @@ const VerifyOTP = ({ email, onVerifySuccess, onCancel }) => {
   const resendCode = async () => {
     setError('');
     try {
-        await api.post('/auth/forgot-password', { email });
+      await api.post('/auth/forgot-password', { email });
       setSuccess(`New code sent to ${email}`);
-    } catch (err) { setError("Failed to resend code"); }
+    } catch {
+      setError('Failed to resend code');
+    }
   };
 
   return (
@@ -45,14 +59,18 @@ const VerifyOTP = ({ email, onVerifySuccess, onCancel }) => {
       <h2 className="text-xl font-bold text-gray-800 mb-2">Enter verification code</h2>
       <p className="text-gray-500 text-sm mb-8">We've sent a code to <span className="font-bold">{email}</span></p>
 
-      {error && <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded">{error}</div>}
-      {success && <div className="mb-6 p-3 bg-green-50 border border-green-200 text-green-700 text-xs rounded">{success}</div>}
-
       <div className="flex justify-between gap-2 mb-10">
         {otp.map((data, index) => (
-          <input key={index} type="text" maxLength="1" value={data}
+          <input
+            key={index}
+            ref={(el) => {
+              inputs.current[index] = el;
+            }}
+            type="text"
+            maxLength="1"
+            value={data}
             className="w-16 h-16 text-center text-2xl font-bold border border-gray-400 rounded-sm focus:border-blue-500 outline-none"
-            onChange={e => handleChange(e.target, index)}
+            onChange={(e) => handleChange(e.target, index)}
           />
         ))}
       </div>

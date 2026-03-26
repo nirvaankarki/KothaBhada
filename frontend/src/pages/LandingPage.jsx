@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle2 } from 'lucide-react';
 import HeroSection from '../components/HeroSection';
 import WhyChoose from '../components/WhyChoose';
 import FeaturedListings from '../components/FeaturedListings';
 import HowItWorks from '../components/HowItWorks';
 import Testimonials from '../components/Testimonials';
 import AuthRequiredModal from '../components/AuthRequiredModal';
-import { useAutoDismiss } from '../hooks/useAutoDismiss';
+import { useToast } from '../context/ToastContext';
 
 const LandingPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [showLogoutToast, setShowLogoutToast] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const { showToast } = useToast();
   const [pendingPath, setPendingPath] = useState('/viewlisting');
   const [authModalMessage, setAuthModalMessage] = useState('You need to log in or create an account before viewing listings.');
 
@@ -36,18 +36,14 @@ const LandingPage = () => {
     }
   }, [location.pathname, location.state, navigate]);
 
-  useAutoDismiss(showLogoutToast, () => setShowLogoutToast(false), 2600);
+  useEffect(() => {
+    if (!showLogoutToast) return;
+    showToast({ type: 'success', title: 'Success', message: 'Logged out successfully' });
+    setShowLogoutToast(false);
+  }, [showLogoutToast, showToast]);
 
   return (
     <div className="w-full">
-      {showLogoutToast && (
-        <div className="fixed top-24 right-6 z-50 logout-success-toast bg-white/95 backdrop-blur border border-gray-200 shadow-xl rounded-sm px-4 py-3">
-          <div className="inline-flex items-center gap-2 text-sm font-semibold tracking-wide text-[#1f2937]">
-            <CheckCircle2 size={16} className="text-emerald-300" />
-            Logged out successfully
-          </div>
-        </div>
-      )}
 
       <AuthRequiredModal
         open={showAuthModal}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   RotateCw, RefreshCcw, Maximize, Bed, Bath, Ruler, 
   Heart, Share2, CheckCircle2, User, Phone, Mail, 
@@ -12,6 +12,7 @@ import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import AuthRequiredModal from '../components/AuthRequiredModal';
 import { getListingId } from '../utils/listingData';
 import { BookingForm, ChatBox } from '../components/PropertyActions';
+import { useToast } from '../context/ToastContext';
 
 function normalizeListing(rawListing) {
   if (!rawListing) return null;
@@ -29,6 +30,10 @@ function normalizeListing(rawListing) {
   };
 }
 
+function getListingImage(listing) {
+  return String(listing?.image || listing?.images?.[0] || '').trim();
+}
+
 const Explore3DPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,8 +49,22 @@ const Explore3DPage = () => {
   const [message, setMessage] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [activeTab, setActiveTab] = useState('details'); // 'details', 'booking', 'chat'
+  const { showToast } = useToast();
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const seenOwnerMessageAtRef = useRef('');
+  const initializedOwnerMessageRef = useRef(false);
 
   useAutoDismiss(message, () => setMessage(''));
+
+  useEffect(() => {
+    if (!loadError) return;
+    showToast({ type: 'error', title: 'Listing error', message: loadError });
+  }, [loadError, showToast]);
+
+  useEffect(() => {
+    if (!message) return;
+    showToast({ type: message.includes('Could not') ? 'error' : 'success', title: message.includes('Could not') ? 'Action failed' : 'Success', message });
+  }, [message, showToast]);
   useAutoDismiss(loadError, () => setLoadError(''));
 
   useEffect(() => {
@@ -121,7 +140,7 @@ const Explore3DPage = () => {
           title: listing.title,
           location: listing.location,
           price: listing.price,
-          image: listing.images?.[0] || '',
+          image: getListingImage(listing),
           source: 'listing-details-page',
         });
       } catch {
@@ -136,6 +155,96 @@ const Explore3DPage = () => {
       ignore = true;
     };
   }, [listing, listingKey, isAuthenticated, token]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !token || !listingKey) {
+      setUnreadChatCount(0);
+      seenOwnerMessageAtRef.current = '';
+      initializedOwnerMessageRef.current = false;
+      return;
+    }
+
+    let stopped = false;
+
+    const getLatestOwnerMessageAt = (chat) => {
+      if (!Array.isArray(chat?.messages)) return '';
+
+      const latestOwnerMessage = chat.messages.reduce((acc, msg) => {
+        if (msg?.senderType !== 'owner' || !msg?.sentAt) return acc;
+        if (!acc) return msg.sentAt;
+        return new Date(msg.sentAt) > new Date(acc) ? msg.sentAt : acc;
+      }, '');
+
+      return latestOwnerMessage || '';
+    };
+
+    const getUnreadOwnerMessageCount = (chat, seenAt) => {
+      if (!Array.isArray(chat?.messages) || !chat.messages.length) return 0;
+
+      return chat.messages.filter((msg) => {
+        if (msg?.senderType !== 'owner' || !msg?.sentAt) return false;
+        if (!seenAt) return true;
+        return new Date(msg.sentAt) > new Date(seenAt);
+      }).length;
+    };
+
+    const pullChatStatus = async () => {
+      try {
+        const response = await api.get('/user/chats');
+        if (stopped) return;
+
+        const chats = Array.isArray(response.data?.chats) ? response.data.chats : [];
+        const matchingChat = chats.find((chat) => String(chat?.listingId) === String(listingKey));
+        const latestOwnerMessageAt = getLatestOwnerMessageAt(matchingChat);
+
+        if (activeTab === 'chat') {
+          seenOwnerMessageAtRef.current = latestOwnerMessageAt;
+          initializedOwnerMessageRef.current = true;
+          setUnreadChatCount(0);
+          return;
+        }
+
+        if (!initializedOwnerMessageRef.current) {
+          seenOwnerMessageAtRef.current = latestOwnerMessageAt;
+          initializedOwnerMessageRef.current = true;
+          setUnreadChatCount(0);
+          return;
+        }
+
+        const count = getUnreadOwnerMessageCount(matchingChat, seenOwnerMessageAtRef.current);
+        setUnreadChatCount(count);
+      } catch {
+        // Keep existing unread state when background polling fails.
+      }
+    };
+
+    pullChatStatus();
+    const intervalId = setInterval(pullChatStatus, 4000);
+
+    const handleFocus = () => {
+      pullChatStatus();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        pullChatStatus();
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleFocus);
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    return () => {
+      stopped = true;
+      clearInterval(intervalId);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', handleFocus);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    };
+  }, [activeTab, isAuthenticated, token, listingKey]);
 
   if (isLoading && !listing) {
     return (
@@ -176,7 +285,7 @@ const Explore3DPage = () => {
         title: listing.title,
         location: listing.location,
         price: listing.price,
-        image: listing.images?.[0] || '',
+        image: getListingImage(listing),
       });
       const nextState = Boolean(response.data?.isFavorite);
       setIsFavorite(nextState);
@@ -194,12 +303,6 @@ const Explore3DPage = () => {
         onCancel={() => setShowAuthModal(false)}
         onConfirm={() => navigate('/login', { state: { from: location.pathname + location.search } })}
       />
-
-      {loadError && (
-        <div className="max-w-350 mx-auto mb-4 p-3 rounded-sm bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium">
-          {loadError}
-        </div>
-      )}
 
       <div className="max-w-350 mx-auto flex flex-col lg:flex-row gap-6">
         
@@ -277,14 +380,24 @@ const Explore3DPage = () => {
                 <Calendar size={16} /> Book Visit
               </button>
               <button
-                onClick={() => setActiveTab('chat')}
+                onClick={() => {
+                  setActiveTab('chat');
+                    setUnreadChatCount(0);
+                }}
                 className={`flex-1 px-4 py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
                   activeTab === 'chat'
                     ? 'bg-blue-50 text-[#3b66ff] border-b-2 border-[#3b66ff]'
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                <MessageCircle size={16} /> Chat
+                  <span className="relative inline-flex items-center gap-2 pr-2">
+                  <MessageCircle size={16} /> Chat
+                      {unreadChatCount > 0 && activeTab !== 'chat' && (
+                        <span className="absolute -top-1.5 -right-2.5 min-w-4.5 h-4.5 px-1 rounded-full bg-[#ef4444] text-white text-[9px] leading-4.5 font-bold text-center shadow-sm">
+                        {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                      </span>
+                  )}
+                </span>
               </button>
             </div>
 
@@ -293,12 +406,6 @@ const Explore3DPage = () => {
               {/* Details Tab */}
               {activeTab === 'details' && (
                 <div>
-                  {message && (
-                    <div className={`mb-5 p-3 rounded-sm text-sm font-semibold ${message.includes('Could not') ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-700'}`}>
-                      {message}
-                    </div>
-                  )}
-
                   <div className="mb-6">
                     <h1 className="text-3xl font-black text-[#1a222e] leading-tight mb-2">{listing.title || 'Listing Details'}</h1>
                     <div className="flex items-center gap-2 text-gray-500">

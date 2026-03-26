@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Calendar, MessageCircle, Send } from 'lucide-react';
 import api from '../utils/api';
+import { useToast } from '../context/ToastContext';
 
 function toUiMessageList(chat) {
   const rawMessages = Array.isArray(chat?.messages) ? chat.messages : [];
@@ -19,25 +20,22 @@ const BookingForm = ({ listingId, ownerId, title, location, price, image, onBook
   const [preferredVisitDate, setPreferredVisitDate] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
   const [note, setNote] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
-    setSuccess('');
 
     if (!preferredVisitDate) {
-      setError('Please select a date for your visit');
-      setLoading(false);
+      showToast({ type: 'warning', title: 'Missing date', message: 'Please select a date for your visit' });
       return;
     }
 
+    setLoading(true);
     try {
       const response = await api.post('/user/bookings', {
         listingId,
+        ownerId,
         title: title || 'Property',
         location: location || '',
         price: price || 0,
@@ -46,16 +44,26 @@ const BookingForm = ({ listingId, ownerId, title, location, price, image, onBook
         preferredTime,
         note,
       });
-      setSuccess('Booking request sent successfully! The owner will contact you soon.');
+
+      showToast({
+        type: 'success',
+        title: 'Request sent',
+        message: 'Booking request sent successfully! The owner will contact you soon.',
+      });
+
       if (onBookingSuccess) {
         onBookingSuccess(response.data.booking);
       }
+
       setPreferredVisitDate('');
       setPreferredTime('');
       setNote('');
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send booking request.');
+      showToast({
+        type: 'error',
+        title: 'Booking failed',
+        message: err?.response?.data?.message || 'Failed to send booking request.',
+      });
     } finally {
       setLoading(false);
     }
@@ -70,18 +78,6 @@ const BookingForm = ({ listingId, ownerId, title, location, price, image, onBook
         <h3 className="text-xl font-bold text-[#1a222e]">Schedule a Visit</h3>
         <p className="text-sm text-gray-600 mt-1">Tell the owner when you'd like to visit this property</p>
       </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-sm p-3 text-sm font-medium text-red-700">
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="bg-green-50 border border-green-200 rounded-sm p-3 text-sm font-medium text-green-700">
-          ✓ {success}
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -151,45 +147,87 @@ const ChatBox = ({ listingId, ownerId, title, location, price, image }) => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [chatError, setChatError] = useState('');
+  const messagesContainerRef = useRef(null);
+  const hasLoadedHistoryRef = useRef(false);
+  const { showToast } = useToast();
 
-  React.useEffect(() => {
-    let cancelled = false;
+  const scrollToLatestMessage = useCallback((behavior = 'smooth') => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior });
+  }, []);
 
-    async function loadChatHistory() {
-      if (!listingId) {
-        setMessages([]);
-        return;
-      }
-
-      setLoadingHistory(true);
-      setChatError('');
-
-      try {
-        const response = await api.get('/user/chats');
-        const chats = Array.isArray(response.data?.chats) ? response.data.chats : [];
-        const matchingChat = chats.find((chat) => String(chat?.listingId) === String(listingId));
-
-        if (!cancelled) {
-          setMessages(toUiMessageList(matchingChat));
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setChatError(err?.response?.data?.message || 'Could not load previous messages.');
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingHistory(false);
-        }
-      }
+  const fetchChatByListing = useCallback(async ({ silent = false } = {}) => {
+    if (!listingId) {
+      setMessages([]);
+      return;
     }
 
-    loadChatHistory();
+    if (!silent) {
+      setLoadingHistory(true);
+    }
+
+    try {
+      const response = await api.get('/user/chats');
+      const chats = Array.isArray(response.data?.chats) ? response.data.chats : [];
+      const matchingChat = chats.find((chat) => String(chat?.listingId) === String(listingId));
+      const nextMessages = toUiMessageList(matchingChat);
+
+      setMessages(nextMessages);
+      hasLoadedHistoryRef.current = true;
+    } catch (err) {
+      if (!silent) {
+        showToast({
+          type: 'error',
+          title: 'Chat unavailable',
+          message: err?.response?.data?.message || 'Could not load previous messages.',
+        });
+      }
+    } finally {
+      if (!silent) {
+        setLoadingHistory(false);
+      }
+    }
+  }, [listingId, showToast]);
+
+  useEffect(() => {
+    fetchChatByListing({ silent: false });
+
+    const pullChats = () => {
+      fetchChatByListing({ silent: true });
+    };
+
+    const intervalId = setInterval(pullChats, 4000);
+
+    const handleFocus = () => {
+      pullChats();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        pullChats();
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleFocus);
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
 
     return () => {
-      cancelled = true;
+      clearInterval(intervalId);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', handleFocus);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
     };
-  }, [listingId]);
+  }, [fetchChatByListing, listingId]);
+
+  useEffect(() => {
+    if (!hasLoadedHistoryRef.current || loadingHistory || messages.length === 0) return;
+    const behavior = messages.length <= 1 ? 'auto' : 'smooth';
+    scrollToLatestMessage(behavior);
+  }, [messages, loadingHistory, scrollToLatestMessage]);
 
   const handleSendMessage = async () => {
     const messageText = newMessage.trim();
@@ -205,10 +243,8 @@ const ChatBox = ({ listingId, ownerId, title, location, price, image }) => {
     setMessages((prev) => [...prev, userMessage]);
     setNewMessage('');
     setLoading(true);
-    setChatError('');
 
     try {
-      // Send message to server
       const response = await api.post('/user/chat/send', {
         listingId,
         ownerId,
@@ -224,10 +260,13 @@ const ChatBox = ({ listingId, ownerId, title, location, price, image }) => {
         setMessages(toUiMessageList(persistedChat));
       }
     } catch (err) {
-      console.error('Failed to send message:', err);
       setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
       setNewMessage(messageText);
-      setChatError(err?.response?.data?.message || 'Failed to send message.');
+      showToast({
+        type: 'error',
+        title: 'Message failed',
+        message: err?.response?.data?.message || 'Failed to send message.',
+      });
     } finally {
       setLoading(false);
     }
@@ -247,7 +286,7 @@ const ChatBox = ({ listingId, ownerId, title, location, price, image }) => {
         </div>
       </header>
 
-      <div className="h-90 overflow-y-auto p-5 space-y-3 bg-[radial-gradient(circle_at_top_left,#eef4ff_0%,#ffffff_50%)]">
+      <div ref={messagesContainerRef} className="h-90 overflow-y-auto p-5 space-y-3 bg-[radial-gradient(circle_at_top_left,#eef4ff_0%,#ffffff_50%)]">
         {loadingHistory ? (
           <div className="flex items-center justify-center h-full text-center">
             <p className="text-sm text-gray-500">Loading messages...</p>
@@ -276,12 +315,6 @@ const ChatBox = ({ listingId, ownerId, title, location, price, image }) => {
           ))
         )}
       </div>
-
-      {chatError && (
-        <div className="mx-4 mt-3 bg-red-50 border border-red-200 rounded-xl p-3 text-sm font-medium text-red-700">
-          {chatError}
-        </div>
-      )}
 
       <footer className="p-4 border-t border-slate-100 bg-white">
         <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full px-3 py-2">

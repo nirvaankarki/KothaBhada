@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, House, Building2 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import { isLandlordRole, normalizeRole } from '../utils/roles';
+import { useToast } from '../context/ToastContext';
 
 const Login = ({ onToggle }) => {
   const [email, setEmail] = useState('');
@@ -15,8 +16,14 @@ const Login = ({ onToggle }) => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const { login, logout } = useAuth();
+  const { showToast } = useToast();
 
   useAutoDismiss(error, () => setError(''));
+
+  useEffect(() => {
+    if (!error) return;
+    showToast({ type: 'error', title: 'Login failed', message: error });
+  }, [error, showToast]);
 
   const handleInputChange = (setter) => (e) => {
     setter(e.target.value);
@@ -61,7 +68,7 @@ const Login = ({ onToggle }) => {
     } finally {
       setLoading(false);
     }
-  };
+  };"text-4xl font-black text-[#3b66ff] tracking-tight mb-10"
 
   return (
     <div className="flex w-full h-full animate-fadeIn">
@@ -150,12 +157,6 @@ const Login = ({ onToggle }) => {
             </div>
           </div>
 
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-sm text-red-700 text-sm font-medium animate-fadeIn">
-              {error}
-            </div>
-          )}
-
           <div className="flex justify-center mt-6">
             <button
               type="submit"
@@ -173,7 +174,7 @@ const Login = ({ onToggle }) => {
             <span className="px-4 text-[12px] font-semibold text-gray-500 tracking-widest uppercase">OR CONTINUE WITH</span>
             <div className="flex-grow h-px bg-gray-300"></div>
           </div>
-
+"w-full max-w-sm flex flex-col items-center mt-8"
           <button type="button" className="flex items-center justify-center gap-3 w-full py-2 border-2 border-gray-300 rounded-sm hover:bg-blue-50 transition-all">
             <span className="text-[#ea4335] text-2xl font-bold">G</span>
             <span className="text-black font-bold text-lg">Google</span>

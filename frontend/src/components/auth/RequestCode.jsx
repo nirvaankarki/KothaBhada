@@ -1,16 +1,23 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { useAutoDismiss } from '../../hooks/useAutoDismiss';
+import { useToast } from '../../context/ToastContext';
 
 const RequestCode = ({ onNext }) => {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   useAutoDismiss(error, () => setError(''));
+
+  useEffect(() => {
+    if (!error) return;
+    showToast({ type: 'error', title: 'Request failed', message: error });
+  }, [error, showToast]);
 
   const handleSendCode = async () => {
     if (!email) return setError('Please enter your email address');
@@ -32,10 +39,10 @@ const RequestCode = ({ onNext }) => {
       <h2 className="text-xl font-bold text-gray-800 mb-4">Trouble logging in?</h2>
       <p className="text-gray-500 text-sm mb-6">Enter your email and we'll send you a code.</p>
 
-      {error && <div className="w-full mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded">{error}</div>}
-
-      <input 
-        type="email" placeholder="Your Email" value={email}
+      <input
+        type="email"
+        placeholder="Your Email"
+        value={email}
         className="w-full p-4 bg-gray-50 border border-gray-200 rounded-sm outline-none mb-6 focus:ring-2 focus:ring-blue-400"
         onChange={(e) => setEmail(e.target.value)}
       />

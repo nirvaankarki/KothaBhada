@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import { isLandlordRole, resolveRole } from '../utils/roles';
+import { useToast } from '../context/ToastContext';
 
 const VerifyEmailPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+  const { showToast } = useToast();
 
   const [email, setEmail] = useState(location.state?.email || '');
   const [code, setCode] = useState(location.state?.devVerificationCode || '');
@@ -20,6 +22,16 @@ const VerifyEmailPage = () => {
 
   useAutoDismiss(error, () => setError(''));
   useAutoDismiss(success, () => setSuccess(''));
+
+  useEffect(() => {
+    if (!error) return;
+    showToast({ type: 'error', title: 'Verification failed', message: error });
+  }, [error, showToast]);
+
+  useEffect(() => {
+    if (!success) return;
+    showToast({ type: 'success', title: 'Success', message: success });
+  }, [success, showToast]);
 
   const handleVerify = async (e) => {
     e.preventDefault();
@@ -89,18 +101,6 @@ const VerifyEmailPage = () => {
         <p className="text-sm text-gray-600 mb-6">
           Enter the 6-digit code sent to your email to activate your account.
         </p>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-sm text-red-700 text-sm">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-sm text-green-700 text-sm">
-            {success}
-          </div>
-        )}
 
         {devCode && (
           <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-sm text-amber-800 text-sm">

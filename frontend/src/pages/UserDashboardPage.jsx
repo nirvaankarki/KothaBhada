@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Heart, History, MapPin, Clock3, MessageSquare, CalendarDays, Send, Plus } from 'lucide-react';
 import api from '../utils/api';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
+import { useToast } from '../context/ToastContext';
 
 const UserDashboardPage = () => {
   const [favorites, setFavorites] = useState([]);
@@ -12,9 +13,20 @@ const UserDashboardPage = () => {
   const [activeTab, setActiveTab] = useState('favorites');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const { showToast } = useToast();
 
   useAutoDismiss(error, () => setError(''));
   useAutoDismiss(success, () => setSuccess(''));
+
+  useEffect(() => {
+    if (!error) return;
+    showToast({ type: 'error', title: 'Dashboard error', message: error });
+  }, [error, showToast]);
+
+  useEffect(() => {
+    if (!success) return;
+    showToast({ type: 'success', title: 'Success', message: success });
+  }, [success, showToast]);
 
   const [inquiryForm, setInquiryForm] = useState({
     listingId: '',
@@ -185,13 +197,11 @@ const UserDashboardPage = () => {
     if (!message) return;
 
     setError('');
-    setSuccess('');
 
     try {
       const response = await api.post(`/user/inquiries/${inquiryId}/messages`, { message });
       setInquiries((prev) => prev.map((item) => (item._id === inquiryId ? response.data.inquiry : item)));
       setReplyDrafts((prev) => ({ ...prev, [inquiryId]: '' }));
-      setSuccess('Message sent');
     } catch (err) {
       setError(err?.response?.data?.message || 'Could not send message');
     }
@@ -300,18 +310,6 @@ const UserDashboardPage = () => {
             <span className="inline-flex items-center gap-2"><CalendarDays size={15} /> Booking Requests</span>
           </button>
         </div>
-
-        {error && (
-          <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-700 rounded-sm text-sm">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-6 p-3 bg-green-50 border border-green-200 text-green-700 rounded-sm text-sm">
-            {success}
-          </div>
-        )}
 
         {loading ? (
           <div className="text-sm text-gray-500 font-medium">Loading dashboard...</div>
