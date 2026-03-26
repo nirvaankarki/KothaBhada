@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { FALLBACK_LISTINGS, getListingId } from '../utils/listingData';
+import RatingDisplay from './RatingDisplay';
 
 function getListingImage(listing) {
   return String(listing?.image || listing?.images?.[0] || '').trim();
@@ -151,6 +152,15 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
           <div className="flex items-center gap-2 text-gray-500">
             <Calendar size={14} className="text-[#3b66ff]" />
             <span className="text-xs font-medium">Listed {getTimeAgo(listing.createdAt)}</span>
+          </div>
+          <div className="flex justify-end">
+            <RatingDisplay 
+              listingId={getListingId(listing)}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/reviews?id=${getListingId(listing)}`);
+              }}
+            />
           </div>
         </div>
       </div>

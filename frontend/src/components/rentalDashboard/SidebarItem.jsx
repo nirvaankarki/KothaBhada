@@ -5,7 +5,7 @@ const SidebarItem = ({ icon: Icon, label, active = false, dot = false }) => {
     <button
       type="button"
       className={`relative w-full flex items-center justify-between px-6 py-3 transition-all ${
-        active ? 'text-white' : 'text-slate-400 hover:text-white'
+        active ? 'text-gray-900' : 'text-gray-500 hover:text-gray-900'
       }`}
     >
       <span className="flex items-center gap-3">

@@ -13,6 +13,8 @@ import AuthRequiredModal from '../components/AuthRequiredModal';
 import { getListingId } from '../utils/listingData';
 import { BookingForm, ChatBox } from '../components/PropertyActions';
 import { useToast } from '../context/ToastContext';
+import ReviewForm from '../components/ReviewForm';
+import ReviewsList from '../components/ReviewsList';
 
 function normalizeListing(rawListing) {
   if (!rawListing) return null;
@@ -48,7 +50,8 @@ const Explore3DPage = () => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [message, setMessage] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [activeTab, setActiveTab] = useState('details'); // 'details', 'booking', 'chat'
+  const [activeTab, setActiveTab] = useState('details'); // 'details', 'booking', 'chat', 'reviews'
+  const [reviewRefreshTrigger, setReviewRefreshTrigger] = useState(0);
   const { showToast } = useToast();
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const seenOwnerMessageAtRef = useRef('');
@@ -432,6 +435,16 @@ const Explore3DPage = () => {
                   )}
                 </span>
               </button>
+              <button
+                onClick={() => setActiveTab('reviews')}
+                className={`flex-1 px-4 py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
+                  activeTab === 'reviews'
+                    ? 'bg-blue-50 text-[#3b66ff] border-b-2 border-[#3b66ff]'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <MessageSquare size={16} /> Reviews
+              </button>
             </div>
 
             {/* Tab Content */}
@@ -501,6 +514,20 @@ const Explore3DPage = () => {
                     </div>
                   </div>
 
+                  {/* Reviews Section in Details Tab */}
+                  <div className="border-t border-gray-100 pt-8 mb-8">
+                    <div className="flex items-center gap-2 mb-6">
+                      <div className="bg-[#3b66ff] p-1.5 rounded-full text-white"><MessageSquare size={16} /></div>
+                      <h3 className="text-lg font-bold text-[#3b66ff]\">Reviews</h3>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('reviews')}
+                      className="w-full px-4 py-2 bg-blue-50 text-blue-600 rounded font-semibold text-sm hover:bg-blue-100 transition-colors"
+                    >
+                      Read Reviews & Ratings
+                    </button>
+                  </div>
+
                   {/* Contact Section */}
                   <div className="border-t border-gray-100 pt-8">
                     <div className="flex items-center gap-2 mb-6">
@@ -547,6 +574,22 @@ const Explore3DPage = () => {
                     location={listing?.location}
                     price={listing?.price}
                     image={listing?.image}
+                  />
+                </div>
+              )}
+
+              {/* Reviews Tab */}
+              {activeTab === 'reviews' && (
+                <div>
+                  {isAuthenticated && (
+                    <ReviewForm 
+                      listingId={listing.listingId} 
+                      onReviewAdded={() => setReviewRefreshTrigger(prev => prev + 1)}
+                    />
+                  )}
+                  <ReviewsList 
+                    listingId={listing.listingId}
+                    refreshTrigger={reviewRefreshTrigger}
                   />
                 </div>
               )}

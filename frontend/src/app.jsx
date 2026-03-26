@@ -11,6 +11,7 @@ import ViewListingPage from './pages/ViewListingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import RentalDashboardPage from './pages/RentalDashboardPage';
 import LandlordDashboardPage from './pages/LandlordDashboardPage';
+import ReviewsPage from './pages/ReviewsPage';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
@@ -57,6 +58,7 @@ export function App() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/listing-details" element={<Explore3DPage />} />
+        <Route path="/reviews" element={<ReviewsPage />} />
         <Route
           path="/viewlisting"
           element={(
