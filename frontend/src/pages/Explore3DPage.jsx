@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { 
   RotateCw, RefreshCcw, Maximize, Bed, Bath, Ruler, 
   Heart, Share2, CheckCircle2, User, Phone, Mail, 
@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import AuthRequiredModal from '../components/AuthRequiredModal';
-import { getListingId } from '../utils/listingData';
+import { FALLBACK_LISTINGS, getListingId } from '../utils/listingData';
 import { BookingForm, ChatBox } from '../components/PropertyActions';
 import { useToast } from '../context/ToastContext';
 
@@ -34,6 +34,80 @@ function getListingImage(listing) {
   return String(listing?.image || listing?.images?.[0] || '').trim();
 }
 
+function tokenize(text) {
+  return new Set(
+    String(text || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean)
+  );
+}
+
+function jaccardScore(leftText, rightText) {
+  const left = tokenize(leftText);
+  const right = tokenize(rightText);
+
+  if (!left.size || !right.size) return 0;
+
+  let intersectionCount = 0;
+  left.forEach((token) => {
+    if (right.has(token)) intersectionCount += 1;
+  });
+
+  const unionCount = new Set([...left, ...right]).size;
+  if (!unionCount) return 0;
+
+  return intersectionCount / unionCount;
+}
+
+function numericSimilarity(leftValue, rightValue) {
+  const left = Number(leftValue || 0);
+  const right = Number(rightValue || 0);
+
+  if (!left && !right) return 1;
+  const maxValue = Math.max(left, right, 1);
+  return Math.max(0, 1 - Math.abs(left - right) / maxValue);
+}
+
+function locationSimilarity(baseLocation, compareLocation) {
+  const base = String(baseLocation || '').toLowerCase();
+  const compare = String(compareLocation || '').toLowerCase();
+  if (!base || !compare) return 0;
+
+  const tokenScore = jaccardScore(base, compare);
+  const baseParts = base.split(',').map((part) => part.trim()).filter(Boolean);
+  const compareParts = compare.split(',').map((part) => part.trim()).filter(Boolean);
+  const sameCity =
+    baseParts.length > 1 &&
+    compareParts.length > 1 &&
+    baseParts[baseParts.length - 1] === compareParts[compareParts.length - 1];
+
+  return Math.min(1, tokenScore + (sameCity ? 0.2 : 0));
+}
+
+function getSimilarityScore(baseListing, candidateListing) {
+  const locationScore = locationSimilarity(baseListing?.location, candidateListing?.location);
+  const priceScore = numericSimilarity(baseListing?.price, candidateListing?.price);
+  const bedroomScore = numericSimilarity(baseListing?.bedrooms, candidateListing?.bedrooms);
+  const bathroomScore = numericSimilarity(baseListing?.bathrooms, candidateListing?.bathrooms);
+  const areaScore = numericSimilarity(baseListing?.areaSqFt, candidateListing?.areaSqFt);
+
+  const textScore = jaccardScore(
+    `${baseListing?.title || ''} ${baseListing?.description || ''}`,
+    `${candidateListing?.title || ''} ${candidateListing?.description || ''}`
+  );
+
+  return (
+    locationScore * 0.4 +
+    priceScore * 0.2 +
+    bedroomScore * 0.15 +
+    bathroomScore * 0.1 +
+    areaScore * 0.1 +
+    textScore * 0.05
+  );
+}
+
 const Explore3DPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -51,6 +125,8 @@ const Explore3DPage = () => {
   const [activeTab, setActiveTab] = useState('details'); // 'details', 'booking', 'chat'
   const { showToast } = useToast();
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [allListings, setAllListings] = useState([]);
+  const [isSimilarLoading, setIsSimilarLoading] = useState(true);
   const seenOwnerMessageAtRef = useRef('');
   const initializedOwnerMessageRef = useRef(false);
 
@@ -104,6 +180,56 @@ const Explore3DPage = () => {
       ignore = true;
     };
   }, [effectiveListingId]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function fetchAllListings() {
+      setIsSimilarLoading(true);
+
+      try {
+        const response = await api.get('/rooms/demo');
+        const fetched = Array.isArray(response.data) ? response.data : [];
+
+        if (!ignore) {
+          setAllListings(fetched.length ? fetched : FALLBACK_LISTINGS);
+        }
+      } catch {
+        if (!ignore) {
+          setAllListings(FALLBACK_LISTINGS);
+        }
+      } finally {
+        if (!ignore) {
+          setIsSimilarLoading(false);
+        }
+      }
+    }
+
+    fetchAllListings();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const similarProperties = useMemo(() => {
+    if (!listing) return [];
+
+    const baseListingId = getListingId(listing);
+    const normalizedCandidates = allListings
+      .map((item) => normalizeListing(item))
+      .filter(Boolean)
+      .filter((item) => getListingId(item) !== baseListingId);
+
+    return normalizedCandidates
+      .map((candidate) => ({
+        listing: candidate,
+        score: getSimilarityScore(listing, candidate),
+      }))
+      .sort((left, right) => right.score - left.score)
+      .slice(0, 3)
+      .map((item) => item.listing);
+  }, [allListings, listing]);
 
   const listingKey = getListingId(listing);
 
@@ -295,8 +421,15 @@ const Explore3DPage = () => {
     }
   };
 
+  const handleOpenListing = (nextListing) => {
+    const nextListingId = getListingId(nextListing);
+    if (!nextListingId) return;
+
+    navigate(`/listing-details?id=${nextListingId}`, { state: { listing: nextListing } });
+  };
+
   return (
-    <div className="min-h-screen bg-[#f3f4f6] font-sans p-4 md:p-8">
+    <div className="min-h-screen bg-[#f3f4f6] font-sans px-4 md:px-8 py-4 md:py-8">
       <AuthRequiredModal
         open={showAuthModal}
         message="Please log in or sign up to save this listing to favorites."
@@ -304,22 +437,22 @@ const Explore3DPage = () => {
         onConfirm={() => navigate('/login', { state: { from: location.pathname + location.search } })}
       />
 
-      <div className="max-w-350 mx-auto flex flex-col lg:flex-row gap-6">
+      <div className="w-full max-w-350 mx-auto flex flex-col lg:flex-row gap-6 lg:gap-5 xl:gap-6">
         
         {/* LEFT COLUMN */}
-        <div className="flex-1 flex flex-col gap-6">
+        <div className="flex-1 lg:w-[65%] lg:flex-none flex flex-col gap-6">
           {/* 3D Visualization Card */}
           <div className="bg-white rounded-sm shadow-md overflow-hidden">
-            <div className="p-4 flex items-center justify-between border-b border-gray-100">
+            <div className="p-4 flex flex-wrap items-center justify-between gap-3 border-b border-gray-100">
               <h2 className="text-xl font-bold text-[#1a222e]">3D Room Visualization</h2>
-              <div className="flex gap-2">
-                <button className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:bg-gray-50">
+              <div className="flex flex-wrap gap-2 justify-end">
+                <button className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:bg-gray-50 whitespace-nowrap">
                   <RefreshCcw size={14} /> Reset View
                 </button>
-                <button className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:bg-gray-50">
+                <button className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:bg-gray-50 whitespace-nowrap">
                   <RotateCw size={14} /> Auto Rotate
                 </button>
-                <button className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:bg-gray-50">
+                <button className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:bg-gray-50 whitespace-nowrap">
                   <Maximize size={14} /> Full Screen
                 </button>
               </div>
@@ -352,10 +485,72 @@ const Explore3DPage = () => {
               </div>
             </div>
           </div>
+
+          {/* Similar Properties */}
+          <section className="bg-white border border-slate-200 rounded-sm overflow-hidden shadow-sm p-5 md:p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-slate-900 p-1.5 rounded-md text-white">
+                <Home size={20} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Similar Properties</h2>
+                <p className="text-xs text-slate-500 mt-1">Top 3 matches based on location, price, size, and room specs.</p>
+              </div>
+            </div>
+
+            <hr className="border-slate-200 mb-6" />
+
+            {isSimilarLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="h-64 rounded-sm border border-slate-200 bg-slate-100 animate-pulse" />
+                ))}
+              </div>
+            ) : similarProperties.length === 0 ? (
+              <div className="py-8 text-center text-slate-500 text-sm">
+                No similar properties found for this listing.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {similarProperties.map((property) => (
+                  <button
+                    key={getListingId(property)}
+                    type="button"
+                    onClick={() => handleOpenListing(property)}
+                    className="text-left bg-[#f8fafc] border border-slate-200 rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <div className="h-44 w-full overflow-hidden bg-slate-200">
+                      <img
+                        src={getListingImage(property) || 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&q=80&w=800'}
+                        alt={property.title || 'Property image'}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+
+                    <div className="p-4">
+                      <h3 className="text-base font-bold text-slate-800 mb-1 line-clamp-1">
+                        {property.title || 'Property Listing'}
+                      </h3>
+
+                      <div className="flex items-center gap-1 text-slate-500 text-sm mb-3">
+                        <MapPin size={14} />
+                        <span className="line-clamp-1">{property.location || 'Location not provided'}</span>
+                      </div>
+
+                      <div className="text-blue-600 font-bold text-lg">
+                        Rs. {Number(property.price || 0).toLocaleString()}/month
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+
         </div>
 
         {/* RIGHT COLUMN: TABBED INTERFACE */}
-        <div className="w-full lg:w-95 flex flex-col gap-6">
+        <div className="w-full lg:w-[35%] lg:flex-none flex flex-col gap-6">
           <div className="bg-white rounded-sm shadow-md overflow-hidden">
             {/* Tab Navigation */}
             <div className="flex border-b border-gray-200">
