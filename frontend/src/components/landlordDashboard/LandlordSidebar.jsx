@@ -92,10 +92,6 @@ const LandlordSidebar = ({ activeTab, setActiveTab, stats }) => {
         </button>
       </nav>
 
-      <div className="relative h-28 w-full overflow-hidden opacity-60">
-        <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-purple-600 rounded-full blur-3xl" />
-        <div className="absolute -bottom-10 -right-10 w-28 h-28 bg-blue-600 rounded-full blur-3xl" />
-      </div>
     </aside>
   );
 };

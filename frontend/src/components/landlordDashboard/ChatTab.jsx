@@ -70,17 +70,17 @@ const ChatTab = ({
   }, [selectedOwnerChatId, selectedChat?.messages?.length]);
 
   return (
-    <section className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm h-[calc(100vh-180px)] min-h-[620px] max-h-[820px]">
-      <div className="px-5 py-4 border-b border-slate-100 bg-white flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <MessageCircle size={20} className="text-[#3b66ff]" />
-          <h3 className="text-lg font-bold text-[#132238]">Chat Inbox</h3>
-        </div>
-        <p className="text-xs font-semibold text-slate-500">{ownerChats.length} conversation{ownerChats.length === 1 ? '' : 's'}</p>
-      </div>
+    <section className="h-[calc(100vh-180px)] min-h-155 max-h-205">
+      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4 h-full min-h-0">
+        <aside className="rounded-2xl border border-slate-200 bg-[#f8fbff] shadow-sm min-h-0 flex flex-col overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 bg-white/70 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageCircle size={20} className="text-[#3b66ff]" />
+              <h3 className="text-lg font-bold text-[#132238]">Chat Inbox</h3>
+            </div>
+            <p className="text-xs font-semibold text-slate-500">{ownerChats.length} conversation{ownerChats.length === 1 ? '' : 's'}</p>
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] h-[calc(100%-65px)] min-h-0">
-        <aside className="border-r border-slate-100 bg-slate-50/40 min-h-0 flex flex-col">
           <div className="p-4 border-b border-slate-100">
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -151,7 +151,7 @@ const ChatTab = ({
           )}
         </aside>
 
-        <div className="flex flex-col min-h-0">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col min-h-0 overflow-hidden">
           {!selectedChat ? (
             <div className="flex-1 flex items-center justify-center text-center p-8 text-slate-500">
               <div>

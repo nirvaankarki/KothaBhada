@@ -42,6 +42,7 @@ const LandlordDashboardPage = () => {
           <ListingsTab
             stats={state.stats}
             form={state.form}
+            editingListingId={state.editingListingId}
             handleChange={handlers.handleChange}
             handleSubmit={handlers.handleSubmit}
             submitting={state.submitting}
@@ -49,6 +50,7 @@ const LandlordDashboardPage = () => {
             handleImageSelect={handlers.handleImageSelect}
             openImagePicker={handlers.openImagePicker}
             clearSelectedImage={handlers.clearSelectedImage}
+            handleStartNewListing={handlers.handleStartNewListing}
             imageName={state.imageName}
             loading={state.loading}
             listings={state.listings}

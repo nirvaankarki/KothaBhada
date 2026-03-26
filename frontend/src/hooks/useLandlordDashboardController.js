@@ -17,6 +17,9 @@ const initialForm = {
   status: 'active',
 };
 
+const LANDLORD_TAB_STORAGE_KEY = 'landlordDashboardActiveTab';
+const LANDLORD_ALLOWED_TABS = new Set(['dashboard', 'listings', 'chat', 'bookings', 'profile']);
+
 export const useLandlordDashboardController = () => {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
@@ -24,8 +27,14 @@ export const useLandlordDashboardController = () => {
   const profileImageInputRef = useRef(null);
 
   const [form, setForm] = useState(initialForm);
+  const [editingListingId, setEditingListingId] = useState('');
   const [profileForm, setProfileForm] = useState({ name: '', phone: '', profilePhoto: '' });
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === 'undefined') return 'dashboard';
+
+    const savedTab = window.sessionStorage.getItem(LANDLORD_TAB_STORAGE_KEY);
+    return LANDLORD_ALLOWED_TABS.has(savedTab) ? savedTab : 'dashboard';
+  });
   const [listings, setListings] = useState([]);
   const [ownerInquiries, setOwnerInquiries] = useState([]);
   const [ownerBookings, setOwnerBookings] = useState([]);
@@ -132,6 +141,11 @@ export const useLandlordDashboardController = () => {
       }
     };
   }, [refreshOwnerChats]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem(LANDLORD_TAB_STORAGE_KEY, activeTab);
+  }, [activeTab]);
 
   useEffect(() => {
     if (activeTab !== 'chat') return;
@@ -295,16 +309,37 @@ export const useLandlordDashboardController = () => {
         status: form.status,
       };
 
-      const res = await api.post('/rooms', payload);
-      if (res.data?.room) setListings((prev) => [res.data.room, ...prev]);
+      if (editingListingId) {
+        const res = await api.put(`/rooms/${editingListingId}`, payload);
+        if (res.data?.room) {
+          setListings((prev) => prev.map((item) => (
+            item._id === editingListingId ? res.data.room : item
+          )));
+        }
+        setSuccess('Listing updated successfully.');
+      } else {
+        const res = await api.post('/rooms', payload);
+        if (res.data?.room) setListings((prev) => [res.data.room, ...prev]);
+        setSuccess('Listing published successfully. It is now visible to renters.');
+      }
+
       setForm(initialForm);
+      setEditingListingId('');
       setImageName('');
-      setSuccess('Listing published successfully. It is now visible to renters.');
     } catch (err) {
-      setError(err?.response?.data?.message || 'Could not publish listing.');
+      setError(err?.response?.data?.message || (editingListingId ? 'Could not update listing.' : 'Could not publish listing.'));
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleStartNewListing = () => {
+    setForm(initialForm);
+    setEditingListingId('');
+    setImageName('');
+    setError('');
+    setSuccess('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleDelete = async (listingId) => {
@@ -334,6 +369,7 @@ export const useLandlordDashboardController = () => {
   };
 
   const handleEditDraft = (listing) => {
+    setEditingListingId(listing._id || '');
     setForm({
       title: listing.title || '',
       location: listing.location || '',
@@ -347,7 +383,7 @@ export const useLandlordDashboardController = () => {
       status: listing.status || 'active',
     });
     setImageName(listing.image ? 'Loaded from listing' : '');
-    setSuccess('Listing details loaded in the form above. Update values and publish.');
+    setSuccess('Listing loaded for editing. Update values and save changes.');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -454,6 +490,7 @@ export const useLandlordDashboardController = () => {
   return {
     state: {
       form,
+      editingListingId,
       profileForm,
       activeTab,
       listings,
@@ -477,7 +514,10 @@ export const useLandlordDashboardController = () => {
       profileImageInputRef,
     },
     handlers: {
-      setActiveTab,
+      setActiveTab: (tab) => {
+        if (!LANDLORD_ALLOWED_TABS.has(tab)) return;
+        setActiveTab(tab);
+      },
       setChatDrafts,
       handleOpenOwnerChat,
       handleChange,
@@ -488,6 +528,7 @@ export const useLandlordDashboardController = () => {
       handleImageSelect,
       clearSelectedImage,
       openImagePicker,
+      handleStartNewListing,
       handleSubmit,
       handleDelete,
       handleViewListing,

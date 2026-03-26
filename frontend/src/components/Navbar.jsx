@@ -20,6 +20,7 @@ const Navbar = () => {
   const [isEditingPhoto, setIsEditingPhoto] = useState(false);
   const [tempPhotoPreview, setTempPhotoPreview] = useState(null);
   const [isSavingPhoto, setIsSavingPhoto] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const fileInputRef = useRef(null);
   const menuRef = useRef(null);
 
@@ -56,7 +57,13 @@ const Navbar = () => {
     setIsMenuOpen(false);
     setEditingField('');
     setSaveError('');
+    setShowLogoutConfirm(false);
     navigate('/', { state: { logoutSuccess: true } });
+  };
+
+  const handleLogoutRequest = () => {
+    setIsMenuOpen(false);
+    setShowLogoutConfirm(true);
   };
 
   const handleSaveField = async (field) => {
@@ -267,12 +274,30 @@ const Navbar = () => {
           )}
 
           {isMenuOpen && !authLoading && (
-            <div className="absolute right-0 mt-3 w-80 rounded-md border border-gray-700 bg-[#111826] shadow-xl p-4 z-20">
-              <p className="text-xs uppercase tracking-wider text-gray-400">Signed in as</p>
-              <p className="text-sm font-semibold text-white truncate mb-4">{user?.email}</p>
+            <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.16)] p-3 z-20">
+              <div className="rounded-xl bg-linear-to-r from-[#f3f7ff] to-[#eef4ff] border border-blue-100 px-3 py-3 mb-3">
+                <div className="flex items-center gap-3">
+                  {user?.profilePhoto ? (
+                    <img
+                      src={user.profilePhoto}
+                      alt={user?.name}
+                      className="w-11 h-11 rounded-full object-cover border-2 border-white shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-11 h-11 rounded-full bg-slate-200 flex items-center justify-center border-2 border-white shadow-sm">
+                      <UserCircle2 size={22} className="text-slate-500" />
+                    </div>
+                  )}
+
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-800 truncate">{user?.name || 'Profile'}</p>
+                    <p className="text-xs text-slate-500 truncate">{user?.email || 'Email unavailable'}</p>
+                  </div>
+                </div>
+              </div>
 
               {/* Profile Photo Section */}
-              <div className="rounded-md bg-[#1f2937] border border-gray-700 p-4 mb-3">
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-3">
                 <div className="flex flex-col items-center justify-center gap-3">
                   {isEditingPhoto ? (
                     <>
@@ -287,7 +312,7 @@ const Navbar = () => {
                           type="button"
                           onClick={handleSavePhoto}
                           disabled={isSavingPhoto}
-                          className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-md bg-green-600 hover:bg-green-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
+                          className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
                         >
                           <Check size={14} /> Save
                         </button>
@@ -295,13 +320,13 @@ const Navbar = () => {
                           type="button"
                           onClick={handleCancelPhotoEdit}
                           disabled={isSavingPhoto}
-                          className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-md bg-gray-700 hover:bg-gray-600 disabled:opacity-60 text-xs font-bold text-white transition-colors"
+                          className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg bg-slate-600 hover:bg-slate-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
                         >
                           <X size={14} /> Cancel
                         </button>
                       </div>
                       {saveError && (
-                        <p className="w-full text-xs text-red-400 bg-red-900/20 border border-red-700/50 rounded px-2 py-1.5 text-center">
+                        <p className="w-full text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-2 py-1.5 text-center">
                           {saveError}
                         </p>
                       )}
@@ -315,8 +340,8 @@ const Navbar = () => {
                           className="w-20 h-20 rounded-full object-cover border-2 border-[#3b82f6]"
                         />
                       ) : (
-                        <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center border-2 border-gray-600">
-                          <UserCircle2 size={40} className="text-gray-500" />
+                        <div className="w-20 h-20 rounded-full bg-slate-200 flex items-center justify-center border-2 border-slate-300">
+                          <UserCircle2 size={40} className="text-slate-500" />
                         </div>
                       )}
                       <div className="flex gap-2 w-full">
@@ -324,7 +349,7 @@ const Navbar = () => {
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
                           disabled={isSavingPhoto}
-                          className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-md bg-[#3b82f6] hover:bg-blue-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
+                          className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg bg-[#3b82f6] hover:bg-blue-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
                         >
                           <Upload size={14} /> Upload
                         </button>
@@ -333,7 +358,7 @@ const Navbar = () => {
                             type="button"
                             onClick={handleRemovePhoto}
                             disabled={isSavingPhoto}
-                            className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-md bg-red-600 hover:bg-red-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
+                            className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
                           >
                             <Trash2 size={14} /> Remove
                           </button>
@@ -353,10 +378,10 @@ const Navbar = () => {
               </div>
 
               <div className="space-y-3">
-                <div className="rounded-md bg-[#1f2937] border border-gray-700 p-3">
+                <div className="rounded-xl bg-white border border-slate-200 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[11px] uppercase tracking-wider text-gray-400">Name</p>
+                      <p className="text-[11px] uppercase tracking-wider text-slate-400">Name</p>
                       {editingField === 'name' ? (
                         <input
                           type="text"
@@ -365,10 +390,10 @@ const Navbar = () => {
                             setNameInput(e.target.value);
                             setSaveError('');
                           }}
-                          className="mt-1 w-full px-2 py-1.5 rounded-md bg-[#111826] border border-gray-600 text-sm text-white outline-none focus:border-[#3b82f6]"
+                          className="mt-1 w-full px-2 py-1.5 rounded-lg bg-white border border-slate-300 text-sm text-slate-700 outline-none focus:border-[#3b82f6]"
                         />
                       ) : (
-                        <p className="text-sm text-white truncate">{user?.name || 'Not set'}</p>
+                        <p className="text-sm text-slate-800 truncate">{user?.name || 'Not set'}</p>
                       )}
                     </div>
 
@@ -378,7 +403,7 @@ const Navbar = () => {
                           type="button"
                           onClick={() => handleSaveField('name')}
                           disabled={isSaving}
-                          className="text-green-300 hover:text-green-200 disabled:opacity-60"
+                          className="text-green-600 hover:text-green-500 disabled:opacity-60"
                           aria-label="Save name"
                         >
                           <Check size={16} />
@@ -390,7 +415,7 @@ const Navbar = () => {
                             setNameInput(user?.name || '');
                             setSaveError('');
                           }}
-                          className="text-gray-300 hover:text-white"
+                          className="text-slate-400 hover:text-slate-700"
                           aria-label="Cancel editing name"
                         >
                           <X size={16} />
@@ -403,7 +428,7 @@ const Navbar = () => {
                           setEditingField('name');
                           setSaveError('');
                         }}
-                        className="text-gray-300 hover:text-white"
+                        className="text-slate-400 hover:text-slate-700"
                         aria-label="Edit name"
                       >
                         <Pencil size={15} />
@@ -412,10 +437,10 @@ const Navbar = () => {
                   </div>
                 </div>
 
-                <div className="rounded-md bg-[#1f2937] border border-gray-700 p-3">
+                <div className="rounded-xl bg-white border border-slate-200 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[11px] uppercase tracking-wider text-gray-400">Contact Number</p>
+                      <p className="text-[11px] uppercase tracking-wider text-slate-400">Contact Number</p>
                       {editingField === 'phone' ? (
                         <input
                           type="text"
@@ -424,11 +449,11 @@ const Navbar = () => {
                             setPhoneInput(e.target.value);
                             setSaveError('');
                           }}
-                          className="mt-1 w-full px-2 py-1.5 rounded-md bg-[#111826] border border-gray-600 text-sm text-white outline-none focus:border-[#3b82f6]"
+                          className="mt-1 w-full px-2 py-1.5 rounded-lg bg-white border border-slate-300 text-sm text-slate-700 outline-none focus:border-[#3b82f6]"
                           placeholder="e.g. +977-98XXXXXXXX"
                         />
                       ) : (
-                        <p className="text-sm text-white truncate">{user?.phone || 'Not set'}</p>
+                        <p className="text-sm text-slate-800 truncate">{user?.phone || 'Not set'}</p>
                       )}
                     </div>
 
@@ -438,7 +463,7 @@ const Navbar = () => {
                           type="button"
                           onClick={() => handleSaveField('phone')}
                           disabled={isSaving}
-                          className="text-green-300 hover:text-green-200 disabled:opacity-60"
+                          className="text-green-600 hover:text-green-500 disabled:opacity-60"
                           aria-label="Save contact number"
                         >
                           <Check size={16} />
@@ -450,7 +475,7 @@ const Navbar = () => {
                             setPhoneInput(user?.phone || '');
                             setSaveError('');
                           }}
-                          className="text-gray-300 hover:text-white"
+                          className="text-slate-400 hover:text-slate-700"
                           aria-label="Cancel editing contact number"
                         >
                           <X size={16} />
@@ -463,7 +488,7 @@ const Navbar = () => {
                           setEditingField('phone');
                           setSaveError('');
                         }}
-                        className="text-gray-300 hover:text-white"
+                        className="text-slate-400 hover:text-slate-700"
                         aria-label="Edit contact number"
                       >
                         <Pencil size={15} />
@@ -472,20 +497,20 @@ const Navbar = () => {
                   </div>
                 </div>
 
-                <div className="rounded-md bg-[#1f2937] border border-gray-700 p-3">
-                  <p className="text-[11px] uppercase tracking-wider text-gray-400">Email</p>
-                  <p className="text-sm text-white truncate">{user?.email}</p>
+                <div className="rounded-xl bg-white border border-slate-200 p-3">
+                  <p className="text-[11px] uppercase tracking-wider text-slate-400">Email</p>
+                  <p className="text-sm text-slate-800 truncate">{user?.email}</p>
                 </div>
               </div>
 
-              {saveError && <p className="mt-3 text-xs text-red-400">{saveError}</p>}
+              {saveError && <p className="mt-3 text-xs text-red-600">{saveError}</p>}
 
               <button
                 type="button"
-                onClick={handleLogout}
-                className="mt-4 w-full text-left text-sm font-medium text-red-300 hover:text-red-200"
+                onClick={handleLogoutRequest}
+                className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors text-sm font-semibold"
               >
-                Logout
+                <Trash2 size={14} /> Logout
               </button>
             </div>
           )}
@@ -498,6 +523,34 @@ const Navbar = () => {
           >
             Sign Up
           </Link>
+        </div>
+      )}
+
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-[1px] p-4">
+          <div className="min-h-full flex items-center justify-center">
+            <section className="w-full max-w-md bg-white p-6 rounded-2xl shadow-xl border border-slate-200">
+              <h3 className="text-lg font-bold text-[#132238]">Confirm Logout</h3>
+              <p className="mt-2 text-sm text-gray-600">Are you sure you want to logout from your account?</p>
+
+              <div className="mt-5 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700"
+                >
+                  Logout
+                </button>
+              </div>
+            </section>
+          </div>
         </div>
       )}
     </nav>

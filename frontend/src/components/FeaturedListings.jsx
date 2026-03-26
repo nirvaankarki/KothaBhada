@@ -1,26 +1,49 @@
 import React, { useEffect, useState } from 'react';
 import { MapPin, Calendar, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import Listing1 from '../assets/featuredListings-Img1.jpg';
-import Listing2 from '../assets/featuredListings-Img2.jpg';
-import Listing3 from '../assets/featuredListings-Img3.jpg';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
+import { FALLBACK_LISTINGS, getListingId } from '../utils/listingData';
+
+function getListingImage(listing) {
+  return String(listing?.image || listing?.images?.[0] || '').trim();
+}
+
+function getTimeAgo(dateValue) {
+  if (!dateValue) return 'Recently listed';
+
+  const now = Date.now();
+  const then = new Date(dateValue).getTime();
+  if (Number.isNaN(then)) return 'Recently listed';
+
+  const diffMs = Math.max(0, now - then);
+  const mins = Math.floor(diffMs / (1000 * 60));
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins} minute${mins > 1 ? 's' : ''} ago`;
+
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+
+  const days = Math.floor(hours / 24);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
+}
 
 const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const listingId = getListingId(listing);
+  const listingImage = getListingImage(listing);
 
   const trackViewHistory = async () => {
     if (!isAuthenticated) return;
 
     try {
       await api.post('/user/history', {
-        listingId: `featured-${listing.id}`,
+        listingId,
         title: listing.title,
         location: listing.location,
         price: listing.price,
-        image: listing.image,
+        image: listingImage,
         source: 'featured-listings'
       });
     } catch {
@@ -58,7 +81,7 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
     }
 
     await trackViewHistory();
-    navigate('/listing-details', { state: { listing } });
+    navigate(`/listing-details?id=${listingId}`, { state: { listing } });
   };
 
   return (
@@ -69,7 +92,7 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
       {/* Image Section */}
       <div className="relative h-64 w-full overflow-hidden group">
         <img 
-          src={listing.image} 
+          src={listingImage || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1000'} 
           alt={listing.title} 
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
         />
@@ -105,11 +128,11 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
       </div>
 
       {/* Content Section */}
-      <div className="p-6 flex flex-col flex-grow">
-        <h3 className="text-[#1a222e] text-xl font-extrabold mb-3 leading-tight min-h-[3.5rem]">
+      <div className="p-6 flex flex-col grow">
+        <h3 className="text-[#1a222e] text-xl font-extrabold mb-3 leading-tight min-h-14">
           {listing.title}
         </h3>
-        <p className="text-gray-500 text-xs leading-relaxed mb-6 flex-grow">
+        <p className="text-gray-500 text-xs leading-relaxed mb-6 grow">
           {listing.description}
         </p>
 
@@ -127,7 +150,7 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
           </div>
           <div className="flex items-center gap-2 text-gray-500">
             <Calendar size={14} className="text-[#3b66ff]" />
-            <span className="text-xs font-medium">Listed {listing.timeAgo}</span>
+            <span className="text-xs font-medium">Listed {getTimeAgo(listing.createdAt)}</span>
           </div>
         </div>
       </div>
@@ -137,37 +160,39 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
 
 const FeaturedListings = () => {
   const { isAuthenticated, token } = useAuth();
+  const [listings, setListings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [favoriteIds, setFavoriteIds] = useState(new Set());
 
-  const listings = [
-    {
-      id: 1,
-      title: "Modern 2bhk Flat for Rent in Kalopul, Kathmandu",
-      description: "Beautifully finished 2BHK flat in Kalopul. Perfect for families seeking convenience and a central location.",
-      price: 30000.00,
-      location: "Kalopul, Kathmandu-30",
-      timeAgo: "1 hour ago",
-      image: Listing1
-    },
-    {
-      id: 2,
-      title: "Modern 1bhk Flat for Rent in Naxal, Kathmandu",
-      description: "A functional 1BHK flat in Naxal offering comfort and safety ideal for city living.",
-      price: 20000.00,
-      location: "Naxal, Kathmandu-15",
-      timeAgo: "44 minutes ago",
-      image: Listing2
-    },
-    {
-      id: 3,
-      title: "Luxury Studio Apartment in Jhamsikhel, Lalitpur",
-      description: "Premium studio apartment with modern amenities, 24/7 security, and a balcony with city views.",
-      price: 45000.00,
-      location: "Jhamsikhel, Lalitpur-02",
-      timeAgo: "2 hours ago",
-      image: Listing3
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadFeaturedListings() {
+      setLoading(true);
+      try {
+        const response = await api.get('/rooms/demo');
+        const fetched = Array.isArray(response.data) ? response.data : [];
+
+        if (!ignore) {
+          const source = fetched.length > 0 ? fetched : FALLBACK_LISTINGS;
+          setListings(source.slice(0, 3));
+        }
+      } catch {
+        if (!ignore) {
+          setListings(FALLBACK_LISTINGS.slice(0, 3));
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
     }
-  ];
+
+    loadFeaturedListings();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -197,22 +222,23 @@ const FeaturedListings = () => {
   }, [isAuthenticated, token]);
 
   const handleToggleFavorite = async (listing) => {
+    const listingId = getListingId(listing);
     try {
       const response = await api.post('/user/favorites/toggle', {
-        listingId: `featured-${listing.id}`,
+        listingId,
         title: listing.title,
         location: listing.location,
         price: listing.price,
-        image: listing.image,
+        image: getListingImage(listing),
         source: 'featured-listings'
       });
 
       setFavoriteIds((prev) => {
         const next = new Set(prev);
         if (response.data?.isFavorite) {
-          next.add(`featured-${listing.id}`);
+          next.add(listingId);
         } else {
-          next.delete(`featured-${listing.id}`);
+          next.delete(listingId);
         }
         return next;
       });
@@ -223,7 +249,7 @@ const FeaturedListings = () => {
 
   return (
     <section className="py-24 px-6 md:px-10 lg:px-20 bg-white">
-      <div className="max-w-[1400px] mx-auto">
+      <div className="max-w-350 mx-auto">
         {/* Header */}
         <h2 className="text-4xl md:text-5xl font-extrabold text-[#1a222e] text-center mb-16 tracking-tight uppercase">
           Featured Listings
@@ -231,14 +257,21 @@ const FeaturedListings = () => {
 
         {/* Grid Updated to 3 columns for Desktop */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {listings.map(listing => (
-            <ListingCard
-              key={listing.id}
-              listing={listing}
-              isFavorite={favoriteIds.has(`featured-${listing.id}`)}
-              onToggleFavorite={handleToggleFavorite}
-            />
-          ))}
+          {loading
+            ? Array.from({ length: 3 }).map((_, idx) => (
+              <div key={idx} className="h-136 bg-gray-100 rounded-sm animate-pulse border border-gray-100" />
+            ))
+            : listings.map((listing) => {
+              const listingId = getListingId(listing);
+              return (
+                <ListingCard
+                  key={listingId}
+                  listing={listing}
+                  isFavorite={favoriteIds.has(listingId)}
+                  onToggleFavorite={handleToggleFavorite}
+                />
+              );
+            })}
         </div>
       </div>
     </section>

@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import AuthRequiredModal from '../components/AuthRequiredModal';
-import { FALLBACK_LISTINGS, getListingId } from '../utils/listingData';
+import { getListingId } from '../utils/listingData';
 import { BookingForm, ChatBox } from '../components/PropertyActions';
 import { useToast } from '../context/ToastContext';
 
@@ -34,80 +34,6 @@ function getListingImage(listing) {
   return String(listing?.image || listing?.images?.[0] || '').trim();
 }
 
-function tokenize(text) {
-  return new Set(
-    String(text || '')
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, ' ')
-      .split(/\s+/)
-      .filter(Boolean)
-  );
-}
-
-function jaccardScore(leftText, rightText) {
-  const left = tokenize(leftText);
-  const right = tokenize(rightText);
-
-  if (!left.size || !right.size) return 0;
-
-  let intersectionCount = 0;
-  left.forEach((token) => {
-    if (right.has(token)) intersectionCount += 1;
-  });
-
-  const unionCount = new Set([...left, ...right]).size;
-  if (!unionCount) return 0;
-
-  return intersectionCount / unionCount;
-}
-
-function numericSimilarity(leftValue, rightValue) {
-  const left = Number(leftValue || 0);
-  const right = Number(rightValue || 0);
-
-  if (!left && !right) return 1;
-  const maxValue = Math.max(left, right, 1);
-  return Math.max(0, 1 - Math.abs(left - right) / maxValue);
-}
-
-function locationSimilarity(baseLocation, compareLocation) {
-  const base = String(baseLocation || '').toLowerCase();
-  const compare = String(compareLocation || '').toLowerCase();
-  if (!base || !compare) return 0;
-
-  const tokenScore = jaccardScore(base, compare);
-  const baseParts = base.split(',').map((part) => part.trim()).filter(Boolean);
-  const compareParts = compare.split(',').map((part) => part.trim()).filter(Boolean);
-  const sameCity =
-    baseParts.length > 1 &&
-    compareParts.length > 1 &&
-    baseParts[baseParts.length - 1] === compareParts[compareParts.length - 1];
-
-  return Math.min(1, tokenScore + (sameCity ? 0.2 : 0));
-}
-
-function getSimilarityScore(baseListing, candidateListing) {
-  const locationScore = locationSimilarity(baseListing?.location, candidateListing?.location);
-  const priceScore = numericSimilarity(baseListing?.price, candidateListing?.price);
-  const bedroomScore = numericSimilarity(baseListing?.bedrooms, candidateListing?.bedrooms);
-  const bathroomScore = numericSimilarity(baseListing?.bathrooms, candidateListing?.bathrooms);
-  const areaScore = numericSimilarity(baseListing?.areaSqFt, candidateListing?.areaSqFt);
-
-  const textScore = jaccardScore(
-    `${baseListing?.title || ''} ${baseListing?.description || ''}`,
-    `${candidateListing?.title || ''} ${candidateListing?.description || ''}`
-  );
-
-  return (
-    locationScore * 0.4 +
-    priceScore * 0.2 +
-    bedroomScore * 0.15 +
-    bathroomScore * 0.1 +
-    areaScore * 0.1 +
-    textScore * 0.05
-  );
-}
-
 const Explore3DPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -125,8 +51,6 @@ const Explore3DPage = () => {
   const [activeTab, setActiveTab] = useState('details'); // 'details', 'booking', 'chat'
   const { showToast } = useToast();
   const [unreadChatCount, setUnreadChatCount] = useState(0);
-  const [allListings, setAllListings] = useState([]);
-  const [isSimilarLoading, setIsSimilarLoading] = useState(true);
   const seenOwnerMessageAtRef = useRef('');
   const initializedOwnerMessageRef = useRef(false);
 
@@ -180,56 +104,6 @@ const Explore3DPage = () => {
       ignore = true;
     };
   }, [effectiveListingId]);
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function fetchAllListings() {
-      setIsSimilarLoading(true);
-
-      try {
-        const response = await api.get('/rooms/demo');
-        const fetched = Array.isArray(response.data) ? response.data : [];
-
-        if (!ignore) {
-          setAllListings(fetched.length ? fetched : FALLBACK_LISTINGS);
-        }
-      } catch {
-        if (!ignore) {
-          setAllListings(FALLBACK_LISTINGS);
-        }
-      } finally {
-        if (!ignore) {
-          setIsSimilarLoading(false);
-        }
-      }
-    }
-
-    fetchAllListings();
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-  const similarProperties = useMemo(() => {
-    if (!listing) return [];
-
-    const baseListingId = getListingId(listing);
-    const normalizedCandidates = allListings
-      .map((item) => normalizeListing(item))
-      .filter(Boolean)
-      .filter((item) => getListingId(item) !== baseListingId);
-
-    return normalizedCandidates
-      .map((candidate) => ({
-        listing: candidate,
-        score: getSimilarityScore(listing, candidate),
-      }))
-      .sort((left, right) => right.score - left.score)
-      .slice(0, 3)
-      .map((item) => item.listing);
-  }, [allListings, listing]);
 
   const listingKey = getListingId(listing);
 
@@ -421,12 +295,7 @@ const Explore3DPage = () => {
     }
   };
 
-  const handleOpenListing = (nextListing) => {
-    const nextListingId = getListingId(nextListing);
-    if (!nextListingId) return;
-
-    navigate(`/listing-details?id=${nextListingId}`, { state: { listing: nextListing } });
-  };
+  const mapQuery = encodeURIComponent(String(listing.location || 'Kathmandu, Nepal').trim() || 'Kathmandu, Nepal');
 
   return (
     <div className="min-h-screen bg-[#f3f4f6] font-sans px-4 md:px-8 py-4 md:py-8">
@@ -486,65 +355,34 @@ const Explore3DPage = () => {
             </div>
           </div>
 
-          {/* Similar Properties */}
+          {/* Property Location Map */}
           <section className="bg-white border border-slate-200 rounded-sm overflow-hidden shadow-sm p-5 md:p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="bg-slate-900 p-1.5 rounded-md text-white">
-                <Home size={20} />
+                <MapPin size={20} />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Similar Properties</h2>
-                <p className="text-xs text-slate-500 mt-1">Top 3 matches based on location, price, size, and room specs.</p>
+                <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Property Location</h2>
+                <p className="text-xs text-slate-500 mt-1">Map view of where this property is located.</p>
               </div>
             </div>
 
             <hr className="border-slate-200 mb-6" />
 
-            {isSimilarLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                {Array.from({ length: 3 }).map((_, index) => (
-                  <div key={index} className="h-64 rounded-sm border border-slate-200 bg-slate-100 animate-pulse" />
-                ))}
-              </div>
-            ) : similarProperties.length === 0 ? (
-              <div className="py-8 text-center text-slate-500 text-sm">
-                No similar properties found for this listing.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                {similarProperties.map((property) => (
-                  <button
-                    key={getListingId(property)}
-                    type="button"
-                    onClick={() => handleOpenListing(property)}
-                    className="text-left bg-[#f8fafc] border border-slate-200 rounded-sm overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <div className="h-44 w-full overflow-hidden bg-slate-200">
-                      <img
-                        src={getListingImage(property) || 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&q=80&w=800'}
-                        alt={property.title || 'Property image'}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
+            <div className="rounded-sm border border-slate-200 overflow-hidden bg-slate-50">
+              <iframe
+                title="Property location map"
+                src={`https://www.google.com/maps?q=${mapQuery}&output=embed`}
+                className="w-full h-80"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            </div>
 
-                    <div className="p-4">
-                      <h3 className="text-base font-bold text-slate-800 mb-1 line-clamp-1">
-                        {property.title || 'Property Listing'}
-                      </h3>
-
-                      <div className="flex items-center gap-1 text-slate-500 text-sm mb-3">
-                        <MapPin size={14} />
-                        <span className="line-clamp-1">{property.location || 'Location not provided'}</span>
-                      </div>
-
-                      <div className="text-blue-600 font-bold text-lg">
-                        Rs. {Number(property.price || 0).toLocaleString()}/month
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="mt-3 flex items-center gap-2 text-sm text-slate-600">
+              <MapPin size={15} className="text-[#3b66ff]" />
+              <span>{listing.location || 'Location not specified'}</span>
+            </div>
           </section>
 
         </div>

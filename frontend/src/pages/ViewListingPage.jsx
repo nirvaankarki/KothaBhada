@@ -1,6 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Filter, ArrowUpDown, Box } from 'lucide-react';
+import {
+  Search,
+  MapPin,
+  Filter,
+  ArrowUpDown,
+  Box,
+  Bed,
+  Bath,
+  Square,
+  CalendarDays,
+  ArrowUpRight,
+} from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
@@ -30,6 +41,13 @@ function inBucket(price, bucketId) {
 
 function getListingImage(listing) {
   return String(listing?.image || listing?.images?.[0] || '').trim();
+}
+
+function formatDate(dateValue) {
+  if (!dateValue) return 'Recently listed';
+  const parsed = new Date(dateValue);
+  if (Number.isNaN(parsed.getTime())) return 'Recently listed';
+  return parsed.toLocaleDateString();
 }
 
 const ViewListingPage = () => {
@@ -102,6 +120,11 @@ const ViewListingPage = () => {
     const unique = new Set(listings.map((item) => item.location).filter(Boolean));
     return ['all', ...Array.from(unique)];
   }, [listings]);
+
+  const featuredListingIds = useMemo(
+    () => new Set(listings.slice(0, 3).map((item) => getListingId(item))),
+    [listings]
+  );
 
   const filteredListings = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -243,11 +266,11 @@ const ViewListingPage = () => {
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="h-72 rounded-sm border border-gray-100 bg-white animate-pulse" />
+                <div key={index} className="h-80 rounded-2xl border border-gray-100 bg-white animate-pulse" />
               ))}
             </div>
           ) : filteredListings.length === 0 ? (
-            <div className="bg-white border border-gray-100 rounded-sm p-10 text-center">
+            <div className="bg-white border border-gray-100 rounded-2xl p-10 text-center">
               <Box size={20} className="mx-auto text-gray-400 mb-2" />
               <p className="text-gray-600">No listings match your filters.</p>
               <button
@@ -258,7 +281,7 @@ const ViewListingPage = () => {
                   setPriceBucket('all');
                   setSortBy('newest');
                 }}
-                className="mt-4 px-4 py-2 text-sm font-semibold text-[#1d4ed8] border border-blue-200 rounded-sm hover:bg-blue-50"
+                className="mt-4 px-4 py-2 text-sm font-semibold text-[#1d4ed8] border border-blue-200 rounded-xl hover:bg-blue-50"
               >
                 Reset Filters
               </button>
@@ -268,28 +291,67 @@ const ViewListingPage = () => {
               {filteredListings.map((listing) => {
                 const listingId = getListingId(listing);
                 const listingImage = getListingImage(listing);
+                const isInactive = listing.status === 'inactive';
+                const isFeatured = featuredListingIds.has(listingId);
                 return (
                   <article
                     key={listingId}
-                    className="bg-white border border-gray-100 rounded-sm shadow-sm overflow-hidden hover:shadow-lg transition-shadow"
+                    className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all"
                   >
                     <div onClick={() => handleOpenListing(listing)} className="cursor-pointer">
-                      <img
-                        src={listingImage || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1000'}
-                        alt={listing.title || 'Room image'}
-                        className="h-44 w-full object-cover"
-                      />
-                      <div className="p-4">
-                        <h2 className="text-lg font-bold text-[#132238] line-clamp-2">{listing.title || 'Untitled Listing'}</h2>
-                        <p className="mt-1 inline-flex items-center gap-1 text-xs text-gray-500">
+                      <div className="relative h-48 w-full overflow-hidden">
+                        <img
+                          src={listingImage || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1000'}
+                          alt={listing.title || 'Room image'}
+                          className="h-full w-full object-cover"
+                        />
+
+                        <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-black/45 to-transparent" />
+
+                        <span className={`absolute top-3 left-3 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide ${isInactive ? 'bg-gray-700 text-white' : isFeatured ? 'bg-orange-500 text-white' : 'bg-emerald-600 text-white'}`}>
+                          {isInactive ? 'Inactive' : isFeatured ? 'Featured' : 'Available'}
+                        </span>
+
+                        <div className="absolute right-3 bottom-3 rounded-xl bg-white/95 px-3 py-1.5 shadow">
+                          <p className="text-[10px] uppercase tracking-wide text-gray-500">Monthly Rent</p>
+                          <p className="text-base font-black text-[#1d4ed8]">Rs {Number(listing.price || 0).toLocaleString()}</p>
+                        </div>
+                      </div>
+
+                      <div className="p-4 md:p-5">
+                        <div className="flex items-start justify-between gap-3">
+                          <h2 className="text-lg font-extrabold text-[#132238] line-clamp-2">{listing.title || 'Untitled Listing'}</h2>
+                          <ArrowUpRight size={16} className="text-blue-600 shrink-0 mt-1" />
+                        </div>
+
+                        <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-gray-500">
                           <MapPin size={12} /> {listing.location || 'Location not specified'}
                         </p>
 
-                        <p className="mt-2 text-sm text-gray-600 line-clamp-2">{listing.description || 'No description available for this listing.'}</p>
+                        <div className="mt-4 grid grid-cols-3 gap-2">
+                          <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 text-center">
+                            <Bed size={14} className="mx-auto text-blue-600" />
+                            <p className="mt-1 text-[11px] font-semibold text-gray-700">{listing.bedrooms ?? 0} Beds</p>
+                          </div>
+                          <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 text-center">
+                            <Bath size={14} className="mx-auto text-blue-600" />
+                            <p className="mt-1 text-[11px] font-semibold text-gray-700">{listing.bathrooms ?? 0} Baths</p>
+                          </div>
+                          <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 text-center">
+                            <Square size={14} className="mx-auto text-blue-600" />
+                            <p className="mt-1 text-[11px] font-semibold text-gray-700">{listing.areaSqFt ?? 0} sqft</p>
+                          </div>
+                        </div>
 
-                        <div className="mt-4">
-                          <p className="text-xs uppercase tracking-wide text-gray-500">Monthly Rent</p>
-                          <p className="text-xl font-black text-[#1d4ed8]">Rs {Number(listing.price || 0).toLocaleString()}</p>
+                        <p className="mt-4 text-sm text-gray-600 line-clamp-2">
+                          {listing.description || 'No description available for this listing.'}
+                        </p>
+
+                        <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
+                          <p className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+                            <CalendarDays size={12} /> {formatDate(listing.createdAt)}
+                          </p>
+                          <span className="text-xs font-semibold text-blue-700">View Details</span>
                         </div>
                       </div>
                     </div>
