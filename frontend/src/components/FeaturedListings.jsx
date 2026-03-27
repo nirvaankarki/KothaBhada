@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MapPin, Calendar, Heart } from 'lucide-react';
+import { MapPin, CalendarDays, Heart, ArrowUpRight, Bed, Bath, Square } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
@@ -29,11 +29,35 @@ function getTimeAgo(dateValue) {
   return `${days} day${days > 1 ? 's' : ''} ago`;
 }
 
+function getAvailabilityBadge(listing) {
+  const status = String(listing?.status || '').toLowerCase();
+
+  if (listing?.isBooked || status === 'booked' || status === 'rented' || status === 'occupied') {
+    return {
+      label: 'Booked',
+      className: 'bg-rose-600 text-white',
+    };
+  }
+
+  if (status === 'inactive' || status === 'unavailable') {
+    return {
+      label: 'Unavailable',
+      className: 'bg-gray-700 text-white',
+    };
+  }
+
+  return {
+    label: 'Available',
+    className: 'bg-emerald-600 text-white',
+  };
+}
+
 const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const listingId = getListingId(listing);
   const listingImage = getListingImage(listing);
+  const availabilityBadge = getAvailabilityBadge(listing);
 
   const trackViewHistory = async () => {
     if (!isAuthenticated) return;
@@ -88,25 +112,25 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
   return (
     <div 
       onClick={handleCardClick}
-      className="bg-white rounded-sm shadow-xl border border-gray-100 overflow-hidden flex flex-col h-full cursor-pointer hover:shadow-2xl transition-shadow"
+      className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col h-full cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all"
     >
-      {/* Image Section */}
-      <div className="relative h-64 w-full overflow-hidden group">
+      <div className="relative h-48 w-full overflow-hidden">
         <img 
           src={listingImage || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1000'} 
           alt={listing.title} 
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          className="w-full h-full object-cover"
         />
-        
-        {/* Brand New Badge */}
-        <div className="absolute top-4 left-4 bg-[#3b66ff] text-white text-[9px] font-medium px-3 py-1.5 rounded-full uppercase tracking-wider z-10">
-          Brand New
+
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-black/45 to-transparent" />
+
+        <div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide z-10 ${availabilityBadge.className}`}>
+          {availabilityBadge.label}
         </div>
 
         {/* Favorite Button */}
         <button 
           onClick={handleFavoriteClick}
-          className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-md transition-all active:scale-90 hover:bg-gray-50 z-10"
+          className="absolute top-3 right-3 bg-white p-2 rounded-full shadow-md transition-all active:scale-90 hover:bg-gray-50 z-10"
         >
           <Heart 
             size={16} 
@@ -114,54 +138,56 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
           />
         </button>
 
-        {/* Explore 3D Overlay Button */}
-        <div className="absolute inset-0 flex items-center justify-center">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCardClick();
-              }}
-              className="bg-[#ff5a3c] text-white flex items-center gap-2 px-3 py-1.5 rounded-md font-bold text-[9px] uppercase shadow-lg hover:bg-[#e04a2e] transition-colors"
-            >
-                Explore <span className="bg-white text-[#ff5a3c] px-1 rounded-sm text-[8px]">3D</span>
-            </button>
+        <div className="absolute left-3 bottom-3">
+          <RatingDisplay 
+            listingId={getListingId(listing)}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/reviews?id=${getListingId(listing)}`);
+            }}
+            className="bg-white/95 shadow-md"
+          />
+        </div>
+
+        <div className="absolute right-3 bottom-3 rounded-xl bg-white/95 px-3 py-1.5 shadow">
+          <p className="text-[10px] uppercase tracking-wide text-gray-500">Monthly Rent</p>
+          <p className="text-base font-black text-[#1d4ed8]">Rs {Number(listing.price || 0).toLocaleString()}</p>
         </div>
       </div>
 
-      {/* Content Section */}
-      <div className="p-6 flex flex-col grow">
-        <h3 className="text-[#1a222e] text-xl font-extrabold mb-3 leading-tight min-h-14">
-          {listing.title}
-        </h3>
-        <p className="text-gray-500 text-xs leading-relaxed mb-6 grow">
-          {listing.description}
-        </p>
-
-        <div className="border-t border-gray-100 pt-4 mb-4">
-          <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Monthly Price</p>
-          <p className="text-[#3b66ff] text-xl font-extrabold">
-            Rs {listing.price.toLocaleString()}
-          </p>
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-lg font-extrabold text-[#132238] line-clamp-2">{listing.title || 'Untitled Listing'}</h3>
+          <ArrowUpRight size={16} className="text-blue-600 shrink-0 mt-1" />
         </div>
 
-        <div className="border-t border-gray-100 pt-4 space-y-2">
-          <div className="flex items-center gap-2 text-gray-500">
-            <MapPin size={14} className="text-[#3b66ff]" />
-            <span className="text-xs font-medium truncate">{listing.location}</span>
+        <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-gray-500">
+          <MapPin size={12} /> {listing.location || 'Location not specified'}
+        </p>
+
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 text-center">
+            <Bed size={14} className="mx-auto text-blue-600" />
+            <p className="mt-1 text-[11px] font-semibold text-gray-700">{listing.bedrooms ?? 0} Beds</p>
           </div>
-          <div className="flex items-center gap-2 text-gray-500">
-            <Calendar size={14} className="text-[#3b66ff]" />
-            <span className="text-xs font-medium">Listed {getTimeAgo(listing.createdAt)}</span>
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 text-center">
+            <Bath size={14} className="mx-auto text-blue-600" />
+            <p className="mt-1 text-[11px] font-semibold text-gray-700">{listing.bathrooms ?? 0} Baths</p>
           </div>
-          <div className="flex justify-end">
-            <RatingDisplay 
-              listingId={getListingId(listing)}
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/reviews?id=${getListingId(listing)}`);
-              }}
-            />
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 text-center">
+            <Square size={14} className="mx-auto text-blue-600" />
+            <p className="mt-1 text-[11px] font-semibold text-gray-700">{listing.areaSqFt ?? 0} sqft</p>
           </div>
+        </div>
+
+        <p className="mt-3 text-sm text-gray-600 line-clamp-2">
+          {listing.description || 'No description available for this listing.'}
+        </p>
+
+        <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-100 pt-3">
+          <p className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+            <CalendarDays size={12} /> Listed {getTimeAgo(listing.createdAt)}
+          </p>
         </div>
       </div>
     </div>

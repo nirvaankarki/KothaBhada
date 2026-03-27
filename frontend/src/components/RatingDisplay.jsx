@@ -32,11 +32,11 @@ const RatingDisplay = ({ listingId, onClick, className = '' }) => {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-50 hover:bg-blue-100 transition-colors ${className}`}
+      className={`inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 shadow-xs hover:border-gray-300 hover:bg-gray-50 transition-colors ${className}`}
     >
-      <span className="text-sm font-semibold text-blue-700">{rating}</span>
-      <Star size={14} className="fill-yellow-400 text-yellow-400" />
-      <span className="text-xs text-gray-600">({totalReviews})</span>
+      <span className="text-sm font-semibold text-gray-900">{Number(rating).toFixed(1)}</span>
+      <Star size={14} className="fill-amber-400 text-amber-400" />
+      <span className="text-xs font-medium text-gray-600">{totalReviews} review{totalReviews !== 1 ? 's' : ''}</span>
     </button>
   );
 };

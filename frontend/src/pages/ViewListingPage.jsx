@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import { FALLBACK_LISTINGS, getListingId } from '../utils/listingData';
 import { useToast } from '../context/ToastContext';
+import RatingDisplay from '../components/RatingDisplay';
 
 const PRICE_BUCKETS = [
   { id: 'all', label: 'All Prices' },
@@ -312,13 +313,24 @@ const ViewListingPage = () => {
                           {isInactive ? 'Inactive' : isFeatured ? 'Featured' : 'Available'}
                         </span>
 
+                        <div className="absolute left-3 bottom-3">
+                          <RatingDisplay
+                            listingId={listingId}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/reviews?id=${listingId}`);
+                            }}
+                            className="bg-white/95 shadow-md"
+                          />
+                        </div>
+
                         <div className="absolute right-3 bottom-3 rounded-xl bg-white/95 px-3 py-1.5 shadow">
                           <p className="text-[10px] uppercase tracking-wide text-gray-500">Monthly Rent</p>
                           <p className="text-base font-black text-[#1d4ed8]">Rs {Number(listing.price || 0).toLocaleString()}</p>
                         </div>
                       </div>
 
-                      <div className="p-4 md:p-5">
+                      <div className="p-4">
                         <div className="flex items-start justify-between gap-3">
                           <h2 className="text-lg font-extrabold text-[#132238] line-clamp-2">{listing.title || 'Untitled Listing'}</h2>
                           <ArrowUpRight size={16} className="text-blue-600 shrink-0 mt-1" />
@@ -328,7 +340,7 @@ const ViewListingPage = () => {
                           <MapPin size={12} /> {listing.location || 'Location not specified'}
                         </p>
 
-                        <div className="mt-4 grid grid-cols-3 gap-2">
+                        <div className="mt-3 grid grid-cols-3 gap-2">
                           <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 text-center">
                             <Bed size={14} className="mx-auto text-blue-600" />
                             <p className="mt-1 text-[11px] font-semibold text-gray-700">{listing.bedrooms ?? 0} Beds</p>
@@ -343,15 +355,14 @@ const ViewListingPage = () => {
                           </div>
                         </div>
 
-                        <p className="mt-4 text-sm text-gray-600 line-clamp-2">
+                        <p className="mt-3 text-sm text-gray-600 line-clamp-2">
                           {listing.description || 'No description available for this listing.'}
                         </p>
 
-                        <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3">
+                        <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-100 pt-3">
                           <p className="inline-flex items-center gap-1.5 text-xs text-gray-500">
                             <CalendarDays size={12} /> {formatDate(listing.createdAt)}
                           </p>
-                          <span className="text-xs font-semibold text-blue-700">View Details</span>
                         </div>
                       </div>
                     </div>

@@ -9,7 +9,8 @@ import {
   Bed,
   Bath,
   Square,
-  Box,
+  ArrowUpRight,
+  CalendarDays,
   PencilLine,
   Eye,
   Trash2,
@@ -92,68 +93,61 @@ const ListingsTab = ({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-stretch">
                 {listings.map((item) => (
-                  <article key={item._id} className="w-full h-full bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 flex flex-col">
-                    <div className="relative h-52 w-full shrink-0">
+                  <article
+                    key={item._id}
+                    className="w-full h-full bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                  >
+                    <div className="relative h-48 w-full shrink-0">
                       <img
                         src={item.image || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=1000'}
                         alt={item.title}
                         className="w-full h-full object-cover"
                       />
 
-                      <div className="absolute top-4 right-4 bg-orange-500 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-md">
-                        Featured
-                      </div>
+                      <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-black/45 to-transparent" />
 
-                      <div className="absolute bottom-4 left-4">
-                        <button
-                          type="button"
-                          onClick={() => handleViewListing(item)}
-                          className="flex items-center gap-2 bg-blue-600/90 hover:bg-blue-700 text-white px-4 py-2 rounded-xl backdrop-blur-sm transition-colors text-sm font-medium"
-                        >
-                          <Box size={18} />
-                          3D Tour Available
-                        </button>
+                      <div className="absolute right-3 bottom-3 rounded-xl bg-white/95 px-3 py-1.5 shadow">
+                        <p className="text-[10px] uppercase tracking-wide text-gray-500">Monthly Rent</p>
+                        <p className="text-base font-black text-[#1d4ed8]">Rs {Number(item.price || 0).toLocaleString()}</p>
                       </div>
                     </div>
 
-                    <div className="p-5 flex-1 flex flex-col">
-                      <div className="flex justify-between items-start mb-2 gap-3">
-                        <h4 className="text-xl font-bold text-gray-800 line-clamp-2 leading-tight">{item.title}</h4>
-                        <div className="text-right shrink-0">
-                          <span className="text-xl font-bold text-blue-700">Rs. {Number(item.price || 0).toLocaleString()}</span>
-                          <span className="text-gray-500 font-medium text-base">/month</span>
+                    <div className="p-4 flex-1 flex flex-col">
+                      <div className="flex items-start justify-between gap-3">
+                        <h4 className="text-lg font-extrabold text-[#132238] line-clamp-2">{item.title || 'Untitled Listing'}</h4>
+                        <ArrowUpRight size={16} className="text-blue-600 shrink-0 mt-1" />
+                      </div>
+
+                      <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-gray-500">
+                        <MapPin size={12} /> {item.location || 'Location not specified'}
+                      </p>
+
+                      <div className="mt-3 grid grid-cols-3 gap-2">
+                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 text-center">
+                          <Bed size={14} className="mx-auto text-blue-600" />
+                          <p className="mt-1 text-[11px] font-semibold text-gray-700">{item.bedrooms ?? 0} Beds</p>
+                        </div>
+                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 text-center">
+                          <Bath size={14} className="mx-auto text-blue-600" />
+                          <p className="mt-1 text-[11px] font-semibold text-gray-700">{item.bathrooms ?? 0} Baths</p>
+                        </div>
+                        <div className="rounded-xl border border-gray-200 bg-gray-50 p-2 text-center">
+                          <Square size={14} className="mx-auto text-blue-600" />
+                          <p className="mt-1 text-[11px] font-semibold text-gray-700">{item.areaSqFt ?? 0} sqft</p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 text-gray-500 mb-4">
-                        <MapPin size={18} className="text-gray-400" />
-                        <span className="text-sm font-medium line-clamp-1">{item.location || 'Location not specified'}</span>
-                      </div>
-
-                      <div className="flex flex-wrap gap-4 mb-4">
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Bed size={18} className="text-blue-600" />
-                          <span className="text-sm font-semibold">{item.bedrooms ?? 0} Beds</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Bath size={18} className="text-blue-600" />
-                          <span className="text-sm font-semibold">{item.bathrooms ?? 0} Baths</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600">
-                          <Square size={16} className="text-blue-600" />
-                          <span className="text-sm font-semibold">{item.areaSqFt ?? 0} sqft</span>
-                        </div>
-                      </div>
-
-                      <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-2">
+                      <p className="mt-3 text-sm text-gray-600 line-clamp-2">
                         {item.description || 'No description provided for this property yet.'}
                       </p>
 
-                      <div className="text-[11px] text-gray-500 mb-4">Published: {formatDate(item.createdAt)}</div>
+                      <div className="mt-3 border-t border-gray-100 pt-3">
+                        <div className="inline-flex items-center gap-1.5 text-xs text-gray-500">
+                          <CalendarDays size={12} /> {formatDate(item.createdAt)}
+                        </div>
+                      </div>
 
-                      <hr className="border-gray-200 mb-4" />
-
-                      <div className="flex justify-between items-center mt-auto">
+                      <div className="mt-3 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className={`w-3 h-3 rounded-full ${item.status === 'inactive' ? 'bg-gray-400' : 'bg-green-500'}`} />
                           <span className="text-sm font-medium text-gray-700 capitalize">{item.status || 'active'}</span>
