@@ -201,6 +201,24 @@ export const useLandlordDashboardController = () => {
     }
   };
 
+  const clearAllNotifications = async () => {
+    if (!notifications.length) return;
+
+    const previousNotifications = notifications;
+    const previousUnreadCount = unreadNotifications;
+
+    setNotifications([]);
+    setUnreadNotifications(0);
+
+    try {
+      await api.delete('/user/notifications');
+    } catch {
+      setNotifications(previousNotifications);
+      setUnreadNotifications(previousUnreadCount);
+      refreshNotifications();
+    }
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     window.sessionStorage.setItem(LANDLORD_TAB_STORAGE_KEY, activeTab);
@@ -661,6 +679,7 @@ export const useLandlordDashboardController = () => {
       setBookingResponseDrafts,
       markNotificationAsRead,
       markAllNotificationsAsRead,
+      clearAllNotifications,
       handleOpenOwnerChat,
       handleChange,
       handleAddKeyFeature,

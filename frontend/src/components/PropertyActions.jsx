@@ -453,14 +453,25 @@ const BookingForm = ({ listingId, ownerId, title, location, price, image, isBook
   );
 };
 
-const ChatBox = ({ listingId, ownerId, title, location, price, image }) => {
+const ChatBox = ({ listingId, ownerId, ownerName, ownerProfilePhoto, title, location, price, image }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [ownerMeta, setOwnerMeta] = useState({
+    name: ownerName || 'Property Owner',
+    profilePhoto: ownerProfilePhoto || '',
+  });
   const messagesContainerRef = useRef(null);
   const hasLoadedHistoryRef = useRef(false);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    setOwnerMeta({
+      name: ownerName || 'Property Owner',
+      profilePhoto: ownerProfilePhoto || '',
+    });
+  }, [ownerName, ownerProfilePhoto]);
 
   const scrollToLatestMessage = useCallback((behavior = 'smooth') => {
     const container = messagesContainerRef.current;
@@ -484,6 +495,12 @@ const ChatBox = ({ listingId, ownerId, title, location, price, image }) => {
       const matchingChat = chats.find((chat) => String(chat?.listingId) === String(listingId));
       const nextMessages = toUiMessageList(matchingChat);
 
+      const ownerFromChat = matchingChat?.ownerId;
+      setOwnerMeta((prev) => ({
+        name: ownerFromChat?.name || prev.name || ownerName || 'Property Owner',
+        profilePhoto: ownerFromChat?.profilePhoto || prev.profilePhoto || ownerProfilePhoto || '',
+      }));
+
       setMessages(nextMessages);
       hasLoadedHistoryRef.current = true;
     } catch (err) {
@@ -499,7 +516,7 @@ const ChatBox = ({ listingId, ownerId, title, location, price, image }) => {
         setLoadingHistory(false);
       }
     }
-  }, [listingId, showToast]);
+  }, [listingId, ownerName, ownerProfilePhoto, showToast]);
 
   useEffect(() => {
     fetchChatByListing({ silent: false });
@@ -586,13 +603,21 @@ const ChatBox = ({ listingId, ownerId, title, location, price, image }) => {
   return (
     <section className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm">
       <header className="px-5 py-4 border-b border-slate-100 bg-white flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-linear-to-tr from-[#3b66ff] to-[#2346c7] p-0.5 shrink-0">
-          <div className="h-full w-full rounded-full bg-white flex items-center justify-center">
-            <MessageCircle className="text-[#3b66ff]" size={18} />
+        {ownerMeta.profilePhoto ? (
+          <img
+            src={ownerMeta.profilePhoto}
+            alt={ownerMeta.name || 'Property Owner'}
+            className="h-10 w-10 rounded-full object-cover border border-slate-200 shrink-0"
+          />
+        ) : (
+          <div className="h-10 w-10 rounded-full bg-linear-to-tr from-[#3b66ff] to-[#2346c7] p-0.5 shrink-0">
+            <div className="h-full w-full rounded-full bg-white flex items-center justify-center text-[#3b66ff] text-sm font-bold">
+              {(ownerMeta.name || 'Property Owner').charAt(0).toUpperCase()}
+            </div>
           </div>
-        </div>
+        )}
         <div className="min-w-0">
-          <h3 className="font-bold text-[#1a222e] truncate">Chat with Owner</h3>
+          <h3 className="font-bold text-[#1a222e] truncate">{ownerMeta.name || 'Property Owner'}</h3>
           <p className="text-xs text-slate-500 truncate">Ask questions about this property directly</p>
         </div>
       </header>

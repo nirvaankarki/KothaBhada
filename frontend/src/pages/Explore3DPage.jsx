@@ -4,7 +4,7 @@ import {
   Heart, Share2, CheckCircle2, User, Phone, Mail, 
   MessageSquare, Home, Info, MousePointer2, Move, Search,
   Star,
-  MapPin, Calendar, MessageCircle
+  MapPin, Calendar, MessageCircle, ShieldCheck, Map, Zap
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -30,6 +30,7 @@ function normalizeListing(rawListing) {
     ownerName: rawListing.ownerName || 'Property Owner',
     ownerPhone: rawListing.ownerPhone || '',
     ownerEmail: rawListing.ownerEmail || '',
+    ownerProfilePhoto: rawListing.ownerProfilePhoto || rawListing.owner?.profilePhoto || '',
   };
 }
 
@@ -403,86 +404,137 @@ const Explore3DPage = () => {
       />
 
       <div className="w-full max-w-350 mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-6 lg:gap-5 xl:gap-6 items-stretch">
-          <div className="flex flex-col gap-6 lg:h-full">
+        <div className="flex flex-col gap-6">
+          {/* TOP ROW: 3D and Location Side-by-Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-[68%_32%] xl:grid-cols-[70%_30%] gap-6">
             {/* 3D Visualization Card */}
-            <div className="bg-white rounded-sm shadow-md overflow-hidden flex flex-col lg:flex-1 min-h-0">
-              <div className="p-4 flex flex-wrap items-center justify-between gap-3 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-[#1a222e]">3D Room Visualization</h2>
-              <div className="flex flex-wrap gap-2 justify-end">
-                <button className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:bg-gray-50 whitespace-nowrap">
-                  <RefreshCcw size={14} /> Reset View
-                </button>
-                <button className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:bg-gray-50 whitespace-nowrap">
-                  <RotateCw size={14} /> Auto Rotate
-                </button>
-                <button className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:bg-gray-50 whitespace-nowrap">
-                  <Maximize size={14} /> Full Screen
-                </button>
-              </div>
-            </div>
-
-            <div className="relative bg-[#2a2a2a] flex-1 min-h-64 md:min-h-80 lg:min-h-0 flex items-center justify-center overflow-hidden">
-              <img 
-                src={listing.image || 'https://images.unsplash.com/photo-1554995207-c18c203602cb?q=80&w=1200'} 
-                className="absolute inset-0 w-full h-full object-cover opacity-40 blur-sm" 
-                alt="3D Placeholder"
-              />
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <span className="font-bold tracking-wide">Loading 3D Model</span>
+            <div className="bg-white rounded-sm shadow-lg ring-1 ring-blue-100 overflow-hidden flex flex-col">
+              <div className="p-4 border-b border-gray-100">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold text-[#1a222e]">3D Room Visualization</h2>
+                    <p className="mt-1 text-xs text-slate-500">Interactive preview canvas with camera controls and real-time loading status.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 justify-end">
+                    <button className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:bg-gray-50 whitespace-nowrap">
+                      <RefreshCcw size={14} /> Reset View
+                    </button>
+                    <button className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:bg-gray-50 whitespace-nowrap">
+                      <RotateCw size={14} /> Auto Rotate
+                    </button>
+                    <button className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:bg-gray-50 whitespace-nowrap">
+                      <Maximize size={14} /> Full Screen
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <div className="absolute bottom-6 right-6 bg-black/80 text-white p-5 rounded flex flex-col gap-3 text-sm border border-white/10 backdrop-blur-sm">
-                <div className="flex items-center gap-3">
-                  <MousePointer2 size={16} className="text-blue-400" />
-                  <span>Click & Drag to rotate</span>
+              <div className="p-4 space-y-3 bg-slate-50/40">
+                <div className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 bg-[#111827]">
+                  <img
+                    src={listing.image || 'https://images.unsplash.com/photo-1554995207-c18c203602cb?q=80&w=1200'}
+                    className="absolute inset-0 w-full h-full object-cover opacity-45"
+                    alt="3D Placeholder"
+                  />
+                  <div className="absolute inset-0 bg-linear-to-tr from-black/65 via-black/40 to-blue-900/25" />
+
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white px-4 text-center">
+                    <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin mb-3"></div>
+                    <p className="text-sm font-bold tracking-wide">Loading 3D Model</p>
+                    <p className="mt-1 text-[11px] text-white/80">Preparing textures, lighting, and scene controls</p>
+                  </div>
+
+                  <div className="absolute left-3 right-3 bottom-3 h-1.5 rounded-full bg-white/25 overflow-hidden">
+                    <div className="h-full w-2/3 bg-linear-to-r from-[#60a5fa] to-[#3b82f6]" />
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Search size={16} className="text-blue-400" />
-                  <span>Scroll to zoom</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Move size={16} className="text-blue-400" />
-                  <span>Right-click & drag to pan</span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div className="rounded-md border border-slate-200 bg-white px-3 py-2">
+                    <p className="flex items-center gap-2 text-[11px] font-semibold text-slate-700"><MousePointer2 size={13} className="text-[#3b82f6]" /> Rotate</p>
+                    <p className="mt-1 text-[11px] text-slate-500">Click and drag to orbit the camera.</p>
+                  </div>
+                  <div className="rounded-md border border-slate-200 bg-white px-3 py-2">
+                    <p className="flex items-center gap-2 text-[11px] font-semibold text-slate-700"><Search size={13} className="text-[#3b82f6]" /> Zoom</p>
+                    <p className="mt-1 text-[11px] text-slate-500">Use mouse wheel for close inspection.</p>
+                  </div>
+                  <div className="rounded-md border border-slate-200 bg-white px-3 py-2">
+                    <p className="flex items-center gap-2 text-[11px] font-semibold text-slate-700"><Move size={13} className="text-[#3b82f6]" /> Pan</p>
+                    <p className="mt-1 text-[11px] text-slate-500">Right-click and drag to reposition.</p>
+                  </div>
                 </div>
               </div>
-            </div>
             </div>
 
             {/* Property Location Map */}
-            <section className="bg-white border border-slate-200 rounded-sm overflow-hidden shadow-sm p-5 md:p-6 flex flex-col lg:flex-1 min-h-0">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="bg-slate-900 p-1.5 rounded-md text-white">
-                <MapPin size={20} />
+            <section className="bg-white border border-slate-200 rounded-sm overflow-hidden shadow-sm flex flex-col">
+              <div className="p-4 md:p-5 pb-3 border-b border-slate-100">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-700">Property Location</h2>
+                    <p className="text-[11px] text-slate-500 mt-1">Quick location reference</p>
+                  </div>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${mapQuery}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-[11px] font-semibold text-[#1d4ed8] transition-colors hover:bg-blue-100"
+                  >
+                    Open in Maps
+                  </a>
+                </div>
+
+                <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Address</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-700">{listing.location || 'Location not specified'}</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Property Location</h2>
-                <p className="text-xs text-slate-500 mt-1">Map view of where this property is located.</p>
+
+              <div className="p-4 md:p-5 pt-3">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 overflow-hidden h-64 md:h-72 lg:h-80 xl:h-88 shadow-inner">
+                  <iframe
+                    title="Property location map"
+                    src={`https://www.google.com/maps?q=${mapQuery}&output=embed`}
+                    className="w-full h-full"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </div>
+
+                <div className="mt-3 rounded-lg bg-slate-50 border border-slate-200 p-3.5">
+                  <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                    Area Highlights
+                  </h4>
+
+                  <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 bg-white rounded-md shadow-xs text-blue-500 border border-slate-100">
+                        <Map size={16} />
+                      </div>
+                      <span className="text-xs font-semibold text-slate-700">5 mins walk to Market</span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 bg-white rounded-md shadow-xs text-green-500 border border-slate-100">
+                        <ShieldCheck size={16} />
+                      </div>
+                      <span className="text-xs font-semibold text-slate-700">Peaceful and secure area</span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 bg-white rounded-md shadow-xs text-orange-500 border border-slate-100">
+                        <Zap size={16} />
+                      </div>
+                      <span className="text-xs font-semibold text-slate-700">24/7 water and power</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-
-            <hr className="border-slate-200 mb-6" />
-
-            <div className="rounded-sm border border-slate-200 overflow-hidden bg-slate-50 flex-1 min-h-0">
-              <iframe
-                title="Property location map"
-                src={`https://www.google.com/maps?q=${mapQuery}&output=embed`}
-                className="w-full h-80 md:h-96 lg:h-full"
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-              />
-            </div>
-
-            <div className="mt-3 flex items-center gap-2 text-sm text-slate-600">
-              <MapPin size={15} className="text-[#3b66ff]" />
-              <span>{listing.location || 'Location not specified'}</span>
-            </div>
             </section>
           </div>
 
-          {/* RIGHT COLUMN: TABBED INTERFACE */}
-          <div className="bg-white rounded-sm shadow-md overflow-hidden h-full">
+          {/* BOTTOM ROW: TABBED INTERFACE - FULL WIDTH */}
+          <div className="bg-white rounded-sm shadow-md overflow-hidden">
             {/* Tab Navigation */}
             <div className="flex border-b border-gray-200">
               <button
@@ -773,9 +825,11 @@ const Explore3DPage = () => {
               {/* Chat Tab */}
               {activeTab === 'chat' && (
                 <div>
-                  <ChatBox 
-                    listingId={listingKey} 
+                  <ChatBox
+                    listingId={listingKey}
                     ownerId={listing?.ownerId || listing?.owner}
+                    ownerName={listing?.ownerName}
+                    ownerProfilePhoto={listing?.ownerProfilePhoto}
                     title={listing?.title}
                     location={listing?.location}
                     price={listing?.price}

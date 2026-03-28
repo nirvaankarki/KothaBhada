@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import { isLandlordRole, resolveRole } from '../utils/roles';
 import { getNotificationTargetPath } from '../utils/notificationNavigation';
+import ConfirmModal from './ConfirmModal';
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ const Navbar = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [showClearNotificationsConfirm, setShowClearNotificationsConfirm] = useState(false);
   const fileInputRef = useRef(null);
   const menuRef = useRef(null);
   const notificationRef = useRef(null);
@@ -114,6 +116,33 @@ const Navbar = () => {
     } catch {
       // ignore
     }
+  };
+
+  const handleClearAllNotifications = async () => {
+    if (!notifications.length) return;
+
+    const previousNotifications = notifications;
+    const previousUnreadCount = unreadNotifications;
+
+    setNotifications([]);
+    setUnreadNotifications(0);
+
+    try {
+      await api.delete('/user/notifications');
+    } catch {
+      setNotifications(previousNotifications);
+      setUnreadNotifications(previousUnreadCount);
+    }
+  };
+
+  const handleClearNotificationsRequest = () => {
+    setShowClearNotificationsConfirm(true);
+  };
+
+  const handleConfirmClearNotifications = async () => {
+    await handleClearAllNotifications();
+    setShowClearNotificationsConfirm(false);
+    setIsNotificationOpen(false);
   };
 
   const handleNotificationNavigate = (notification) => {
@@ -325,7 +354,7 @@ const Navbar = () => {
             >
               <Bell size={20} className="text-white" />
               {unreadNotifications > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#ef4444] text-white text-[10px] font-bold leading-4 text-center border border-[#1a222e]">
+                <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1.5 bg-red-500 text-white text-[10px] rounded-full border-2 border-white inline-flex items-center justify-center">
                   {unreadNotifications > 99 ? '99+' : unreadNotifications}
                 </span>
               )}
@@ -335,15 +364,26 @@ const Navbar = () => {
               <div className="absolute right-0 mt-3 w-96 max-w-[90vw] rounded-2xl border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.16)] p-3 z-20">
                 <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-100">
                   <h4 className="text-sm font-bold text-slate-800">Notifications</h4>
-                  {unreadNotifications > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleMarkAllNotificationsRead}
-                      className="text-xs font-semibold text-[#3b82f6] hover:text-blue-700"
-                    >
-                      Mark all as read
-                    </button>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {notifications.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearNotificationsRequest}
+                        className="text-xs font-semibold text-rose-600 hover:text-rose-700"
+                      >
+                        Clear all
+                      </button>
+                    )}
+                    {unreadNotifications > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleMarkAllNotificationsRead}
+                        className="text-xs font-semibold text-[#3b82f6] hover:text-blue-700"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-2 max-h-80 overflow-y-auto space-y-2">
@@ -683,6 +723,17 @@ const Navbar = () => {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={showClearNotificationsConfirm}
+        title="Clear all notifications"
+        message="This will permanently remove all notifications. This action cannot be undone."
+        onCancel={() => setShowClearNotificationsConfirm(false)}
+        onConfirm={handleConfirmClearNotifications}
+        cancelLabel="Cancel"
+        confirmLabel="Clear all"
+        confirmVariant="danger"
+      />
     </nav>
   );
 };

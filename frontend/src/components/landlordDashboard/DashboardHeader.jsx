@@ -2,6 +2,7 @@ import React from 'react';
 import { Bell, UserCircle2, ChevronDown, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import ConfirmModal from '../ConfirmModal';
 
 const DashboardHeader = ({
   profilePhoto,
@@ -10,6 +11,7 @@ const DashboardHeader = ({
   unreadNotifications = 0,
   onMarkNotificationRead,
   onMarkAllNotificationsRead,
+  onClearAllNotifications,
   onNotificationNavigate,
 }) => {
   const navigate = useNavigate();
@@ -19,6 +21,7 @@ const DashboardHeader = ({
   const [isProfileMenuOpen, setIsProfileMenuOpen] = React.useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = React.useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
+  const [showClearNotificationsConfirm, setShowClearNotificationsConfirm] = React.useState(false);
 
   React.useEffect(() => {
     const handleOutsideClick = (event) => {
@@ -46,6 +49,16 @@ const DashboardHeader = ({
     setShowLogoutConfirm(true);
   };
 
+  const handleClearNotificationsRequest = () => {
+    setShowClearNotificationsConfirm(true);
+  };
+
+  const handleConfirmClearNotifications = () => {
+    onClearAllNotifications?.();
+    setShowClearNotificationsConfirm(false);
+    setIsNotificationOpen(false);
+  };
+
   return (
     <>
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-7">
@@ -62,7 +75,7 @@ const DashboardHeader = ({
             >
               <Bell size={22} />
               {unreadNotifications > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-red-500 text-white text-[10px] rounded-full border-2 border-white inline-flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1.5 bg-red-500 text-white text-[10px] rounded-full border-2 border-white inline-flex items-center justify-center">
                   {unreadNotifications > 99 ? '99+' : unreadNotifications}
                 </span>
               )}
@@ -72,15 +85,26 @@ const DashboardHeader = ({
               <div className="absolute right-0 mt-2 w-96 max-w-[90vw] rounded-2xl border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.16)] p-3 z-20">
                 <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-100">
                   <h4 className="text-sm font-bold text-slate-800">Notifications</h4>
-                  {unreadNotifications > 0 && (
-                    <button
-                      type="button"
-                      onClick={onMarkAllNotificationsRead}
-                      className="text-xs font-semibold text-[#3b66ff] hover:text-[#2346c7]"
-                    >
-                      Mark all as read
-                    </button>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {notifications.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearNotificationsRequest}
+                        className="text-xs font-semibold text-rose-600 hover:text-rose-700"
+                      >
+                        Clear all
+                      </button>
+                    )}
+                    {unreadNotifications > 0 && (
+                      <button
+                        type="button"
+                        onClick={onMarkAllNotificationsRead}
+                        className="text-xs font-semibold text-[#3b66ff] hover:text-[#2346c7]"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-2 max-h-80 overflow-y-auto space-y-2">
@@ -129,7 +153,6 @@ const DashboardHeader = ({
                 </div>
               )}
               <div>
-                <p className="text-xs text-gray-400">Landlord</p>
                 <p className="text-sm font-bold text-gray-700 max-w-40 truncate">{profileName || 'Owner'}</p>
               </div>
               <ChevronDown size={16} className={`text-gray-400 transition-transform ${isProfileMenuOpen ? 'rotate-180' : ''}`} />
@@ -207,6 +230,17 @@ const DashboardHeader = ({
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        open={showClearNotificationsConfirm}
+        title="Clear all notifications"
+        message="This will permanently remove all notifications. This action cannot be undone."
+        onCancel={() => setShowClearNotificationsConfirm(false)}
+        onConfirm={handleConfirmClearNotifications}
+        cancelLabel="Cancel"
+        confirmLabel="Clear all"
+        confirmVariant="danger"
+      />
     </>
   );
 };

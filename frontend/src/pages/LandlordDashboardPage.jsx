@@ -63,6 +63,7 @@ const LandlordDashboardPage = () => {
           unreadNotifications={state.unreadNotifications}
           onMarkNotificationRead={handlers.markNotificationAsRead}
           onMarkAllNotificationsRead={handlers.markAllNotificationsAsRead}
+          onClearAllNotifications={handlers.clearAllNotifications}
           onNotificationNavigate={handleLandlordNotificationNavigate}
         />
 
