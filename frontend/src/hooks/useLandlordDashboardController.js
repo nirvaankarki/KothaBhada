@@ -9,6 +9,7 @@ const initialForm = {
   location: '',
   price: '',
   description: '',
+  keyFeatures: [],
   bedrooms: '1',
   bathrooms: '1',
   areaSqFt: '',
@@ -19,6 +20,21 @@ const initialForm = {
 
 const LANDLORD_TAB_STORAGE_KEY = 'landlordDashboardActiveTab';
 const LANDLORD_ALLOWED_TABS = new Set(['dashboard', 'listings', 'chat', 'bookings', 'profile']);
+
+const parseKeyFeaturesInput = (value) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item || '').trim())
+      .filter(Boolean)
+      .slice(0, 20);
+  }
+
+  return String(value || '')
+    .split(/[,\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 20);
+};
 
 export const useLandlordDashboardController = () => {
   const navigate = useNavigate();
@@ -38,7 +54,10 @@ export const useLandlordDashboardController = () => {
   const [listings, setListings] = useState([]);
   const [ownerInquiries, setOwnerInquiries] = useState([]);
   const [ownerBookings, setOwnerBookings] = useState([]);
+  const [bookingResponseDrafts, setBookingResponseDrafts] = useState({});
   const [ownerChats, setOwnerChats] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [selectedOwnerChatId, setSelectedOwnerChatId] = useState('');
   const [chatDrafts, setChatDrafts] = useState({});
 
@@ -46,6 +65,7 @@ export const useLandlordDashboardController = () => {
   const [submitting, setSubmitting] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [sendingChatId, setSendingChatId] = useState('');
+  const [updatingBookingId, setUpdatingBookingId] = useState('');
   const [deletingId, setDeletingId] = useState('');
   const [imageName, setImageName] = useState('');
   const [error, setError] = useState('');
@@ -63,6 +83,16 @@ export const useLandlordDashboardController = () => {
     }
   }, []);
 
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const response = await api.get('/user/notifications');
+      setNotifications(response.data?.notifications || []);
+      setUnreadNotifications(response.data?.unreadCount || 0);
+    } catch {
+      // Silent fail for background refresh.
+    }
+  }, []);
+
   useEffect(() => {
     let ignore = false;
 
@@ -70,11 +100,12 @@ export const useLandlordDashboardController = () => {
       setLoading(true);
       setError('');
       try {
-        const [listingsRes, inquiriesRes, bookingsRes, chatsRes] = await Promise.all([
+        const [listingsRes, inquiriesRes, bookingsRes, chatsRes, notificationsRes] = await Promise.all([
           api.get('/rooms/mine'),
           api.get('/user/owner/inquiries'),
           api.get('/user/owner/bookings'),
           api.get('/user/owner/chats'),
+          api.get('/user/notifications'),
         ]);
 
         if (!ignore) {
@@ -82,6 +113,8 @@ export const useLandlordDashboardController = () => {
           setOwnerInquiries(inquiriesRes.data?.inquiries || []);
           setOwnerBookings(bookingsRes.data?.bookings || []);
           setOwnerChats(chatsRes.data?.chats || []);
+          setNotifications(notificationsRes.data?.notifications || []);
+          setUnreadNotifications(notificationsRes.data?.unreadCount || 0);
         }
       } catch (err) {
         if (!ignore) {
@@ -110,7 +143,7 @@ export const useLandlordDashboardController = () => {
         return;
       }
 
-      await refreshOwnerChats();
+      await Promise.all([refreshOwnerChats(), refreshNotifications()]);
     };
 
     const intervalId = setInterval(pullChats, 4000);
@@ -140,7 +173,33 @@ export const useLandlordDashboardController = () => {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
     };
-  }, [refreshOwnerChats]);
+  }, [refreshOwnerChats, refreshNotifications]);
+
+  const markNotificationAsRead = async (notificationId) => {
+    if (!notificationId) return;
+
+    setNotifications((prev) => prev.map((item) => (
+      item._id === notificationId ? { ...item, isRead: true } : item
+    )));
+    setUnreadNotifications((prev) => Math.max(0, prev - 1));
+
+    try {
+      await api.post(`/user/notifications/${notificationId}/read`);
+    } catch {
+      refreshNotifications();
+    }
+  };
+
+  const markAllNotificationsAsRead = async () => {
+    setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
+    setUnreadNotifications(0);
+
+    try {
+      await api.post('/user/notifications/read-all');
+    } catch {
+      refreshNotifications();
+    }
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -191,6 +250,39 @@ export const useLandlordDashboardController = () => {
 
   const handleChange = (key) => (e) => {
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
+    setError('');
+  };
+
+  const handleAddKeyFeature = (featureValue) => {
+    const nextFeature = String(featureValue || '').trim();
+    if (!nextFeature) return;
+
+    setForm((prev) => {
+      const current = parseKeyFeaturesInput(prev.keyFeatures);
+      const exists = current.some((item) => item.toLowerCase() === nextFeature.toLowerCase());
+      if (exists) {
+        return { ...prev, keyFeatures: current };
+      }
+
+      return {
+        ...prev,
+        keyFeatures: [...current, nextFeature].slice(0, 20),
+      };
+    });
+    setError('');
+  };
+
+  const handleRemoveKeyFeature = (featureValue) => {
+    const target = String(featureValue || '').trim();
+    if (!target) return;
+
+    setForm((prev) => {
+      const current = parseKeyFeaturesInput(prev.keyFeatures);
+      return {
+        ...prev,
+        keyFeatures: current.filter((item) => item !== target),
+      };
+    });
     setError('');
   };
 
@@ -294,6 +386,12 @@ export const useLandlordDashboardController = () => {
       return;
     }
 
+    const parsedKeyFeatures = parseKeyFeaturesInput(form.keyFeatures);
+    if (!parsedKeyFeatures.length) {
+      setError('Please add at least one key feature for the property.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const payload = {
@@ -301,6 +399,7 @@ export const useLandlordDashboardController = () => {
         location: form.location.trim(),
         price: Number(form.price),
         description: form.description.trim(),
+        keyFeatures: parsedKeyFeatures,
         bedrooms: Number(form.bedrooms) || 0,
         bathrooms: Number(form.bathrooms) || 0,
         areaSqFt: Number(form.areaSqFt) || 0,
@@ -375,6 +474,7 @@ export const useLandlordDashboardController = () => {
       location: listing.location || '',
       price: String(listing.price || ''),
       description: listing.description || '',
+      keyFeatures: parseKeyFeaturesInput(listing.keyFeatures),
       bedrooms: String(listing.bedrooms ?? 1),
       bathrooms: String(listing.bathrooms ?? 1),
       areaSqFt: String(listing.areaSqFt || ''),
@@ -454,6 +554,41 @@ export const useLandlordDashboardController = () => {
     }
   };
 
+  const handleOwnerBookingDecision = async (bookingId, status) => {
+    if (!bookingId || !['confirmed', 'declined'].includes(status)) return;
+
+    const ownerResponse = String(bookingResponseDrafts[bookingId] || '').trim();
+    if (status === 'declined' && !ownerResponse) {
+      setError('Please provide a reason before declining this booking request.');
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+    setUpdatingBookingId(bookingId);
+
+    try {
+      const response = await api.patch(`/user/owner/bookings/${bookingId}/status`, {
+        status,
+        ownerResponse,
+      });
+
+      const updatedBooking = response.data?.booking;
+      if (updatedBooking) {
+        setOwnerBookings((prev) => prev.map((item) => (
+          item._id === bookingId ? updatedBooking : item
+        )));
+      }
+
+      setBookingResponseDrafts((prev) => ({ ...prev, [bookingId]: '' }));
+      setSuccess(status === 'confirmed' ? 'Booking request accepted.' : 'Booking request declined.');
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Could not update booking request.');
+    } finally {
+      setUpdatingBookingId('');
+    }
+  };
+
   const stats = useMemo(() => {
     const totalListings = listings.length;
     const activeListings = listings.filter((item) => item.status !== 'inactive').length;
@@ -496,6 +631,9 @@ export const useLandlordDashboardController = () => {
       listings,
       ownerInquiries,
       ownerBookings,
+      notifications,
+      unreadNotifications,
+      bookingResponseDrafts,
       ownerChats,
       selectedOwnerChatId,
       chatDrafts,
@@ -503,6 +641,7 @@ export const useLandlordDashboardController = () => {
       submitting,
       savingProfile,
       sendingChatId,
+      updatingBookingId,
       deletingId,
       imageName,
       error,
@@ -519,8 +658,13 @@ export const useLandlordDashboardController = () => {
         setActiveTab(tab);
       },
       setChatDrafts,
+      setBookingResponseDrafts,
+      markNotificationAsRead,
+      markAllNotificationsAsRead,
       handleOpenOwnerChat,
       handleChange,
+      handleAddKeyFeature,
+      handleRemoveKeyFeature,
       handleProfileChange,
       handleProfileImageSelect,
       clearProfileImage,
@@ -534,6 +678,7 @@ export const useLandlordDashboardController = () => {
       handleViewListing,
       handleEditDraft,
       handleOwnerReply,
+      handleOwnerBookingDecision,
       isChatUnread,
       formatDate,
     },

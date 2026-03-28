@@ -3,6 +3,7 @@ import {
   RotateCw, RefreshCcw, Maximize, Bed, Bath, Ruler, 
   Heart, Share2, CheckCircle2, User, Phone, Mail, 
   MessageSquare, Home, Info, MousePointer2, Move, Search,
+  Star,
   MapPin, Calendar, MessageCircle
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -11,7 +12,7 @@ import api from '../utils/api';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import AuthRequiredModal from '../components/AuthRequiredModal';
 import { getListingId } from '../utils/listingData';
-import { BookingForm, ChatBox } from '../components/PropertyActions';
+import { ChatBox } from '../components/PropertyActions';
 import { useToast } from '../context/ToastContext';
 import ReviewForm from '../components/ReviewForm';
 import ReviewsList from '../components/ReviewsList';
@@ -36,11 +37,22 @@ function getListingImage(listing) {
   return String(listing?.image || listing?.images?.[0] || '').trim();
 }
 
+const defaultKeyFeatures = [
+  'Fully furnished',
+  'Security System',
+  'Balcony with view',
+  'High-speed internet',
+  'Kitchen appliances',
+  'Laundry facilities',
+];
+
 const Explore3DPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const listingIdFromQuery = searchParams.get('id');
+  const tabFromQuery = searchParams.get('tab');
+  const allowedTabs = new Set(['details', 'chat', 'reviews']);
   const passedListing = normalizeListing(location.state?.listing);
   const effectiveListingId = listingIdFromQuery || passedListing?.listingId || '';
   const { isAuthenticated, token } = useAuth();
@@ -50,14 +62,27 @@ const Explore3DPage = () => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [message, setMessage] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [activeTab, setActiveTab] = useState('details'); // 'details', 'booking', 'chat', 'reviews'
+  const [activeTab, setActiveTab] = useState(allowedTabs.has(tabFromQuery) ? tabFromQuery : 'details'); // 'details', 'chat', 'reviews'
   const [reviewRefreshTrigger, setReviewRefreshTrigger] = useState(0);
+  const [detailsReviewSummary, setDetailsReviewSummary] = useState({
+    reviews: [],
+    averageRating: 0,
+    totalReviews: 0,
+  });
+  const [isLoadingDetailsReviews, setIsLoadingDetailsReviews] = useState(false);
   const { showToast } = useToast();
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const seenOwnerMessageAtRef = useRef('');
   const initializedOwnerMessageRef = useRef(false);
+  const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
 
   useAutoDismiss(message, () => setMessage(''));
+
+  useEffect(() => {
+    if (allowedTabs.has(tabFromQuery)) {
+      setActiveTab(tabFromQuery);
+    }
+  }, [tabFromQuery]);
 
   useEffect(() => {
     if (!loadError) return;
@@ -249,6 +274,49 @@ const Explore3DPage = () => {
     };
   }, [activeTab, isAuthenticated, token, listingKey]);
 
+  useEffect(() => {
+    if (!listingKey) {
+      setDetailsReviewSummary({ reviews: [], averageRating: 0, totalReviews: 0 });
+      return;
+    }
+
+    let ignore = false;
+
+    const loadDetailsReviewSummary = async () => {
+      setIsLoadingDetailsReviews(true);
+
+      try {
+        const response = await api.get(`/reviews/listing/${listingKey}`);
+        if (!ignore) {
+          const reviews = response.data?.reviews || [];
+          setDetailsReviewSummary({
+            reviews,
+            averageRating: Number(response.data?.averageRating || 0),
+            totalReviews: Number(response.data?.totalReviews || reviews.length || 0),
+          });
+        }
+      } catch {
+        if (!ignore) {
+          setDetailsReviewSummary({ reviews: [], averageRating: 0, totalReviews: 0 });
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoadingDetailsReviews(false);
+        }
+      }
+    };
+
+    loadDetailsReviewSummary();
+
+    return () => {
+      ignore = true;
+    };
+  }, [listingKey, reviewRefreshTrigger]);
+
+  useEffect(() => {
+    setIsDescriptionOpen(false);
+  }, [listingKey]);
+
   if (isLoading && !listing) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -299,6 +367,31 @@ const Explore3DPage = () => {
   };
 
   const mapQuery = encodeURIComponent(String(listing.location || 'Kathmandu, Nepal').trim() || 'Kathmandu, Nepal');
+  const listingStatus = String(listing.status || '').toLowerCase();
+  const isBookedListing = Boolean(
+    listing.isBooked ||
+    listingStatus === 'booked' ||
+    listingStatus === 'rented' ||
+    listingStatus === 'occupied'
+  );
+  const listingKeyFeatures = Array.isArray(listing.keyFeatures)
+    ? listing.keyFeatures.map((feature) => String(feature || '').trim()).filter(Boolean)
+    : [];
+  const featuresToDisplay = listingKeyFeatures.length ? listingKeyFeatures : defaultKeyFeatures;
+  const listingDescription = String(listing.description || '').trim();
+
+  const handleBookVisitClick = () => {
+    if (isBookedListing) {
+      showToast({
+        type: 'warning',
+        title: 'Property unavailable',
+        message: 'This listing is currently unavailable.',
+      });
+      return;
+    }
+
+    navigate('/booking-visit', { state: { listing } });
+  };
 
   return (
     <div className="min-h-screen bg-[#f3f4f6] font-sans px-4 md:px-8 py-4 md:py-8">
@@ -309,13 +402,12 @@ const Explore3DPage = () => {
         onConfirm={() => navigate('/login', { state: { from: location.pathname + location.search } })}
       />
 
-      <div className="w-full max-w-350 mx-auto flex flex-col lg:flex-row gap-6 lg:gap-5 xl:gap-6">
-        
-        {/* LEFT COLUMN */}
-        <div className="flex-1 lg:w-[65%] lg:flex-none flex flex-col gap-6">
-          {/* 3D Visualization Card */}
-          <div className="bg-white rounded-sm shadow-md overflow-hidden">
-            <div className="p-4 flex flex-wrap items-center justify-between gap-3 border-b border-gray-100">
+      <div className="w-full max-w-350 mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-6 lg:gap-5 xl:gap-6 items-stretch">
+          <div className="flex flex-col gap-6 lg:h-full">
+            {/* 3D Visualization Card */}
+            <div className="bg-white rounded-sm shadow-md overflow-hidden flex flex-col lg:flex-1 min-h-0">
+              <div className="p-4 flex flex-wrap items-center justify-between gap-3 border-b border-gray-100">
               <h2 className="text-xl font-bold text-[#1a222e]">3D Room Visualization</h2>
               <div className="flex flex-wrap gap-2 justify-end">
                 <button className="flex items-center gap-1 px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:bg-gray-50 whitespace-nowrap">
@@ -330,10 +422,10 @@ const Explore3DPage = () => {
               </div>
             </div>
 
-            <div className="relative aspect-video bg-[#2a2a2a] flex items-center justify-center overflow-hidden">
+            <div className="relative bg-[#2a2a2a] flex-1 min-h-64 md:min-h-80 lg:min-h-0 flex items-center justify-center overflow-hidden">
               <img 
                 src={listing.image || 'https://images.unsplash.com/photo-1554995207-c18c203602cb?q=80&w=1200'} 
-                className="w-full h-full object-cover opacity-40 blur-sm" 
+                className="absolute inset-0 w-full h-full object-cover opacity-40 blur-sm" 
                 alt="3D Placeholder"
               />
               <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
@@ -356,10 +448,10 @@ const Explore3DPage = () => {
                 </div>
               </div>
             </div>
-          </div>
+            </div>
 
-          {/* Property Location Map */}
-          <section className="bg-white border border-slate-200 rounded-sm overflow-hidden shadow-sm p-5 md:p-6">
+            {/* Property Location Map */}
+            <section className="bg-white border border-slate-200 rounded-sm overflow-hidden shadow-sm p-5 md:p-6 flex flex-col lg:flex-1 min-h-0">
             <div className="flex items-center gap-3 mb-4">
               <div className="bg-slate-900 p-1.5 rounded-md text-white">
                 <MapPin size={20} />
@@ -372,11 +464,11 @@ const Explore3DPage = () => {
 
             <hr className="border-slate-200 mb-6" />
 
-            <div className="rounded-sm border border-slate-200 overflow-hidden bg-slate-50">
+            <div className="rounded-sm border border-slate-200 overflow-hidden bg-slate-50 flex-1 min-h-0">
               <iframe
                 title="Property location map"
                 src={`https://www.google.com/maps?q=${mapQuery}&output=embed`}
-                className="w-full h-80"
+                className="w-full h-80 md:h-96 lg:h-full"
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
               />
@@ -386,13 +478,11 @@ const Explore3DPage = () => {
               <MapPin size={15} className="text-[#3b66ff]" />
               <span>{listing.location || 'Location not specified'}</span>
             </div>
-          </section>
+            </section>
+          </div>
 
-        </div>
-
-        {/* RIGHT COLUMN: TABBED INTERFACE */}
-        <div className="w-full lg:w-[35%] lg:flex-none flex flex-col gap-6">
-          <div className="bg-white rounded-sm shadow-md overflow-hidden">
+          {/* RIGHT COLUMN: TABBED INTERFACE */}
+          <div className="bg-white rounded-sm shadow-md overflow-hidden h-full">
             {/* Tab Navigation */}
             <div className="flex border-b border-gray-200">
               <button
@@ -404,16 +494,6 @@ const Explore3DPage = () => {
                 }`}
               >
                 <Home size={16} /> Details
-              </button>
-              <button
-                onClick={() => setActiveTab('booking')}
-                className={`flex-1 px-4 py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
-                  activeTab === 'booking'
-                    ? 'bg-blue-50 text-[#3b66ff] border-b-2 border-[#3b66ff]'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <Calendar size={16} /> Book Visit
               </button>
               <button
                 onClick={() => {
@@ -460,19 +540,6 @@ const Explore3DPage = () => {
                     </div>
                   </div>
 
-                  {/* Specs Badges */}
-                  <div className="flex flex-wrap gap-2 mb-8">
-                    <div className="flex items-center gap-2 bg-blue-50 text-[#3b82f6] px-4 py-2 rounded-full text-xs font-bold">
-                      <Bed size={14} /> {listing.bedrooms} Bedroom
-                    </div>
-                    <div className="flex items-center gap-2 bg-blue-50 text-[#3b66ff] px-4 py-2 rounded-full text-xs font-bold">
-                      <Bath size={14} /> {listing.bathrooms} Bathroom
-                    </div>
-                    <div className="flex items-center gap-2 bg-blue-50 text-[#3b66ff] px-4 py-2 rounded-full text-xs font-bold">
-                      <Ruler size={14} /> {listing.areaSqFt} sq.ft.
-                    </div>
-                  </div>
-
                   {/* Pricing */}
                   <div className="mb-8 border-t border-gray-100 pt-6">
                     <div className="flex items-baseline gap-1">
@@ -484,8 +551,69 @@ const Explore3DPage = () => {
                     </p>
                   </div>
 
+                  {/* Description */}
+                  <div className="mb-8 rounded-xl border border-slate-200 bg-slate-50/70 p-4 md:p-5">
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-600 border border-slate-200">
+                        <Info size={14} />
+                      </span>
+                      <h3 className="text-base font-bold text-[#1a222e]">Property Description</h3>
+                    </div>
+                    {listingDescription ? (
+                      <>
+                        {!isDescriptionOpen ? (
+                          <div>
+                            <p className="text-sm text-slate-500">Click the button below to read the full property description.</p>
+                            <button
+                              type="button"
+                              onClick={() => setIsDescriptionOpen(true)}
+                              className="mt-3 inline-flex items-center rounded-md border border-blue-200 bg-white px-3 py-1.5 text-sm font-semibold text-[#1d4ed8] transition-colors hover:bg-blue-50"
+                            >
+                              Read Description
+                            </button>
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="text-sm leading-7 text-slate-700 whitespace-pre-line">{listingDescription}</p>
+                            <button
+                              type="button"
+                              onClick={() => setIsDescriptionOpen(false)}
+                              className="mt-3 inline-flex items-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+                            >
+                              Hide Description
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm text-slate-500">No description provided for this property.</p>
+                    )}
+                  </div>
+
+                  {/* Primary Actions */}
+                  <button
+                    type="button"
+                    onClick={handleBookVisitClick}
+                    disabled={isBookedListing}
+                    className={`w-full py-3 rounded font-bold text-sm transition-colors mb-3 ${
+                      isBookedListing
+                        ? 'bg-red-100 text-red-700 border border-red-200 cursor-not-allowed'
+                        : 'bg-[#3b66ff] text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    <Calendar size={16} className="inline mr-2" /> {isBookedListing ? 'Property Already Booked' : 'Book a Visit'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('reviews')}
+                    className="w-full border border-blue-200 bg-blue-50 text-[#3b66ff] py-3 rounded font-bold text-sm hover:bg-blue-100 transition-colors mb-4"
+                  >
+                    <Star size={16} className="inline mr-2 text-amber-500 fill-amber-500" /> Rate and Review this Property
+                  </button>
+
                   {/* Action Buttons */}
-                  <div className="flex gap-3 mb-10">
+                  <div className="flex gap-3 mb-8">
                     <button
                       type="button"
                       onClick={handleToggleFavorite}
@@ -499,6 +627,19 @@ const Explore3DPage = () => {
                     </button>
                   </div>
 
+                  {/* Specs Badges */}
+                  <div className="flex flex-wrap gap-2 mb-8">
+                    <div className="flex items-center gap-2 bg-blue-50 text-[#3b82f6] px-4 py-2 rounded-full text-xs font-bold">
+                      <Bed size={14} /> {listing.bedrooms} Bedroom
+                    </div>
+                    <div className="flex items-center gap-2 bg-blue-50 text-[#3b66ff] px-4 py-2 rounded-full text-xs font-bold">
+                      <Bath size={14} /> {listing.bathrooms} Bathroom
+                    </div>
+                    <div className="flex items-center gap-2 bg-blue-50 text-[#3b66ff] px-4 py-2 rounded-full text-xs font-bold">
+                      <Ruler size={14} /> {listing.areaSqFt} sq.ft.
+                    </div>
+                  </div>
+
                   {/* Key Features */}
                   <div className="mb-10">
                     <div className="flex items-center gap-2 mb-6">
@@ -506,7 +647,7 @@ const Explore3DPage = () => {
                       <h3 className="text-lg font-bold text-[#3b66ff]">Key Features</h3>
                     </div>
                     <div className="grid grid-cols-2 gap-y-4 gap-x-2">
-                      {["Fully furnished", "Security System", "Balcony with view", "High-speed internet", "Kitchen appliances", "Laundry facilities"].map(feature => (
+                      {featuresToDisplay.map((feature) => (
                         <div key={feature} className="flex items-center gap-2 text-xs font-bold text-gray-600">
                           <CheckCircle2 size={16} className="text-gray-400" /> {feature}
                         </div>
@@ -518,14 +659,94 @@ const Explore3DPage = () => {
                   <div className="border-t border-gray-100 pt-8 mb-8">
                     <div className="flex items-center gap-2 mb-6">
                       <div className="bg-[#3b66ff] p-1.5 rounded-full text-white"><MessageSquare size={16} /></div>
-                      <h3 className="text-lg font-bold text-[#3b66ff]\">Reviews</h3>
+                      <h3 className="text-lg font-bold text-[#3b66ff]">Reviews & Ratings</h3>
                     </div>
-                    <button
-                      onClick={() => setActiveTab('reviews')}
-                      className="w-full px-4 py-2 bg-blue-50 text-blue-600 rounded font-semibold text-sm hover:bg-blue-100 transition-colors"
-                    >
-                      Read Reviews & Ratings
-                    </button>
+
+                    {isLoadingDetailsReviews ? (
+                      <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                        Loading ratings and reviews...
+                      </div>
+                    ) : detailsReviewSummary.totalReviews > 0 ? (
+                      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                          {(() => {
+                            const allReviews = detailsReviewSummary.reviews || [];
+                            const totalReviews = detailsReviewSummary.totalReviews || allReviews.length;
+                            const verifiedCount = allReviews.filter((item) => item.isVerifiedStay).length;
+                            const recommendationPct = totalReviews > 0
+                              ? Math.round((allReviews.filter((item) => Number(item.rating) >= 4).length / totalReviews) * 100)
+                              : 0;
+                            const distribution = [5, 4, 3, 2, 1].map((star) => {
+                              const count = allReviews.filter((item) => Number(item.rating) === star).length;
+                              const percentage = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
+                              return { star, count, percentage };
+                            });
+
+                            return (
+                              <>
+                        <div className="mb-3 rounded-lg bg-[#f8fbff] px-3 py-2.5">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#3b66ff]">Trusted renter feedback</p>
+                          <p className="mt-1 text-xs text-gray-600">
+                            {recommendationPct}% of renters rated this property 4 stars or above.
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-[110px_1fr] md:items-center">
+                          <div className="text-center md:text-left">
+                            <p className="text-4xl font-black leading-none text-gray-900">
+                              {detailsReviewSummary.averageRating.toFixed(1)}
+                            </p>
+                            <div className="mt-1 flex justify-center gap-0.5 md:justify-start">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  size={14}
+                                  className={
+                                    star <= Math.round(detailsReviewSummary.averageRating)
+                                      ? 'fill-amber-400 text-amber-400'
+                                      : 'text-gray-300'
+                                  }
+                                />
+                              ))}
+                            </div>
+                            <p className="mt-1 text-[11px] font-medium text-gray-500">
+                              {totalReviews} review{totalReviews !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            {distribution.map(({ star, count, percentage }) => (
+                              <div key={star} className="grid grid-cols-[14px_1fr_24px] items-center gap-2">
+                                <span className="text-[11px] font-semibold text-gray-600">{star}</span>
+                                <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
+                                  <div
+                                    className="h-full rounded-full bg-[#fbbc04]"
+                                    style={{ width: `${percentage}%` }}
+                                  />
+                                </div>
+                                <span className="text-right text-[11px] text-gray-500">{count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                            <CheckCircle2 size={12} /> {verifiedCount} verified booking{verifiedCount !== 1 ? 's' : ''}
+                          </span>
+                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                            Based on {totalReviews} renter review{totalReviews !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                              </>
+                            );
+                          })()}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                        No reviews yet for this property.
+                      </div>
+                    )}
+
                   </div>
 
                   {/* Contact Section */}
@@ -546,21 +767,6 @@ const Explore3DPage = () => {
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
-
-              {/* Book Visit Tab */}
-              {activeTab === 'booking' && (
-                <div>
-                  <BookingForm 
-                    listingId={listingKey} 
-                    ownerId={listing?.ownerId || listing?.owner}
-                    title={listing?.title}
-                    location={listing?.location}
-                    price={listing?.price}
-                    image={listing?.image}
-                    onBookingSuccess={() => {}} 
-                  />
                 </div>
               )}
 

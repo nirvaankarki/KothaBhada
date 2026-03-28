@@ -3,17 +3,30 @@ import { Bell, UserCircle2, ChevronDown, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
-const DashboardHeader = ({ profilePhoto, profileName }) => {
+const DashboardHeader = ({
+  profilePhoto,
+  profileName,
+  notifications = [],
+  unreadNotifications = 0,
+  onMarkNotificationRead,
+  onMarkAllNotificationsRead,
+  onNotificationNavigate,
+}) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const profileMenuRef = React.useRef(null);
+  const notificationMenuRef = React.useRef(null);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = React.useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = React.useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
 
   React.useEffect(() => {
     const handleOutsideClick = (event) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
         setIsProfileMenuOpen(false);
+      }
+      if (notificationMenuRef.current && !notificationMenuRef.current.contains(event.target)) {
+        setIsNotificationOpen(false);
       }
     };
 
@@ -41,10 +54,66 @@ const DashboardHeader = ({ profilePhoto, profileName }) => {
           <p className="mt-1 text-sm text-gray-500">Manage your profile and publish rental inventory from one place.</p>
         </div>
         <div className="flex items-center gap-5">
-          <button type="button" className="relative p-2 text-gray-400 hover:text-gray-600">
-            <Bell size={22} />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
-          </button>
+          <div className="relative" ref={notificationMenuRef}>
+            <button
+              type="button"
+              onClick={() => setIsNotificationOpen((prev) => !prev)}
+              className="relative p-2 text-gray-400 hover:text-gray-600"
+            >
+              <Bell size={22} />
+              {unreadNotifications > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-red-500 text-white text-[10px] rounded-full border-2 border-white inline-flex items-center justify-center">
+                  {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                </span>
+              )}
+            </button>
+
+            {isNotificationOpen && (
+              <div className="absolute right-0 mt-2 w-96 max-w-[90vw] rounded-2xl border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.16)] p-3 z-20">
+                <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-100">
+                  <h4 className="text-sm font-bold text-slate-800">Notifications</h4>
+                  {unreadNotifications > 0 && (
+                    <button
+                      type="button"
+                      onClick={onMarkAllNotificationsRead}
+                      className="text-xs font-semibold text-[#3b66ff] hover:text-[#2346c7]"
+                    >
+                      Mark all as read
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-2 max-h-80 overflow-y-auto space-y-2">
+                  {notifications.length === 0 ? (
+                    <p className="text-sm text-slate-500 px-2 py-6 text-center">No notifications yet.</p>
+                  ) : (
+                    notifications.map((item) => (
+                      <button
+                        key={item._id}
+                        type="button"
+                        onClick={() => {
+                          if (!item.isRead) {
+                            onMarkNotificationRead?.(item._id);
+                          }
+                          onNotificationNavigate?.(item);
+                          setIsNotificationOpen(false);
+                        }}
+                        className={`w-full text-left rounded-xl border px-3 py-2.5 transition-colors ${
+                          item.isRead
+                            ? 'border-slate-200 bg-white'
+                            : 'border-blue-200 bg-blue-50/60'
+                        }`}
+                      >
+                        <p className="text-xs font-semibold text-slate-800">{item.title}</p>
+                        <p className="mt-0.5 text-xs text-slate-600 leading-relaxed">{item.message}</p>
+                        <p className="mt-1 text-[11px] text-slate-400">{new Date(item.createdAt).toLocaleString()}</p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
           <div className="relative" ref={profileMenuRef}>
             <button
               type="button"

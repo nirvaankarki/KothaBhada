@@ -10,18 +10,18 @@ const RevenueChartCard = ({
   summaryText = 'Since last week',
 }) => {
   return (
-    <section className="lg:col-span-2 bg-white rounded-3xl p-6 sm:p-8 border border-gray-200">
-      <div className="flex justify-between items-center mb-8 sm:mb-10">
-        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+    <section className="lg:col-span-2 bg-white rounded-2xl p-5 sm:p-6 border border-gray-200">
+      <div className="flex justify-between items-center mb-6 sm:mb-7">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900">{title}</h3>
         <button
           type="button"
-          className="bg-gray-100 flex items-center gap-2 px-4 py-1.5 rounded-xl text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-200"
+          className="bg-gray-100 flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-200"
         >
           {periodLabel} <ChevronDown size={14} />
         </button>
       </div>
 
-      <div className="h-70 sm:h-75 w-full">
+      <div className="h-64 sm:h-72 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data}>
             <defs>
@@ -63,14 +63,14 @@ const RevenueChartCard = ({
         </ResponsiveContainer>
       </div>
 
-      <div className="mt-8 flex justify-between items-center">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
+      <div className="mt-6 flex justify-between items-center gap-4">
+        <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
           <TrendingUp size={16} className="text-emerald-500" />
           <span className="text-gray-900 font-bold">{summaryValue}</span> {summaryText}
         </div>
         <button
           type="button"
-          className="bg-gray-100 hover:bg-gray-200 px-6 py-2 rounded-xl text-xs font-semibold transition-colors text-gray-700"
+          className="bg-gray-100 hover:bg-gray-200 px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors text-gray-700"
         >
           Detail
         </button>

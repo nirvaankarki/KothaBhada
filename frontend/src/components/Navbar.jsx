@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { UserCircle2, Pencil, Check, X, Upload, Trash2 } from 'lucide-react';
+import { UserCircle2, Pencil, Check, X, Upload, Trash2, Bell } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import { isLandlordRole, resolveRole } from '../utils/roles';
+import { getNotificationTargetPath } from '../utils/notificationNavigation';
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -21,8 +22,12 @@ const Navbar = () => {
   const [tempPhotoPreview, setTempPhotoPreview] = useState(null);
   const [isSavingPhoto, setIsSavingPhoto] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const fileInputRef = useRef(null);
   const menuRef = useRef(null);
+  const notificationRef = useRef(null);
 
   useAutoDismiss(saveError, () => setSaveError(''));
 
@@ -34,6 +39,9 @@ const Navbar = () => {
     setSaveError('');
     setIsEditingPhoto(false);
     setTempPhotoPreview(null);
+    setNotifications([]);
+    setUnreadNotifications(0);
+    setIsNotificationOpen(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -46,11 +54,71 @@ const Navbar = () => {
         setEditingField('');
         setSaveError('');
       }
+
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setIsNotificationOpen(false);
+      }
     }
 
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || authLoading) return;
+
+    let stopped = false;
+
+    const pullNotifications = async () => {
+      try {
+        const response = await api.get('/user/notifications');
+        if (stopped) return;
+
+        setNotifications(response.data?.notifications || []);
+        setUnreadNotifications(response.data?.unreadCount || 0);
+      } catch {
+        // Silent polling fail in navbar.
+      }
+    };
+
+    pullNotifications();
+    const intervalId = setInterval(pullNotifications, 15000);
+
+    return () => {
+      stopped = true;
+      clearInterval(intervalId);
+    };
+  }, [isAuthenticated, authLoading]);
+
+  const handleMarkNotificationRead = async (notificationId) => {
+    if (!notificationId) return;
+
+    setNotifications((prev) => prev.map((item) => (
+      item._id === notificationId ? { ...item, isRead: true } : item
+    )));
+    setUnreadNotifications((prev) => Math.max(0, prev - 1));
+
+    try {
+      await api.post(`/user/notifications/${notificationId}/read`);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
+    setUnreadNotifications(0);
+
+    try {
+      await api.post('/user/notifications/read-all');
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleNotificationNavigate = (notification) => {
+    navigate(getNotificationTargetPath({ notification, isLandlord: isLandlordRole(activeRole) }));
+  };
 
   const handleLogout = () => {
     logout();
@@ -247,273 +315,335 @@ const Navbar = () => {
       </div>
 
       {isAuthenticated ? (
-        <div className="relative" ref={menuRef} key={user?.id || user?.email || 'anon'}>
-          {authLoading ? (
-            <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-white/10">
-              <div className="w-6 h-6 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              <span className="text-sm font-semibold text-white/80">Loading...</span>
-            </div>
-          ) : (
-          <button
-            type="button"
-            onClick={() => setIsMenuOpen((open) => !open)}
-            className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-white/10 transition-colors"
-            aria-label="Open profile menu"
-          >
-            {user?.profilePhoto ? (
-              <img 
-                src={user.profilePhoto} 
-                alt={user?.name} 
-                className="w-6 h-6 rounded-full object-cover border border-white/20"
-              />
-            ) : (
-              <UserCircle2 size={23} className="text-white" />
-            )}
-            <span className="text-sm font-semibold text-white max-w-28 truncate">{user?.name || 'Profile'}</span>
-          </button>
-          )}
+        <div className="flex items-center gap-3">
+          <div className="relative" ref={notificationRef}>
+            <button
+              type="button"
+              onClick={() => setIsNotificationOpen((prev) => !prev)}
+              className="relative p-2 rounded-full hover:bg-white/10 transition-colors"
+              aria-label="Open notifications"
+            >
+              <Bell size={20} className="text-white" />
+              {unreadNotifications > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#ef4444] text-white text-[10px] font-bold leading-4 text-center border border-[#1a222e]">
+                  {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                </span>
+              )}
+            </button>
 
-          {isMenuOpen && !authLoading && (
-            <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.16)] p-3 z-20">
-              <div className="rounded-xl bg-linear-to-r from-[#f3f7ff] to-[#eef4ff] border border-blue-100 px-3 py-3 mb-3">
-                <div className="flex items-center gap-3">
-                  {user?.profilePhoto ? (
-                    <img
-                      src={user.profilePhoto}
-                      alt={user?.name}
-                      className="w-11 h-11 rounded-full object-cover border-2 border-white shadow-sm"
-                    />
-                  ) : (
-                    <div className="w-11 h-11 rounded-full bg-slate-200 flex items-center justify-center border-2 border-white shadow-sm">
-                      <UserCircle2 size={22} className="text-slate-500" />
-                    </div>
+            {isNotificationOpen && (
+              <div className="absolute right-0 mt-3 w-96 max-w-[90vw] rounded-2xl border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.16)] p-3 z-20">
+                <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-100">
+                  <h4 className="text-sm font-bold text-slate-800">Notifications</h4>
+                  {unreadNotifications > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleMarkAllNotificationsRead}
+                      className="text-xs font-semibold text-[#3b82f6] hover:text-blue-700"
+                    >
+                      Mark all as read
+                    </button>
                   )}
+                </div>
 
-                  <div className="min-w-0">
-                    <p className="text-sm font-bold text-slate-800 truncate">{user?.name || 'Profile'}</p>
-                    <p className="text-xs text-slate-500 truncate">{user?.email || 'Email unavailable'}</p>
-                  </div>
+                <div className="mt-2 max-h-80 overflow-y-auto space-y-2">
+                  {notifications.length === 0 ? (
+                    <p className="text-sm text-slate-500 px-2 py-6 text-center">No notifications yet.</p>
+                  ) : (
+                    notifications.map((item) => (
+                      <button
+                        key={item._id}
+                        type="button"
+                        onClick={() => {
+                          if (!item.isRead) {
+                            handleMarkNotificationRead(item._id);
+                          }
+                          handleNotificationNavigate(item);
+                          setIsNotificationOpen(false);
+                        }}
+                        className={`w-full text-left rounded-xl border px-3 py-2.5 transition-colors ${
+                          item.isRead ? 'border-slate-200 bg-white' : 'border-blue-200 bg-blue-50/60'
+                        }`}
+                      >
+                        <p className="text-xs font-semibold text-slate-800">{item.title}</p>
+                        <p className="mt-0.5 text-xs text-slate-600 leading-relaxed">{item.message}</p>
+                        <p className="mt-1 text-[11px] text-slate-400">{new Date(item.createdAt).toLocaleString()}</p>
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
+            )}
+          </div>
 
-              {/* Profile Photo Section */}
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-3">
-                <div className="flex flex-col items-center justify-center gap-3">
-                  {isEditingPhoto ? (
-                    <>
-                      <img 
-                        src={tempPhotoPreview} 
-                        alt="Preview" 
-                        className="w-20 h-20 rounded-full object-cover border-2 border-[#3b82f6]"
+          <div className="relative" ref={menuRef} key={user?.id || user?.email || 'anon'}>
+            {authLoading ? (
+              <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-white/10">
+                <div className="w-6 h-6 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                <span className="text-sm font-semibold text-white/80">Loading...</span>
+              </div>
+            ) : (
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen((open) => !open)}
+              className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-white/10 transition-colors"
+              aria-label="Open profile menu"
+            >
+              {user?.profilePhoto ? (
+                <img 
+                  src={user.profilePhoto} 
+                  alt={user?.name} 
+                  className="w-6 h-6 rounded-full object-cover border border-white/20"
+                />
+              ) : (
+                <UserCircle2 size={23} className="text-white" />
+              )}
+              <span className="text-sm font-semibold text-white max-w-28 truncate">{user?.name || 'Profile'}</span>
+            </button>
+            )}
+
+            {isMenuOpen && !authLoading && (
+              <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.16)] p-3 z-20">
+                <div className="rounded-xl bg-linear-to-r from-[#f3f7ff] to-[#eef4ff] border border-blue-100 px-3 py-3 mb-3">
+                  <div className="flex items-center gap-3">
+                    {user?.profilePhoto ? (
+                      <img
+                        src={user.profilePhoto}
+                        alt={user?.name}
+                        className="w-11 h-11 rounded-full object-cover border-2 border-white shadow-sm"
                       />
-                      <p className="text-xs text-gray-400">Photo preview</p>
-                      <div className="flex gap-2 w-full">
-                        <button
-                          type="button"
-                          onClick={handleSavePhoto}
-                          disabled={isSavingPhoto}
-                          className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
-                        >
-                          <Check size={14} /> Save
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleCancelPhotoEdit}
-                          disabled={isSavingPhoto}
-                          className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg bg-slate-600 hover:bg-slate-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
-                        >
-                          <X size={14} /> Cancel
-                        </button>
+                    ) : (
+                      <div className="w-11 h-11 rounded-full bg-slate-200 flex items-center justify-center border-2 border-white shadow-sm">
+                        <UserCircle2 size={22} className="text-slate-500" />
                       </div>
-                      {saveError && (
-                        <p className="w-full text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-2 py-1.5 text-center">
-                          {saveError}
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      {user?.profilePhoto ? (
+                    )}
+
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-800 truncate">{user?.name || 'Profile'}</p>
+                      <p className="text-xs text-slate-500 truncate">{user?.email || 'Email unavailable'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Profile Photo Section */}
+                <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 mb-3">
+                  <div className="flex flex-col items-center justify-center gap-3">
+                    {isEditingPhoto ? (
+                      <>
                         <img 
-                          src={user.profilePhoto} 
-                          alt={user?.name} 
+                          src={tempPhotoPreview} 
+                          alt="Preview" 
                           className="w-20 h-20 rounded-full object-cover border-2 border-[#3b82f6]"
                         />
-                      ) : (
-                        <div className="w-20 h-20 rounded-full bg-slate-200 flex items-center justify-center border-2 border-slate-300">
-                          <UserCircle2 size={40} className="text-slate-500" />
-                        </div>
-                      )}
-                      <div className="flex gap-2 w-full">
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={isSavingPhoto}
-                          className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg bg-[#3b82f6] hover:bg-blue-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
-                        >
-                          <Upload size={14} /> Upload
-                        </button>
-                        {user?.profilePhoto && (
+                        <p className="text-xs text-gray-400">Photo preview</p>
+                        <div className="flex gap-2 w-full">
                           <button
                             type="button"
-                            onClick={handleRemovePhoto}
+                            onClick={handleSavePhoto}
                             disabled={isSavingPhoto}
-                            className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
+                            className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
                           >
-                            <Trash2 size={14} /> Remove
+                            <Check size={14} /> Save
                           </button>
+                          <button
+                            type="button"
+                            onClick={handleCancelPhotoEdit}
+                            disabled={isSavingPhoto}
+                            className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg bg-slate-600 hover:bg-slate-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
+                          >
+                            <X size={14} /> Cancel
+                          </button>
+                        </div>
+                        {saveError && (
+                          <p className="w-full text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-2 py-1.5 text-center">
+                            {saveError}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {user?.profilePhoto ? (
+                          <img 
+                            src={user.profilePhoto} 
+                            alt={user?.name} 
+                            className="w-20 h-20 rounded-full object-cover border-2 border-[#3b82f6]"
+                          />
+                        ) : (
+                          <div className="w-20 h-20 rounded-full bg-slate-200 flex items-center justify-center border-2 border-slate-300">
+                            <UserCircle2 size={40} className="text-slate-500" />
+                          </div>
+                        )}
+                        <div className="flex gap-2 w-full">
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isSavingPhoto}
+                            className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg bg-[#3b82f6] hover:bg-blue-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
+                          >
+                            <Upload size={14} /> Upload
+                          </button>
+                          {user?.profilePhoto && (
+                            <button
+                              type="button"
+                              onClick={handleRemovePhoto}
+                              disabled={isSavingPhoto}
+                              className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
+                            >
+                              <Trash2 size={14} /> Remove
+                            </button>
+                          )}
+                        </div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoFileSelect}
+                          className="hidden"
+                          aria-label="Upload profile photo"
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="rounded-xl bg-white border border-slate-200 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[11px] uppercase tracking-wider text-slate-400">Name</p>
+                        {editingField === 'name' ? (
+                          <input
+                            type="text"
+                            value={nameInput}
+                            onChange={(e) => {
+                              setNameInput(e.target.value);
+                              setSaveError('');
+                            }}
+                            className="mt-1 w-full px-2 py-1.5 rounded-lg bg-white border border-slate-300 text-sm text-slate-700 outline-none focus:border-[#3b82f6]"
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-800 truncate">{user?.name || 'Not set'}</p>
                         )}
                       </div>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoFileSelect}
-                        className="hidden"
-                        aria-label="Upload profile photo"
-                      />
-                    </>
-                  )}
-                </div>
-              </div>
 
-              <div className="space-y-3">
-                <div className="rounded-xl bg-white border border-slate-200 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[11px] uppercase tracking-wider text-slate-400">Name</p>
                       {editingField === 'name' ? (
-                        <input
-                          type="text"
-                          value={nameInput}
-                          onChange={(e) => {
-                            setNameInput(e.target.value);
-                            setSaveError('');
-                          }}
-                          className="mt-1 w-full px-2 py-1.5 rounded-lg bg-white border border-slate-300 text-sm text-slate-700 outline-none focus:border-[#3b82f6]"
-                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleSaveField('name')}
+                            disabled={isSaving}
+                            className="text-green-600 hover:text-green-500 disabled:opacity-60"
+                            aria-label="Save name"
+                          >
+                            <Check size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingField('');
+                              setNameInput(user?.name || '');
+                              setSaveError('');
+                            }}
+                            className="text-slate-400 hover:text-slate-700"
+                            aria-label="Cancel editing name"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
                       ) : (
-                        <p className="text-sm text-slate-800 truncate">{user?.name || 'Not set'}</p>
-                      )}
-                    </div>
-
-                    {editingField === 'name' ? (
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleSaveField('name')}
-                          disabled={isSaving}
-                          className="text-green-600 hover:text-green-500 disabled:opacity-60"
-                          aria-label="Save name"
-                        >
-                          <Check size={16} />
-                        </button>
                         <button
                           type="button"
                           onClick={() => {
-                            setEditingField('');
-                            setNameInput(user?.name || '');
+                            setEditingField('name');
                             setSaveError('');
                           }}
                           className="text-slate-400 hover:text-slate-700"
-                          aria-label="Cancel editing name"
+                          aria-label="Edit name"
                         >
-                          <X size={16} />
+                          <Pencil size={15} />
                         </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingField('name');
-                          setSaveError('');
-                        }}
-                        className="text-slate-400 hover:text-slate-700"
-                        aria-label="Edit name"
-                      >
-                        <Pencil size={15} />
-                      </button>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                <div className="rounded-xl bg-white border border-slate-200 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-[11px] uppercase tracking-wider text-slate-400">Contact Number</p>
+                  <div className="rounded-xl bg-white border border-slate-200 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[11px] uppercase tracking-wider text-slate-400">Contact Number</p>
+                        {editingField === 'phone' ? (
+                          <input
+                            type="text"
+                            value={phoneInput}
+                            onChange={(e) => {
+                              setPhoneInput(e.target.value);
+                              setSaveError('');
+                            }}
+                            className="mt-1 w-full px-2 py-1.5 rounded-lg bg-white border border-slate-300 text-sm text-slate-700 outline-none focus:border-[#3b82f6]"
+                            placeholder="e.g. +977-98XXXXXXXX"
+                          />
+                        ) : (
+                          <p className="text-sm text-slate-800 truncate">{user?.phone || 'Not set'}</p>
+                        )}
+                      </div>
+
                       {editingField === 'phone' ? (
-                        <input
-                          type="text"
-                          value={phoneInput}
-                          onChange={(e) => {
-                            setPhoneInput(e.target.value);
-                            setSaveError('');
-                          }}
-                          className="mt-1 w-full px-2 py-1.5 rounded-lg bg-white border border-slate-300 text-sm text-slate-700 outline-none focus:border-[#3b82f6]"
-                          placeholder="e.g. +977-98XXXXXXXX"
-                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleSaveField('phone')}
+                            disabled={isSaving}
+                            className="text-green-600 hover:text-green-500 disabled:opacity-60"
+                            aria-label="Save contact number"
+                          >
+                            <Check size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingField('');
+                              setPhoneInput(user?.phone || '');
+                              setSaveError('');
+                            }}
+                            className="text-slate-400 hover:text-slate-700"
+                            aria-label="Cancel editing contact number"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
                       ) : (
-                        <p className="text-sm text-slate-800 truncate">{user?.phone || 'Not set'}</p>
-                      )}
-                    </div>
-
-                    {editingField === 'phone' ? (
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleSaveField('phone')}
-                          disabled={isSaving}
-                          className="text-green-600 hover:text-green-500 disabled:opacity-60"
-                          aria-label="Save contact number"
-                        >
-                          <Check size={16} />
-                        </button>
                         <button
                           type="button"
                           onClick={() => {
-                            setEditingField('');
-                            setPhoneInput(user?.phone || '');
+                            setEditingField('phone');
                             setSaveError('');
                           }}
                           className="text-slate-400 hover:text-slate-700"
-                          aria-label="Cancel editing contact number"
+                          aria-label="Edit contact number"
                         >
-                          <X size={16} />
+                          <Pencil size={15} />
                         </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingField('phone');
-                          setSaveError('');
-                        }}
-                        className="text-slate-400 hover:text-slate-700"
-                        aria-label="Edit contact number"
-                      >
-                        <Pencil size={15} />
-                      </button>
-                    )}
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-white border border-slate-200 p-3">
+                    <p className="text-[11px] uppercase tracking-wider text-slate-400">Email</p>
+                    <p className="text-sm text-slate-800 truncate">{user?.email}</p>
                   </div>
                 </div>
 
-                <div className="rounded-xl bg-white border border-slate-200 p-3">
-                  <p className="text-[11px] uppercase tracking-wider text-slate-400">Email</p>
-                  <p className="text-sm text-slate-800 truncate">{user?.email}</p>
-                </div>
+                {saveError && <p className="mt-3 text-xs text-red-600">{saveError}</p>}
+
+                <button
+                  type="button"
+                  onClick={handleLogoutRequest}
+                  className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors text-sm font-semibold"
+                >
+                  <Trash2 size={14} /> Logout
+                </button>
               </div>
-
-              {saveError && <p className="mt-3 text-xs text-red-600">{saveError}</p>}
-
-              <button
-                type="button"
-                onClick={handleLogoutRequest}
-                className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors text-sm font-semibold"
-              >
-                <Trash2 size={14} /> Logout
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       ) : (
         <div>

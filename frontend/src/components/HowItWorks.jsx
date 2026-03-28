@@ -16,13 +16,13 @@ const HowItWorks = () => {
       items: ["Property Owner Dashboard", "3D Model Upload & Processing", "Analytics", "Immersive Exploration"]
     },
     {
-      title: "Listing and Management",
-      items: ["Property Owner Dashboard", "3D Model Upload & Processing", "Analytics", "Immersive Exploration"]
+      title: "Booking and Reviews",
+      items: ["Save to Favorites", "Secure Booking", "Renter Dashboard", "Share Verified Reviews"]
     }
   ];
 
   return (
-    <section className="py-24 px-6 md:px-20 bg-white">
+    <section className="py-24 px-6 md:px-20 bg-linear-to-b from-[#fafbfc] to-[#f3f5f9]">
       <div className="max-w-7xl mx-auto">
         {/* Section Heading */}
         <h2 className="text-4xl md:text-6xl font-extrabold text-[#1a222e] text-center mb-20 tracking-tight uppercase">

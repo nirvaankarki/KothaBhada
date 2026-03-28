@@ -1,22 +1,35 @@
-import React, { useEffect, useState } from 'react';
-import { Heart, History, MapPin, Clock3, MessageSquare, CalendarDays, Send, Plus } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import { Heart, History, MapPin, Clock3, MessageSquare, CalendarDays, Send, Plus, ChevronDown } from 'lucide-react';
 import api from '../utils/api';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import { useToast } from '../context/ToastContext';
+import ConfirmModal from '../components/ConfirmModal';
 
 const UserDashboardPage = () => {
+  const location = useLocation();
+  const queryTab = new URLSearchParams(location.search).get('tab');
+  const allowedTabs = new Set(['favorites', 'history', 'inquiries', 'bookings']);
+  const initialTab = allowedTabs.has(queryTab) ? queryTab : 'favorites';
   const [favorites, setFavorites] = useState([]);
   const [history, setHistory] = useState([]);
   const [inquiries, setInquiries] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('favorites');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState(false);
   const { showToast } = useToast();
 
   useAutoDismiss(error, () => setError(''));
   useAutoDismiss(success, () => setSuccess(''));
+
+  useEffect(() => {
+    if (allowedTabs.has(queryTab)) {
+      setActiveTab(queryTab);
+    }
+  }, [queryTab]);
 
   useEffect(() => {
     if (!error) return;
@@ -45,13 +58,24 @@ const UserDashboardPage = () => {
     location: '',
     price: '',
     image: '',
-    ownerName: '',
-    ownerContact: '',
+    fullName: '',
+    email: '',
+    phone: '',
     preferredVisitDate: '',
+    preferredTime: '',
+    moveInDate: '',
+    stayDurationMonths: '12',
+    occupants: '1',
+    occupation: '',
+    monthlyIncome: '',
+    hasPets: '',
+    reasonForMoving: '',
     note: '',
   });
 
   const [replyDrafts, setReplyDrafts] = useState({});
+  const bookingStatusMapRef = useRef({});
+  const hasInitializedBookingMapRef = useRef(false);
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -68,7 +92,15 @@ const UserDashboardPage = () => {
         setFavorites(favoritesRes.data?.favorites || []);
         setHistory(historyRes.data?.history || []);
         setInquiries(inquiriesRes.data?.inquiries || []);
-        setBookings(bookingsRes.data?.bookings || []);
+        const initialBookings = bookingsRes.data?.bookings || [];
+        setBookings(initialBookings);
+        bookingStatusMapRef.current = initialBookings.reduce((acc, booking) => {
+          if (booking?._id) {
+            acc[booking._id] = booking.status || 'pending';
+          }
+          return acc;
+        }, {});
+        hasInitializedBookingMapRef.current = true;
       } catch (err) {
         setError(err?.response?.data?.message || 'Could not load your dashboard');
       } finally {
@@ -78,6 +110,47 @@ const UserDashboardPage = () => {
 
     loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (!hasInitializedBookingMapRef.current) return;
+
+    const pollBookings = async () => {
+      try {
+        const response = await api.get('/user/bookings');
+        const latestBookings = response.data?.bookings || [];
+        setBookings(latestBookings);
+
+        const nextMap = {};
+
+        latestBookings.forEach((booking) => {
+          if (!booking?._id) return;
+
+          const latestStatus = booking.status || 'pending';
+          const previousStatus = bookingStatusMapRef.current[booking._id] || 'pending';
+
+          if (latestStatus !== previousStatus && ['confirmed', 'declined'].includes(latestStatus)) {
+            showToast({
+              type: latestStatus === 'confirmed' ? 'success' : 'error',
+              title: latestStatus === 'confirmed' ? 'Booking Accepted' : 'Booking Rejected',
+              message: latestStatus === 'confirmed'
+                ? `Your booking for ${booking.title || 'this property'} was accepted by the landlord.`
+                : `Your booking for ${booking.title || 'this property'} was rejected by the landlord.`,
+            });
+          }
+
+          nextMap[booking._id] = latestStatus;
+        });
+
+        bookingStatusMapRef.current = nextMap;
+      } catch {
+        // Silent polling failure to avoid noisy dashboard errors.
+      }
+    };
+
+    const intervalId = setInterval(pollBookings, 15000);
+
+    return () => clearInterval(intervalId);
+  }, [showToast]);
 
   const handleRemoveFavorite = async (item) => {
     setError('');
@@ -99,10 +172,11 @@ const UserDashboardPage = () => {
       return;
     }
 
-    const shouldClear = window.confirm('Remove all viewing history? This action cannot be undone.');
-    if (!shouldClear) {
-      return;
-    }
+    setShowClearHistoryConfirm(true);
+  };
+
+  const handleConfirmClearHistory = async () => {
+    setShowClearHistoryConfirm(false);
 
     setError('');
     setSuccess('');
@@ -181,9 +255,18 @@ const UserDashboardPage = () => {
       setBookings((prev) => [response.data.booking, ...prev]);
       setBookingForm((prev) => ({
         ...prev,
-        ownerName: '',
-        ownerContact: '',
+        fullName: '',
+        email: '',
+        phone: '',
         preferredVisitDate: '',
+        preferredTime: '',
+        moveInDate: '',
+        stayDurationMonths: '12',
+        occupants: '1',
+        occupation: '',
+        monthlyIncome: '',
+        hasPets: '',
+        reasonForMoving: '',
         note: '',
       }));
       setSuccess('Booking request sent successfully');
@@ -267,9 +350,24 @@ const UserDashboardPage = () => {
     return statusMap[status] || 'bg-gray-100 text-gray-600';
   };
 
+  const formatStatusLabel = (status) => {
+    const normalized = String(status || 'pending');
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  };
+
   return (
     <div className="min-h-screen bg-[#f6f8fc] px-6 md:px-10 lg:px-16 py-10">
-      <div className="max-w-[1200px] mx-auto">
+      <ConfirmModal
+        open={showClearHistoryConfirm}
+        title="Clear Viewing History?"
+        message="Remove all viewing history? This action cannot be undone."
+        onCancel={() => setShowClearHistoryConfirm(false)}
+        onConfirm={handleConfirmClearHistory}
+        confirmLabel="Clear"
+        confirmVariant="danger"
+      />
+
+      <div className="max-w-300 mx-auto">
         <h1 className="text-4xl font-black text-[#1a222e] mb-6 tracking-tight">My Dashboard</h1>
 
         <div className="bg-white border border-gray-100 shadow-sm rounded-sm p-3 inline-flex gap-2 mb-8">
@@ -335,17 +433,20 @@ const UserDashboardPage = () => {
                 <form onSubmit={handleCreateInquiry} className="bg-white border border-gray-100 rounded-sm p-5 shadow-sm">
                   <h2 className="text-xl font-bold text-[#1a222e] mb-4 flex items-center gap-2"><Plus size={18} /> New Inquiry</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <select
-                      value={inquiryForm.listingId}
-                      onChange={(e) => handleListingSelectForInquiry(e.target.value)}
-                      className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400"
-                      required
-                    >
-                      <option value="">Select listing from favorites/history</option>
-                      {sourceListings.map((item) => (
-                        <option key={item.listingId} value={item.listingId}>{item.title}</option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={inquiryForm.listingId}
+                        onChange={(e) => handleListingSelectForInquiry(e.target.value)}
+                        className="w-full px-3 py-2 pr-10 appearance-none bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400"
+                        required
+                      >
+                        <option value="">Select listing from favorites/history</option>
+                        {sourceListings.map((item) => (
+                          <option key={item.listingId} value={item.listingId}>{item.title}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    </div>
                     <input
                       type="text"
                       value={inquiryForm.ownerName}
@@ -371,7 +472,7 @@ const UserDashboardPage = () => {
                       value={inquiryForm.message}
                       onChange={(e) => setInquiryForm((prev) => ({ ...prev, message: e.target.value }))}
                       placeholder="Write your message to the owner"
-                      className="md:col-span-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400 min-h-[100px]"
+                      className="md:col-span-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400 min-h-25"
                       required
                     />
                   </div>
@@ -430,43 +531,138 @@ const UserDashboardPage = () => {
                 <form onSubmit={handleCreateBooking} className="bg-white border border-gray-100 rounded-sm p-5 shadow-sm">
                   <h2 className="text-xl font-bold text-[#1a222e] mb-4 flex items-center gap-2"><Plus size={18} /> New Booking Request</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <select
-                      value={bookingForm.listingId}
-                      onChange={(e) => handleListingSelectForBooking(e.target.value)}
+                    <div className="relative">
+                      <select
+                        value={bookingForm.listingId}
+                        onChange={(e) => handleListingSelectForBooking(e.target.value)}
+                        className="w-full px-3 py-2 pr-10 appearance-none bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400"
+                        required
+                      >
+                        <option value="">Select listing from favorites/history</option>
+                        {sourceListings.map((item) => (
+                          <option key={item.listingId} value={item.listingId}>{item.title}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      value={bookingForm.fullName}
+                      onChange={(e) => setBookingForm((prev) => ({ ...prev, fullName: e.target.value }))}
+                      placeholder="Full name *"
                       className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400"
                       required
-                    >
-                      <option value="">Select listing from favorites/history</option>
-                      {sourceListings.map((item) => (
-                        <option key={item.listingId} value={item.listingId}>{item.title}</option>
-                      ))}
-                    </select>
+                    />
                     <input
-                      type="datetime-local"
+                      type="email"
+                      value={bookingForm.email}
+                      onChange={(e) => setBookingForm((prev) => ({ ...prev, email: e.target.value }))}
+                      placeholder="Email address *"
+                      className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400"
+                      required
+                    />
+                    <input
+                      type="tel"
+                      value={bookingForm.phone}
+                      onChange={(e) => setBookingForm((prev) => ({ ...prev, phone: e.target.value }))}
+                      placeholder="Phone number *"
+                      className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400"
+                      required
+                    />
+                    <input
+                      type="date"
                       value={bookingForm.preferredVisitDate}
                       onChange={(e) => setBookingForm((prev) => ({ ...prev, preferredVisitDate: e.target.value }))}
                       className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400"
                       required
                     />
+                    <div className="relative">
+                      <select
+                        value={bookingForm.preferredTime}
+                        onChange={(e) => setBookingForm((prev) => ({ ...prev, preferredTime: e.target.value }))}
+                        className="w-full px-3 py-2 pr-10 appearance-none bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400"
+                        required
+                      >
+                        <option value="">Preferred time *</option>
+                        <option value="morning">Morning (9 AM - 12 PM)</option>
+                        <option value="afternoon">Afternoon (12 PM - 4 PM)</option>
+                        <option value="evening">Evening (4 PM - 6 PM)</option>
+                      </select>
+                      <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    </div>
                     <input
-                      type="text"
-                      value={bookingForm.ownerName}
-                      onChange={(e) => setBookingForm((prev) => ({ ...prev, ownerName: e.target.value }))}
-                      placeholder="Owner name (optional)"
+                      type="date"
+                      value={bookingForm.moveInDate}
+                      onChange={(e) => setBookingForm((prev) => ({ ...prev, moveInDate: e.target.value }))}
                       className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400"
+                      required
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      value={bookingForm.stayDurationMonths}
+                      onChange={(e) => setBookingForm((prev) => ({ ...prev, stayDurationMonths: e.target.value }))}
+                      placeholder="Stay duration (months) *"
+                      className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400"
+                      required
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      value={bookingForm.occupants}
+                      onChange={(e) => setBookingForm((prev) => ({ ...prev, occupants: e.target.value }))}
+                      placeholder="Number of occupants *"
+                      className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400"
+                      required
                     />
                     <input
                       type="text"
-                      value={bookingForm.ownerContact}
-                      onChange={(e) => setBookingForm((prev) => ({ ...prev, ownerContact: e.target.value }))}
-                      placeholder="Owner contact (optional)"
+                      value={bookingForm.occupation}
+                      onChange={(e) => setBookingForm((prev) => ({ ...prev, occupation: e.target.value }))}
+                      placeholder="Occupation *"
                       className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400"
+                      required
+                    />
+                    <div className="relative">
+                      <select
+                        value={bookingForm.monthlyIncome}
+                        onChange={(e) => setBookingForm((prev) => ({ ...prev, monthlyIncome: e.target.value }))}
+                        className="w-full px-3 py-2 pr-10 appearance-none bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400"
+                        required
+                      >
+                        <option value="">Monthly income range *</option>
+                        <option value="below-25000">Below Rs. 25,000</option>
+                        <option value="25000-50000">Rs. 25,000 - 50,000</option>
+                        <option value="50000-100000">Rs. 50,000 - 100,000</option>
+                        <option value="above-100000">Above Rs. 100,000</option>
+                      </select>
+                      <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    </div>
+                    <div className="relative">
+                      <select
+                        value={bookingForm.hasPets}
+                        onChange={(e) => setBookingForm((prev) => ({ ...prev, hasPets: e.target.value }))}
+                        className="w-full px-3 py-2 pr-10 appearance-none bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400"
+                        required
+                      >
+                        <option value="">Any pets? *</option>
+                        <option value="no">No</option>
+                        <option value="yes">Yes</option>
+                      </select>
+                      <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    </div>
+                    <textarea
+                      value={bookingForm.reasonForMoving}
+                      onChange={(e) => setBookingForm((prev) => ({ ...prev, reasonForMoving: e.target.value }))}
+                      placeholder="Reason for moving *"
+                      className="md:col-span-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400 min-h-24"
+                      required
                     />
                     <textarea
                       value={bookingForm.note}
                       onChange={(e) => setBookingForm((prev) => ({ ...prev, note: e.target.value }))}
-                      placeholder="Additional note for booking"
-                      className="md:col-span-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400 min-h-[90px]"
+                      placeholder="Additional note for booking (optional)"
+                      className="md:col-span-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-400 min-h-24"
                     />
                   </div>
                   <button type="submit" className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-[#3b66ff] text-white rounded-sm text-sm font-bold hover:bg-blue-700">
@@ -488,13 +684,30 @@ const UserDashboardPage = () => {
                         <div className="p-4">
                           <div className="flex items-center justify-between mb-2">
                             <h3 className="font-bold text-[#1a222e] line-clamp-1">{booking.title}</h3>
-                            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${statusPill(booking.status)}`}>{booking.status}</span>
+                            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${statusPill(booking.status)}`}>{formatStatusLabel(booking.status)}</span>
                           </div>
                           <p className="text-xs text-gray-500 mb-1 inline-flex items-center gap-1"><MapPin size={12} /> {booking.location || 'Location not set'}</p>
                           <p className="text-sm font-extrabold text-[#3b66ff] mb-2">Rs {Number(booking.price || 0).toLocaleString()}</p>
+                          {booking.status === 'confirmed' && (
+                            <p className="mb-2 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700">
+                              Your booking has been accepted by the landlord.
+                            </p>
+                          )}
+                          {booking.status === 'declined' && (
+                            <p className="mb-2 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700">
+                              Your booking has been rejected by the landlord.
+                            </p>
+                          )}
                           <p className="text-xs text-gray-600 mb-1">Visit: {new Date(booking.preferredVisitDate).toLocaleString()}</p>
+                          {booking.preferredTime && <p className="text-xs text-gray-600 mb-1">Time slot: {booking.preferredTime}</p>}
+                          {booking.moveInDate && <p className="text-xs text-gray-600 mb-1">Move-in date: {new Date(booking.moveInDate).toLocaleDateString()}</p>}
+                          {booking.occupants && <p className="text-xs text-gray-600 mb-1">Occupants: {booking.occupants}</p>}
                           {booking.note && <p className="text-xs text-gray-500 mb-1">Note: {booking.note}</p>}
-                          {booking.ownerResponse && <p className="text-xs text-green-700">Owner response: {booking.ownerResponse}</p>}
+                          {booking.ownerResponse && (
+                            <p className={`text-xs ${booking.status === 'declined' ? 'text-rose-700' : 'text-emerald-700'}`}>
+                              Owner response: {booking.ownerResponse}
+                            </p>
+                          )}
                         </div>
                       </div>
                     ))}

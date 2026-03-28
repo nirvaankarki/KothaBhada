@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { MapPin, CalendarDays, Heart, ArrowUpRight, Bed, Bath, Square } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
 import { FALLBACK_LISTINGS, getListingId } from '../utils/listingData';
 import RatingDisplay from './RatingDisplay';
@@ -196,6 +197,7 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
 
 const FeaturedListings = () => {
   const { isAuthenticated, token } = useAuth();
+  const { showToast } = useToast();
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [favoriteIds, setFavoriteIds] = useState(new Set());
@@ -278,13 +280,20 @@ const FeaturedListings = () => {
         }
         return next;
       });
+
+      if (response.data?.isFavorite) {
+        showToast({ type: 'success', title: 'Saved', message: 'Property added to favorites.' });
+      } else {
+        showToast({ type: 'success', title: 'Removed', message: 'Property removed from favorites.' });
+      }
     } catch {
       // Keep current state if save fails.
+      showToast({ type: 'error', title: 'Action failed', message: 'Could not update favorite right now.' });
     }
   };
 
   return (
-    <section className="py-24 px-6 md:px-10 lg:px-20 bg-white">
+    <section className="py-24 px-6 md:px-10 lg:px-20 bg-linear-to-b from-white to-[#f8f9ff]">
       <div className="max-w-350 mx-auto">
         {/* Header */}
         <h2 className="text-4xl md:text-5xl font-extrabold text-[#1a222e] text-center mb-16 tracking-tight uppercase">

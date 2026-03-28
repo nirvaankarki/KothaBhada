@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Star, Loader2 } from 'lucide-react';
 import api from '../utils/api';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 
 const RATING_LABELS = {
   1: 'Poor',
@@ -16,10 +17,59 @@ const ReviewForm = ({ listingId, onReviewAdded }) => {
   const [hoverRating, setHoverRating] = useState(0);
   const [review, setReview] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmittedReview, setHasSubmittedReview] = useState(false);
+  const [isCheckingExisting, setIsCheckingExisting] = useState(true);
   const { showToast } = useToast();
+  const { user } = useAuth();
+  const currentUserId = user?.id || user?._id;
+
+  useEffect(() => {
+    let ignore = false;
+
+    const loadExistingReview = async () => {
+      if (!listingId || !currentUserId) {
+        setHasSubmittedReview(false);
+        setIsCheckingExisting(false);
+        return;
+      }
+
+      setIsCheckingExisting(true);
+
+      try {
+        const response = await api.get(`/reviews/listing/${listingId}`);
+        const reviews = response.data?.reviews || [];
+        if (!ignore) {
+          setHasSubmittedReview(reviews.some((item) => item.userId === currentUserId));
+        }
+      } catch {
+        if (!ignore) {
+          setHasSubmittedReview(false);
+        }
+      } finally {
+        if (!ignore) {
+          setIsCheckingExisting(false);
+        }
+      }
+    };
+
+    loadExistingReview();
+
+    return () => {
+      ignore = true;
+    };
+  }, [listingId, currentUserId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (hasSubmittedReview) {
+      showToast({
+        type: 'info',
+        title: 'Review already exists',
+        message: 'You already reviewed this listing. Please edit your existing review below.',
+      });
+      return;
+    }
 
     if (rating === 0) {
       showToast({ type: 'error', title: 'Rating required', message: 'Please select a rating' });
@@ -43,6 +93,7 @@ const ReviewForm = ({ listingId, onReviewAdded }) => {
       showToast({ type: 'success', title: 'Success', message: 'Review added successfully!' });
       setRating(0);
       setReview('');
+      setHasSubmittedReview(true);
       onReviewAdded();
     } catch (err) {
       showToast({ type: 'error', title: 'Failed', message: err.response?.data?.message || err.message || 'Could not add review' });
@@ -60,6 +111,15 @@ const ReviewForm = ({ listingId, onReviewAdded }) => {
         </p>
       </div>
 
+      {isCheckingExisting ? (
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <Loader2 size={16} className="animate-spin" /> Checking your review status...
+        </div>
+      ) : hasSubmittedReview ? (
+        <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          You have already submitted a review for this listing. You can edit or delete your existing review below.
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="mb-2 block text-sm font-semibold text-gray-800">Overall rating</label>
@@ -122,6 +182,7 @@ const ReviewForm = ({ listingId, onReviewAdded }) => {
           {isSubmitting ? 'Submitting...' : 'Submit Review'}
         </button>
       </form>
+      )}
     </div>
   );
 };

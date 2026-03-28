@@ -11,6 +11,7 @@ import {
   Square,
   CalendarDays,
   ArrowUpRight,
+  Heart,
 } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -51,12 +52,43 @@ function formatDate(dateValue) {
   return parsed.toLocaleDateString();
 }
 
+function getAvailabilityBadge(listing, isFeatured = false) {
+  const status = String(listing?.status || '').toLowerCase();
+
+  if (listing?.isBooked || status === 'booked' || status === 'rented' || status === 'occupied') {
+    return {
+      label: 'Booked',
+      className: 'bg-rose-600 text-white',
+    };
+  }
+
+  if (status === 'inactive' || status === 'unavailable') {
+    return {
+      label: 'Unavailable',
+      className: 'bg-gray-700 text-white',
+    };
+  }
+
+  if (isFeatured) {
+    return {
+      label: 'Featured',
+      className: 'bg-orange-500 text-white',
+    };
+  }
+
+  return {
+    label: 'Available',
+    className: 'bg-emerald-600 text-white',
+  };
+}
+
 const ViewListingPage = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { showToast } = useToast();
 
   const [listings, setListings] = useState([]);
+  const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -117,6 +149,34 @@ const ViewListingPage = () => {
     };
   }, []);
 
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadFavorites() {
+      if (!isAuthenticated) {
+        setFavoriteIds(new Set());
+        return;
+      }
+
+      try {
+        const response = await api.get('/user/favorites');
+        if (!ignore) {
+          setFavoriteIds(new Set((response.data?.favorites || []).map((item) => item.listingId)));
+        }
+      } catch {
+        if (!ignore) {
+          setFavoriteIds(new Set());
+        }
+      }
+    }
+
+    loadFavorites();
+
+    return () => {
+      ignore = true;
+    };
+  }, [isAuthenticated]);
+
   const locations = useMemo(() => {
     const unique = new Set(listings.map((item) => item.location).filter(Boolean));
     return ['all', ...Array.from(unique)];
@@ -175,6 +235,40 @@ const ViewListingPage = () => {
       } catch {
         // Ignore tracking failures in UI.
       }
+    }
+  };
+
+  const handleToggleFavorite = async (listing) => {
+    const listingId = getListingId(listing);
+    if (!listingId) return;
+
+    try {
+      const response = await api.post('/user/favorites/toggle', {
+        listingId,
+        title: listing.title,
+        location: listing.location || '',
+        price: Number(listing.price || 0),
+        image: getListingImage(listing),
+        source: 'viewlisting-page',
+      });
+
+      setFavoriteIds((prev) => {
+        const next = new Set(prev);
+        if (response.data?.isFavorite) {
+          next.add(listingId);
+        } else {
+          next.delete(listingId);
+        }
+        return next;
+      });
+
+      if (response.data?.isFavorite) {
+        showToast({ type: 'success', title: 'Saved', message: 'Property added to favorites.' });
+      } else {
+        showToast({ type: 'success', title: 'Removed', message: 'Property removed from favorites.' });
+      }
+    } catch {
+      showToast({ type: 'error', title: 'Action failed', message: 'Could not update favorite right now.' });
     }
   };
 
@@ -292,8 +386,8 @@ const ViewListingPage = () => {
               {filteredListings.map((listing) => {
                 const listingId = getListingId(listing);
                 const listingImage = getListingImage(listing);
-                const isInactive = listing.status === 'inactive';
-                const isFeatured = featuredListingIds.has(listingId);
+                const availabilityBadge = getAvailabilityBadge(listing, featuredListingIds.has(listingId));
+                const isFavorite = favoriteIds.has(listingId);
                 return (
                   <article
                     key={listingId}
@@ -309,9 +403,24 @@ const ViewListingPage = () => {
 
                         <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-black/45 to-transparent" />
 
-                        <span className={`absolute top-3 left-3 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide ${isInactive ? 'bg-gray-700 text-white' : isFeatured ? 'bg-orange-500 text-white' : 'bg-emerald-600 text-white'}`}>
-                          {isInactive ? 'Inactive' : isFeatured ? 'Featured' : 'Available'}
+                        <span className={`absolute top-3 left-3 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide ${availabilityBadge.className}`}>
+                          {availabilityBadge.label}
                         </span>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleFavorite(listing);
+                          }}
+                          className="absolute top-3 right-3 bg-white p-2 rounded-full shadow-md transition-all active:scale-90 hover:bg-gray-50"
+                          aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                        >
+                          <Heart
+                            size={16}
+                            className={`transition-colors duration-300 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-red-500'}`}
+                          />
+                        </button>
 
                         <div className="absolute left-3 bottom-3">
                           <RatingDisplay

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Calendar, MessageCircle, Send } from 'lucide-react';
+import { Calendar, MessageCircle, Send, ChevronDown } from 'lucide-react';
 import api from '../utils/api';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 
 function toUiMessageList(chat) {
   const rawMessages = Array.isArray(chat?.messages) ? chat.messages : [];
@@ -16,34 +17,85 @@ function toUiMessageList(chat) {
   }));
 }
 
-const BookingForm = ({ listingId, ownerId, title, location, price, image, onBookingSuccess }) => {
-  const [preferredVisitDate, setPreferredVisitDate] = useState('');
-  const [preferredTime, setPreferredTime] = useState('');
-  const [note, setNote] = useState('');
+const BookingForm = ({ listingId, ownerId, title, location, price, image, isBooked = false, onBookingSuccess }) => {
+  const { user } = useAuth();
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    preferredVisitDate: '',
+    preferredTime: '',
+    moveInDate: '',
+    stayDurationMonths: '12',
+    occupants: '1',
+    occupation: '',
+    monthlyIncome: '',
+    hasPets: '',
+    reasonForMoving: '',
+    note: '',
+  });
   const [loading, setLoading] = useState(false);
+  const [showBookedConfirmModal, setShowBookedConfirmModal] = useState(false);
+  const [pendingBookingPayload, setPendingBookingPayload] = useState(null);
   const { showToast } = useToast();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      fullName: String(user?.name || prev.fullName || '').trim(),
+      email: String(user?.email || prev.email || '').trim(),
+      phone: String(user?.phone || prev.phone || '').trim(),
+    }));
+  }, [user?.name, user?.email, user?.phone]);
 
-    if (!preferredVisitDate) {
-      showToast({ type: 'warning', title: 'Missing date', message: 'Please select a date for your visit' });
-      return;
-    }
+  const setField = (key) => (e) => {
+    setFormData((prev) => ({ ...prev, [key]: e.target.value }));
+  };
 
+  const clearForm = () => {
+    setFormData({
+      fullName: String(user?.name || '').trim(),
+      email: String(user?.email || '').trim(),
+      phone: String(user?.phone || '').trim(),
+      preferredVisitDate: '',
+      preferredTime: '',
+      moveInDate: '',
+      stayDurationMonths: '12',
+      occupants: '1',
+      occupation: '',
+      monthlyIncome: '',
+      hasPets: '',
+      reasonForMoving: '',
+      note: '',
+    });
+  };
+
+  const buildBookingPayload = () => ({
+    listingId,
+    ownerId,
+    title: title || 'Property',
+    location: location || '',
+    price: price || 0,
+    image: image || '',
+    fullName: formData.fullName.trim(),
+    email: formData.email.trim(),
+    phone: formData.phone.trim(),
+    preferredVisitDate: new Date(formData.preferredVisitDate).toISOString(),
+    preferredTime: formData.preferredTime,
+    moveInDate: new Date(formData.moveInDate).toISOString(),
+    stayDurationMonths: Number(formData.stayDurationMonths),
+    occupants: Number(formData.occupants),
+    occupation: formData.occupation.trim(),
+    monthlyIncome: formData.monthlyIncome,
+    hasPets: formData.hasPets,
+    reasonForMoving: formData.reasonForMoving.trim(),
+    note: formData.note,
+  });
+
+  const submitBookingRequest = async (payload) => {
     setLoading(true);
     try {
-      const response = await api.post('/user/bookings', {
-        listingId,
-        ownerId,
-        title: title || 'Property',
-        location: location || '',
-        price: price || 0,
-        image: image || '',
-        preferredVisitDate: new Date(preferredVisitDate).toISOString(),
-        preferredTime,
-        note,
-      });
+      const response = await api.post('/user/bookings', payload);
 
       showToast({
         type: 'success',
@@ -55,9 +107,7 @@ const BookingForm = ({ listingId, ownerId, title, location, price, image, onBook
         onBookingSuccess(response.data.booking);
       }
 
-      setPreferredVisitDate('');
-      setPreferredTime('');
-      setNote('');
+      clearForm();
     } catch (err) {
       showToast({
         type: 'error',
@@ -69,8 +119,65 @@ const BookingForm = ({ listingId, ownerId, title, location, price, image, onBook
     }
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const requiredKeys = [
+      'fullName',
+      'email',
+      'phone',
+      'preferredVisitDate',
+      'preferredTime',
+      'moveInDate',
+      'stayDurationMonths',
+      'occupants',
+      'occupation',
+      'monthlyIncome',
+      'hasPets',
+      'reasonForMoving',
+    ];
+
+    const missing = requiredKeys.some((key) => !String(formData[key] || '').trim());
+    if (missing) {
+      showToast({
+        type: 'warning',
+        title: 'Missing details',
+        message: 'Please complete all required fields before sending your booking request.',
+      });
+      return;
+    }
+
+    const payload = buildBookingPayload();
+
+    if (isBooked) {
+      setPendingBookingPayload(payload);
+      setShowBookedConfirmModal(true);
+      return;
+    }
+
+    await submitBookingRequest(payload);
+  };
+
+  const handleConfirmBookedSubmission = async () => {
+    if (!pendingBookingPayload) {
+      setShowBookedConfirmModal(false);
+      return;
+    }
+
+    setShowBookedConfirmModal(false);
+    await submitBookingRequest(pendingBookingPayload);
+    setPendingBookingPayload(null);
+  };
+
   return (
     <div className="space-y-6">
+      {isBooked && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-semibold text-amber-900">This property is currently marked as booked.</p>
+          <p className="mt-1 text-xs text-amber-800">You can still send a booking request. We will ask for your confirmation before submission.</p>
+        </div>
+      )}
+
       <div className="text-center mb-6">
         <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-50 rounded-full mb-3">
           <Calendar className="text-[#3b66ff]" size={24} />
@@ -80,15 +187,62 @@ const BookingForm = ({ listingId, ownerId, title, location, price, image, onBook
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="fullName" className="block text-sm font-semibold text-gray-700 mb-2">
+              Full Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="fullName"
+              value={formData.fullName}
+              onChange={setField('fullName')}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+              placeholder="Your full name"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="phone" className="block text-sm font-semibold text-gray-700 mb-2">
+              Phone Number <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="tel"
+              id="phone"
+              value={formData.phone}
+              onChange={setField('phone')}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+              placeholder="98XXXXXXXX"
+              required
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+              Email Address <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={formData.email}
+              onChange={setField('email')}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+              placeholder="yourname@email.com"
+              required
+            />
+          </div>
+        </div>
+
         <div>
           <label htmlFor="visitDate" className="block text-sm font-semibold text-gray-700 mb-2">
-            Preferred Date *
+            Preferred Date <span className="text-red-500">*</span>
           </label>
           <input
             type="date"
             id="visitDate"
-            value={preferredVisitDate}
-            onChange={(e) => setPreferredVisitDate(e.target.value)}
+            value={formData.preferredVisitDate}
+            onChange={setField('preferredVisitDate')}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
             required
           />
@@ -96,30 +250,154 @@ const BookingForm = ({ listingId, ownerId, title, location, price, image, onBook
 
         <div>
           <label htmlFor="visitTime" className="block text-sm font-semibold text-gray-700 mb-2">
-            Preferred Time
+            Preferred Time <span className="text-red-500">*</span>
           </label>
-          <select
-            id="visitTime"
-            value={preferredTime}
-            onChange={(e) => setPreferredTime(e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
-          >
-            <option value="">Select a time</option>
-            <option value="morning">Morning (9 AM - 12 PM)</option>
-            <option value="afternoon">Afternoon (12 PM - 4 PM)</option>
-            <option value="evening">Evening (4 PM - 6 PM)</option>
-          </select>
+          <div className="relative">
+            <select
+              id="visitTime"
+              value={formData.preferredTime}
+              onChange={setField('preferredTime')}
+              className="w-full px-4 py-2.5 pr-10 appearance-none border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+              required
+            >
+              <option value="">Select a time</option>
+              <option value="morning">Morning (9 AM - 12 PM)</option>
+              <option value="afternoon">Afternoon (12 PM - 4 PM)</option>
+              <option value="evening">Evening (4 PM - 6 PM)</option>
+            </select>
+            <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="moveInDate" className="block text-sm font-semibold text-gray-700 mb-2">
+              Expected Move-in Date <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              id="moveInDate"
+              value={formData.moveInDate}
+              onChange={setField('moveInDate')}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="stayDurationMonths" className="block text-sm font-semibold text-gray-700 mb-2">
+              Planned Stay (Months) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              id="stayDurationMonths"
+              min="1"
+              value={formData.stayDurationMonths}
+              onChange={setField('stayDurationMonths')}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="occupants" className="block text-sm font-semibold text-gray-700 mb-2">
+              Number of Occupants <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              id="occupants"
+              min="1"
+              value={formData.occupants}
+              onChange={setField('occupants')}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="hasPets" className="block text-sm font-semibold text-gray-700 mb-2">
+              Any Pets? <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <select
+                id="hasPets"
+                value={formData.hasPets}
+                onChange={setField('hasPets')}
+                className="w-full px-4 py-2.5 pr-10 appearance-none border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                required
+              >
+                <option value="">Select option</option>
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
+              <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="occupation" className="block text-sm font-semibold text-gray-700 mb-2">
+              Occupation <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="occupation"
+              value={formData.occupation}
+              onChange={setField('occupation')}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+              placeholder="Software Engineer, Student, etc."
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="monthlyIncome" className="block text-sm font-semibold text-gray-700 mb-2">
+              Monthly Income Range <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <select
+                id="monthlyIncome"
+                value={formData.monthlyIncome}
+                onChange={setField('monthlyIncome')}
+                className="w-full px-4 py-2.5 pr-10 appearance-none border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                required
+              >
+                <option value="">Select range</option>
+                <option value="below-25000">Below Rs. 25,000</option>
+                <option value="25000-50000">Rs. 25,000 - 50,000</option>
+                <option value="50000-100000">Rs. 50,000 - 100,000</option>
+                <option value="above-100000">Above Rs. 100,000</option>
+              </select>
+              <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="reasonForMoving" className="block text-sm font-semibold text-gray-700 mb-2">
+            Reason for Moving <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            id="reasonForMoving"
+            rows="3"
+            value={formData.reasonForMoving}
+            onChange={setField('reasonForMoving')}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white resize-none"
+            placeholder="Briefly explain your purpose for renting this property"
+            required
+          />
         </div>
 
         <div>
           <label htmlFor="note" className="block text-sm font-semibold text-gray-700 mb-2">
-            Additional Note
+            Additional Note (Optional)
           </label>
           <textarea
             id="note"
             rows="3"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
+            value={formData.note}
+            onChange={setField('note')}
             className="w-full px-4 py-2.5 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white resize-none"
             placeholder="Any questions or special requests?"
           ></textarea>
@@ -138,6 +416,39 @@ const BookingForm = ({ listingId, ownerId, title, location, price, image, onBook
           )}
         </button>
       </form>
+
+      {showBookedConfirmModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-[1px] p-4">
+          <div className="min-h-full flex items-center justify-center">
+            <section className="w-full max-w-md bg-white p-6 rounded-2xl shadow-xl border border-slate-200">
+              <h3 className="text-lg font-bold text-[#132238]">Property Already Booked</h3>
+              <p className="mt-2 text-sm text-gray-600">
+                This property currently has a confirmed booking. Do you still want to send your booking request?
+              </p>
+
+              <div className="mt-5 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBookedConfirmModal(false);
+                    setPendingBookingPayload(null);
+                  }}
+                  className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmBookedSubmission}
+                  className="px-4 py-2 rounded-lg bg-[#3b66ff] text-white text-sm font-semibold hover:bg-blue-700"
+                >
+                  Send Request Anyway
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

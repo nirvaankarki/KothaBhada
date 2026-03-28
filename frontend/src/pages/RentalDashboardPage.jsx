@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import RentalDashboard from '../components/rentalDashboard/RentalDashboard';
@@ -44,11 +43,9 @@ const getRecentActivities = (favorites = [], history = []) => {
 };
 
 const RentalDashboardPage = () => {
-  const { user } = useAuth();
-  const userName = user?.name || 'Yasmine';
-
   const [favorites, setFavorites] = useState([]);
   const [history, setHistory] = useState([]);
+  const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -61,13 +58,15 @@ const RentalDashboardPage = () => {
       setError('');
 
       try {
-        const [favoritesRes, historyRes] = await Promise.all([
+          const [favoritesRes, historyRes, bookingsRes] = await Promise.all([
           api.get('/user/favorites'),
           api.get('/user/history'),
+          api.get('/user/bookings'),
         ]);
 
         setFavorites(favoritesRes.data?.favorites || []);
         setHistory(historyRes.data?.history || []);
+        setBookings(bookingsRes.data?.bookings || []);
       } catch (err) {
         setError(err?.response?.data?.message || 'Could not load renter dashboard data.');
       } finally {
@@ -79,25 +78,49 @@ const RentalDashboardPage = () => {
   }, [refreshKey]);
 
   const stats = useMemo(() => {
+    const totalBookings = bookings.length;
+    const confirmedBookings = bookings.filter((item) => String(item?.status || '').toLowerCase() === 'confirmed').length;
+    const pendingBookings = bookings.filter((item) => String(item?.status || '').toLowerCase() === 'pending').length;
+
     return [
       {
         id: 'favorites',
         title: 'Saved Listings',
         value: String(favorites.length),
         trend: `${history.length}`,
-        trendLabel: 'views tracked',
-        color: 'bg-emerald-500',
-        detailColor: 'bg-emerald-400/50',
+        trendLabel: 'views',
+        color: 'bg-blue-600',
+        detailColor: 'bg-blue-500/50',
+        detailAction: 'favorites',
+      },
+      {
+        id: 'bookings',
+        title: 'Booking Requests',
+        value: String(totalBookings),
+        trend: `${pendingBookings}`,
+        trendLabel: 'pending',
+        color: 'bg-amber-500',
+        detailColor: 'bg-amber-400/50',
+        detailAction: 'bookings',
+      },
+      {
+        id: 'confirmed-bookings',
+        title: 'Confirmed Visits',
+        value: String(confirmedBookings),
+        trend: `${totalBookings}`,
+        trendLabel: 'total',
+        color: 'bg-teal-600',
+        detailColor: 'bg-teal-500/50',
+        detailAction: 'bookings',
       },
     ];
-  }, [favorites.length, history.length]);
+  }, [favorites.length, history.length, bookings]);
 
   const trendData = useMemo(() => buildTrendData(history, favorites), [history, favorites]);
   const activities = useMemo(() => getRecentActivities(favorites, history), [favorites, history]);
 
   return (
     <RentalDashboard
-      userName={userName}
       loading={loading}
       error={error}
       onRetry={() => setRefreshKey((prev) => prev + 1)}
@@ -106,6 +129,7 @@ const RentalDashboardPage = () => {
       activities={activities}
       favorites={favorites}
       history={history}
+      bookings={bookings}
     />
   );
 };

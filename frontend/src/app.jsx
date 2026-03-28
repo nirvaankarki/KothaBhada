@@ -11,7 +11,9 @@ import ViewListingPage from './pages/ViewListingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import RentalDashboardPage from './pages/RentalDashboardPage';
 import LandlordDashboardPage from './pages/LandlordDashboardPage';
+import UserDashboardPage from './pages/UserDashboardPage';
 import ReviewsPage from './pages/ReviewsPage';
+import BookingVisitPage from './pages/BookingVisitPage';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
@@ -60,6 +62,14 @@ export function App() {
         <Route path="/listing-details" element={<Explore3DPage />} />
         <Route path="/reviews" element={<ReviewsPage />} />
         <Route
+          path="/booking-visit"
+          element={(
+            <ProtectedRoute message="Please log in to book a visit.">
+              <BookingVisitPage />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
           path="/viewlisting"
           element={(
             <ProtectedRoute message="Please log in or sign up to view listings.">
@@ -84,6 +94,17 @@ export function App() {
               allowedRoles={['user']}
             >
               <RentalDashboardPage />
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/rental/requests"
+          element={(
+            <ProtectedRoute
+              message="Please log in as a user to access your dashboard."
+              allowedRoles={['user']}
+            >
+              <UserDashboardPage />
             </ProtectedRoute>
           )}
         />
