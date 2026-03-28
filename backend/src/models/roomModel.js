@@ -49,6 +49,10 @@ const roomSchema = new mongoose.Schema({
         default: 0,
         min: 0
     },
+    keyFeatures: {
+        type: [String],
+        default: []
+    },
     image: {
         type: String,
         default: ''

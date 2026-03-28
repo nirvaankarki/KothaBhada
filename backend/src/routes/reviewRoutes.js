@@ -4,6 +4,9 @@ import { authenticate } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
+// Get top highlighted reviews for testimonials
+router.get('/highlights', reviewController.getHighlightedReviews);
+
 // Get listing reviews and average rating
 router.get('/listing/:listingId', reviewController.getListingReviews);
 

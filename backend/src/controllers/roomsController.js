@@ -1,10 +1,37 @@
 import { Room } from '../models/roomModel.js';
 import { User } from '../models/userModel.js';
+import { Booking } from '../models/bookingModel.js';
+
+function parseKeyFeatures(input) {
+    if (Array.isArray(input)) {
+        return input
+            .map((item) => String(item || '').trim())
+            .filter(Boolean)
+            .slice(0, 20);
+    }
+
+    if (typeof input === 'string') {
+        return input
+            .split(/[,\n]/)
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .slice(0, 20);
+    }
+
+    return [];
+}
 
 export async function getAllRooms(req, res) {
     try {
-        const rooms = await Room.find({ status: 'active' }).sort({ createdAt: -1 });
-        res.status(200).json(rooms);
+        const rooms = await Room.find({ status: 'active' }).sort({ createdAt: -1 }).lean();
+        const confirmedListingIds = await Booking.distinct('listingId', { status: 'confirmed' });
+        const confirmedSet = new Set(confirmedListingIds.map((id) => String(id)));
+        const roomsWithAvailability = rooms.map((room) => ({
+            ...room,
+            isBooked: confirmedSet.has(String(room._id))
+        }));
+
+        res.status(200).json(roomsWithAvailability);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching rooms', error: error.message });
     }
@@ -37,6 +64,7 @@ export async function createRooms(req, res) {
             bedrooms,
             bathrooms,
             areaSqFt,
+            keyFeatures,
             image,
             ownerPhone,
             status,
@@ -53,6 +81,11 @@ export async function createRooms(req, res) {
         const numericPrice = Number(price);
         if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
             return res.status(400).json({ message: 'Price must be a valid number greater than 0' });
+        }
+
+        const parsedKeyFeatures = parseKeyFeatures(keyFeatures);
+        if (!parsedKeyFeatures.length) {
+            return res.status(400).json({ message: 'At least one key feature is required' });
         }
 
         const owner = await User.findById(req.user.userId).select('name email phone');
@@ -72,6 +105,7 @@ export async function createRooms(req, res) {
             bedrooms: Number(bedrooms) || 1,
             bathrooms: Number(bathrooms) || 1,
             areaSqFt: Number(areaSqFt) || 0,
+            keyFeatures: parsedKeyFeatures,
             image: String(image || '').trim(),
             status: status === 'inactive' ? 'inactive' : 'active',
         });
@@ -99,7 +133,7 @@ export async function updateRooms(req, res) {
             return res.status(403).json({ message: 'You can update only your own listings' });
         }
 
-        const allowedKeys = ['title', 'price', 'description', 'location', 'bedrooms', 'bathrooms', 'areaSqFt', 'image', 'ownerPhone', 'status'];
+        const allowedKeys = ['title', 'price', 'description', 'location', 'bedrooms', 'bathrooms', 'areaSqFt', 'keyFeatures', 'image', 'ownerPhone', 'status'];
         const updates = {};
         for (const key of allowedKeys) {
             if (req.body[key] !== undefined) {
@@ -116,6 +150,12 @@ export async function updateRooms(req, res) {
         if (updates.bedrooms !== undefined) updates.bedrooms = Number(updates.bedrooms) || 0;
         if (updates.bathrooms !== undefined) updates.bathrooms = Number(updates.bathrooms) || 0;
         if (updates.areaSqFt !== undefined) updates.areaSqFt = Number(updates.areaSqFt) || 0;
+        if (updates.keyFeatures !== undefined) {
+            updates.keyFeatures = parseKeyFeatures(updates.keyFeatures);
+            if (!updates.keyFeatures.length) {
+                return res.status(400).json({ message: 'At least one key feature is required' });
+            }
+        }
 
         const updatedRoom = await Room.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
         res.status(200).json({ message: 'Room updated successfully', room: updatedRoom });
@@ -150,13 +190,17 @@ export async function deleteRooms(req, res) {
 export async function getRoomById(req, res) {
     try {
         const { id } = req.params;
-        const room = await Room.findById(id);
+        const room = await Room.findById(id).lean();
 
         if (!room) {
             return res.status(404).json({ message: 'Room not found' });
         }
 
-        res.status(200).json(room);
+        const hasConfirmedBooking = await Booking.exists({ listingId: String(room._id), status: 'confirmed' });
+        res.status(200).json({
+            ...room,
+            isBooked: Boolean(hasConfirmedBooking)
+        });
     } catch (error) {
         res.status(500).json({ message: 'Error fetching room', error: error.message });
     }

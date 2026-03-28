@@ -14,11 +14,15 @@ import {
     getOwnerInquiries,
     addOwnerInquiryMessage,
     getOwnerBookings,
+    updateOwnerBookingStatus,
     sendChatMessage,
     getUserChats,
     getOwnerChats,
     replyToChat,
-    markOwnerChatSeen
+    markOwnerChatSeen,
+    getNotifications,
+    markNotificationAsRead,
+    markAllNotificationsAsRead
 } from '../controllers/userDashboardController.js';
 
 const router = express.Router();
@@ -36,10 +40,14 @@ router.post('/bookings', authenticate, createBooking);
 router.get('/owner/inquiries', authenticate, getOwnerInquiries);
 router.post('/owner/inquiries/:inquiryId/messages', authenticate, addOwnerInquiryMessage);
 router.get('/owner/bookings', authenticate, getOwnerBookings);
+router.patch('/owner/bookings/:bookingId/status', authenticate, updateOwnerBookingStatus);
 router.post('/chat/send', authenticate, sendChatMessage);
 router.get('/chats', authenticate, getUserChats);
 router.get('/owner/chats', authenticate, getOwnerChats);
 router.post('/chats/:chatId/reply', authenticate, replyToChat);
 router.post('/chats/:chatId/seen', authenticate, markOwnerChatSeen);
+router.get('/notifications', authenticate, getNotifications);
+router.post('/notifications/read-all', authenticate, markAllNotificationsAsRead);
+router.post('/notifications/:notificationId/read', authenticate, markNotificationAsRead);
 
 export default router;
