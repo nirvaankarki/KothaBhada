@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Star, Trash2, Loader2, CheckCircle2, Pencil, ChevronDown } from 'lucide-react';
+import { Star, Loader2, CheckCircle2, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
@@ -374,23 +374,26 @@ const ReviewsList = ({ listingId, refreshTrigger }) => {
                       {editingId !== review._id && (
                         <button
                           onClick={() => handleStartEdit(review)}
-                          className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                          className="rounded-lg px-3 py-1.5 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50"
                           title="Edit review"
                         >
-                          <Pencil size={16} />
+                          Edit
                         </button>
                       )}
 
                       <button
                         onClick={() => handleDeleteReview(review)}
                         disabled={deletingId === review._id || isSavingEdit}
-                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                        className="rounded-lg px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
                         title="Delete review"
                       >
                         {deletingId === review._id ? (
-                          <Loader2 size={16} className="animate-spin" />
+                          <span className="inline-flex items-center gap-1">
+                            <Loader2 size={14} className="animate-spin" />
+                            Deleting...
+                          </span>
                         ) : (
-                          <Trash2 size={16} />
+                          'Delete'
                         )}
                       </button>
                     </div>

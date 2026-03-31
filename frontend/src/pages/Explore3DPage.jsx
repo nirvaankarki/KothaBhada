@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { 
-  RotateCw, RefreshCcw, Maximize, Bed, Bath, Ruler, 
+  RotateCw, RefreshCcw, Maximize, Bed, Bath, Square,
   Heart, Share2, CheckCircle2, User, Phone, Mail, 
-  MessageSquare, Home, Info, MousePointer2, Move, Search,
+  MessageSquare, Info, MousePointer2, Move, Search,
   Star,
-  MapPin, Calendar, MessageCircle, ShieldCheck, Map, Zap
+  MapPin, Calendar, MessageCircle, ShieldCheck, Map, Zap, X
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -53,7 +53,7 @@ const Explore3DPage = () => {
   const searchParams = new URLSearchParams(location.search);
   const listingIdFromQuery = searchParams.get('id');
   const tabFromQuery = searchParams.get('tab');
-  const allowedTabs = new Set(['details', 'chat', 'reviews']);
+  const openChatFromQuery = tabFromQuery === 'chat';
   const passedListing = normalizeListing(location.state?.listing);
   const effectiveListingId = listingIdFromQuery || passedListing?.listingId || '';
   const { isAuthenticated, token } = useAuth();
@@ -63,7 +63,7 @@ const Explore3DPage = () => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [message, setMessage] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [activeTab, setActiveTab] = useState(allowedTabs.has(tabFromQuery) ? tabFromQuery : 'details'); // 'details', 'chat', 'reviews'
+  const [isChatOverlayOpen, setIsChatOverlayOpen] = useState(openChatFromQuery);
   const [reviewRefreshTrigger, setReviewRefreshTrigger] = useState(0);
   const [detailsReviewSummary, setDetailsReviewSummary] = useState({
     reviews: [],
@@ -76,12 +76,13 @@ const Explore3DPage = () => {
   const seenOwnerMessageAtRef = useRef('');
   const initializedOwnerMessageRef = useRef(false);
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
+  const reviewsSectionRef = useRef(null);
 
   useAutoDismiss(message, () => setMessage(''));
 
   useEffect(() => {
-    if (allowedTabs.has(tabFromQuery)) {
-      setActiveTab(tabFromQuery);
+    if (tabFromQuery === 'chat') {
+      setIsChatOverlayOpen(true);
     }
   }, [tabFromQuery]);
 
@@ -226,7 +227,7 @@ const Explore3DPage = () => {
         const matchingChat = chats.find((chat) => String(chat?.listingId) === String(listingKey));
         const latestOwnerMessageAt = getLatestOwnerMessageAt(matchingChat);
 
-        if (activeTab === 'chat') {
+        if (isChatOverlayOpen) {
           seenOwnerMessageAtRef.current = latestOwnerMessageAt;
           initializedOwnerMessageRef.current = true;
           setUnreadChatCount(0);
@@ -273,7 +274,7 @@ const Explore3DPage = () => {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
     };
-  }, [activeTab, isAuthenticated, token, listingKey]);
+  }, [isChatOverlayOpen, isAuthenticated, token, listingKey]);
 
   useEffect(() => {
     if (!listingKey) {
@@ -318,6 +319,25 @@ const Explore3DPage = () => {
     setIsDescriptionOpen(false);
   }, [listingKey]);
 
+  useEffect(() => {
+    if (!isChatOverlayOpen || typeof document === 'undefined') return;
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsChatOverlayOpen(false);
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isChatOverlayOpen]);
+
   if (isLoading && !listing) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -335,7 +355,7 @@ const Explore3DPage = () => {
           <button
             type="button"
             onClick={() => navigate('/viewlisting')}
-            className="mt-4 px-4 py-2 text-sm font-semibold text-[#1d4ed8] border border-blue-200 rounded-sm hover:bg-blue-50"
+            className="mt-4 px-4 py-2 text-sm font-semibold text-[#3A5AFF] border border-[#3A5AFF]/25 rounded-sm hover:bg-[#3A5AFF]/10"
           >
             Back to Listings
           </button>
@@ -394,6 +414,10 @@ const Explore3DPage = () => {
     navigate('/booking-visit', { state: { listing } });
   };
 
+  const scrollToReviewsSection = () => {
+    reviewsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
     <div className="min-h-screen bg-[#f3f4f6] font-sans px-4 md:px-8 py-4 md:py-8">
       <AuthRequiredModal
@@ -405,11 +429,11 @@ const Explore3DPage = () => {
 
       <div className="w-full max-w-350 mx-auto">
         <div className="flex flex-col gap-6">
-          {/* TOP ROW: 3D and Location Side-by-Side */}
-          <div className="grid grid-cols-1 lg:grid-cols-[68%_32%] xl:grid-cols-[70%_30%] gap-6">
+          {/* TOP ROW: 3D and Property Summary Side-by-Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-[68%_32%] xl:grid-cols-[70%_30%] gap-6 items-start">
             {/* 3D Visualization Card */}
-            <div className="bg-white rounded-sm shadow-lg ring-1 ring-blue-100 overflow-hidden flex flex-col">
-              <div className="p-4 border-b border-gray-100">
+            <div className="bg-white rounded-lg shadow overflow-hidden flex flex-col border border-slate-100">
+              <div className="p-4 border-b border-slate-100">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h2 className="text-xl font-bold text-[#1a222e]">3D Room Visualization</h2>
@@ -430,433 +454,401 @@ const Explore3DPage = () => {
               </div>
 
               <div className="p-4 space-y-3 bg-slate-50/40">
-                <div className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 bg-[#111827]">
+                <div className="relative aspect-video rounded-lg overflow-hidden border border-slate-100 bg-[#111827]">
                   <img
                     src={listing.image || 'https://images.unsplash.com/photo-1554995207-c18c203602cb?q=80&w=1200'}
                     className="absolute inset-0 w-full h-full object-cover opacity-45"
                     alt="3D Placeholder"
                   />
-                  <div className="absolute inset-0 bg-linear-to-tr from-black/65 via-black/40 to-blue-900/25" />
+                  <div className="absolute inset-0 bg-linear-to-tr from-black/65 via-black/40 to-[#3A5AFF]/30" />
 
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-white px-4 text-center">
-                    <div className="w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin mb-3"></div>
+                    <div className="w-8 h-8 border-4 border-[#3A5AFF] border-t-transparent rounded-full animate-spin mb-3"></div>
                     <p className="text-sm font-bold tracking-wide">Loading 3D Model</p>
                     <p className="mt-1 text-[11px] text-white/80">Preparing textures, lighting, and scene controls</p>
                   </div>
 
                   <div className="absolute left-3 right-3 bottom-3 h-1.5 rounded-full bg-white/25 overflow-hidden">
-                    <div className="h-full w-2/3 bg-linear-to-r from-[#60a5fa] to-[#3b82f6]" />
+                    <div className="h-full w-2/3 bg-linear-to-r from-[#7A90FF] to-[#3A5AFF]" />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div className="rounded-md border border-slate-200 bg-white px-3 py-2">
-                    <p className="flex items-center gap-2 text-[11px] font-semibold text-slate-700"><MousePointer2 size={13} className="text-[#3b82f6]" /> Rotate</p>
+                  <div className="rounded-md border border-slate-100 bg-white px-3 py-2">
+                    <p className="flex items-center gap-2 text-[11px] font-semibold text-slate-700"><MousePointer2 size={13} className="text-[#3A5AFF]" /> Rotate</p>
                     <p className="mt-1 text-[11px] text-slate-500">Click and drag to orbit the camera.</p>
                   </div>
-                  <div className="rounded-md border border-slate-200 bg-white px-3 py-2">
-                    <p className="flex items-center gap-2 text-[11px] font-semibold text-slate-700"><Search size={13} className="text-[#3b82f6]" /> Zoom</p>
+                  <div className="rounded-md border border-slate-100 bg-white px-3 py-2">
+                    <p className="flex items-center gap-2 text-[11px] font-semibold text-slate-700"><Search size={13} className="text-[#3A5AFF]" /> Zoom</p>
                     <p className="mt-1 text-[11px] text-slate-500">Use mouse wheel for close inspection.</p>
                   </div>
-                  <div className="rounded-md border border-slate-200 bg-white px-3 py-2">
-                    <p className="flex items-center gap-2 text-[11px] font-semibold text-slate-700"><Move size={13} className="text-[#3b82f6]" /> Pan</p>
+                  <div className="rounded-md border border-slate-100 bg-white px-3 py-2">
+                    <p className="flex items-center gap-2 text-[11px] font-semibold text-slate-700"><Move size={13} className="text-[#3A5AFF]" /> Pan</p>
                     <p className="mt-1 text-[11px] text-slate-500">Right-click and drag to reposition.</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Property Location Map */}
-            <section className="bg-white border border-slate-200 rounded-sm overflow-hidden shadow-sm flex flex-col">
-              <div className="p-4 md:p-5 pb-3 border-b border-slate-100">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-base font-bold text-slate-700">Property Location</h2>
-                    <p className="text-[11px] text-slate-500 mt-1">Quick location reference</p>
+            <div className="space-y-6">
+              {/* Property Summary */}
+              <section className="bg-white rounded-lg shadow overflow-hidden border border-slate-100">
+                <div className="p-5 md:p-6">
+                  <h2 className="text-2xl font-black leading-tight text-slate-900">
+                    {listing.title || 'Listing Details'}
+                  </h2>
+
+                  <div className="mt-2 flex items-center gap-2 text-slate-500">
+                    <MapPin size={16} className="text-[#3A5AFF]" />
+                    <span className="text-sm font-semibold">{listing.location || 'Location not specified'}</span>
                   </div>
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${mapQuery}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="shrink-0 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-[11px] font-semibold text-[#1d4ed8] transition-colors hover:bg-blue-100"
-                  >
-                    Open in Maps
-                  </a>
-                </div>
 
-                <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Address</p>
-                  <p className="mt-1 text-xs font-semibold text-slate-700">{listing.location || 'Location not specified'}</p>
-                </div>
-              </div>
-
-              <div className="p-4 md:p-5 pt-3">
-                <div className="rounded-lg border border-slate-200 bg-slate-50 overflow-hidden h-64 md:h-72 lg:h-80 xl:h-88 shadow-inner">
-                  <iframe
-                    title="Property location map"
-                    src={`https://www.google.com/maps?q=${mapQuery}&output=embed`}
-                    className="w-full h-full"
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                  />
-                </div>
-
-                <div className="mt-3 rounded-lg bg-slate-50 border border-slate-200 p-3.5">
-                  <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">
-                    Area Highlights
-                  </h4>
-
-                  <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 bg-white rounded-md shadow-xs text-blue-500 border border-slate-100">
-                        <Map size={16} />
-                      </div>
-                      <span className="text-xs font-semibold text-slate-700">5 mins walk to Market</span>
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    <div className="rounded-xl border border-slate-100 bg-gray-50 p-2 text-center">
+                      <Bed size={14} className="mx-auto text-[#3A5AFF]" />
+                      <p className="mt-1 text-[11px] font-semibold text-gray-700">{listing.bedrooms ?? 0} Beds</p>
                     </div>
-
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 bg-white rounded-md shadow-xs text-green-500 border border-slate-100">
-                        <ShieldCheck size={16} />
-                      </div>
-                      <span className="text-xs font-semibold text-slate-700">Peaceful and secure area</span>
+                    <div className="rounded-xl border border-slate-100 bg-gray-50 p-2 text-center">
+                      <Bath size={14} className="mx-auto text-[#3A5AFF]" />
+                      <p className="mt-1 text-[11px] font-semibold text-gray-700">{listing.bathrooms ?? 0} Baths</p>
                     </div>
-
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 bg-white rounded-md shadow-xs text-orange-500 border border-slate-100">
-                        <Zap size={16} />
-                      </div>
-                      <span className="text-xs font-semibold text-slate-700">24/7 water and power</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          {/* BOTTOM ROW: TABBED INTERFACE - FULL WIDTH */}
-          <div className="bg-white rounded-sm shadow-md overflow-hidden">
-            {/* Tab Navigation */}
-            <div className="flex border-b border-gray-200">
-              <button
-                onClick={() => setActiveTab('details')}
-                className={`flex-1 px-4 py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
-                  activeTab === 'details'
-                    ? 'bg-blue-50 text-[#3b66ff] border-b-2 border-[#3b66ff]'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <Home size={16} /> Details
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab('chat');
-                    setUnreadChatCount(0);
-                }}
-                className={`flex-1 px-4 py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
-                  activeTab === 'chat'
-                    ? 'bg-blue-50 text-[#3b66ff] border-b-2 border-[#3b66ff]'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                  <span className="relative inline-flex items-center gap-2 pr-2">
-                  <MessageCircle size={16} /> Chat
-                      {unreadChatCount > 0 && activeTab !== 'chat' && (
-                        <span className="absolute -top-1.5 -right-2.5 min-w-4.5 h-4.5 px-1 rounded-full bg-[#ef4444] text-white text-[9px] leading-4.5 font-bold text-center shadow-sm">
-                        {unreadChatCount > 99 ? '99+' : unreadChatCount}
-                      </span>
-                  )}
-                </span>
-              </button>
-              <button
-                onClick={() => setActiveTab('reviews')}
-                className={`flex-1 px-4 py-3 font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
-                  activeTab === 'reviews'
-                    ? 'bg-blue-50 text-[#3b66ff] border-b-2 border-[#3b66ff]'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <MessageSquare size={16} /> Reviews
-              </button>
-            </div>
-
-            {/* Tab Content */}
-            <div className="p-8">
-              {/* Details Tab */}
-              {activeTab === 'details' && (
-                <div>
-                  <div className="mb-6">
-                    <h1 className="text-3xl font-black text-[#1a222e] leading-tight mb-2">{listing.title || 'Listing Details'}</h1>
-                    <div className="flex items-center gap-2 text-gray-500">
-                      <MapPin size={16} className="text-[#ff5a3c]" />
-                      <p className="text-sm font-medium">{listing.location || 'Location not specified'}</p>
+                    <div className="rounded-xl border border-slate-100 bg-gray-50 p-2 text-center">
+                      <Square size={14} className="mx-auto text-[#3A5AFF]" />
+                      <p className="mt-1 text-[11px] font-semibold text-gray-700">{listing.areaSqFt ?? 0} sqft</p>
                     </div>
                   </div>
 
-                  {/* Pricing */}
-                  <div className="mb-8 border-t border-gray-100 pt-6">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-[#3b66ff] text-3xl font-black">Rs. {Number(listing.price || 0).toLocaleString()}</span>
-                      <span className="text-gray-500 font-bold text-sm">/month</span>
-                    </div>
-                    <p className="text-gray-400 text-xs font-bold mt-2 flex items-center gap-1 uppercase tracking-wider">
-                      <Info size={12} /> Utilities Included
-                    </p>
-                  </div>
-
-                  {/* Description */}
-                  <div className="mb-8 rounded-xl border border-slate-200 bg-slate-50/70 p-4 md:p-5">
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white text-slate-600 border border-slate-200">
-                        <Info size={14} />
-                      </span>
-                      <h3 className="text-base font-bold text-[#1a222e]">Property Description</h3>
-                    </div>
-                    {listingDescription ? (
-                      <>
-                        {!isDescriptionOpen ? (
-                          <div>
-                            <p className="text-sm text-slate-500">Click the button below to read the full property description.</p>
-                            <button
-                              type="button"
-                              onClick={() => setIsDescriptionOpen(true)}
-                              className="mt-3 inline-flex items-center rounded-md border border-blue-200 bg-white px-3 py-1.5 text-sm font-semibold text-[#1d4ed8] transition-colors hover:bg-blue-50"
-                            >
-                              Read Description
-                            </button>
-                          </div>
-                        ) : (
-                          <div>
-                            <p className="text-sm leading-7 text-slate-700 whitespace-pre-line">{listingDescription}</p>
-                            <button
-                              type="button"
-                              onClick={() => setIsDescriptionOpen(false)}
-                              className="mt-3 inline-flex items-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
-                            >
-                              Hide Description
-                            </button>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <p className="text-sm text-slate-500">No description provided for this property.</p>
-                    )}
-                  </div>
-
-                  {/* Primary Actions */}
-                  <button
-                    type="button"
-                    onClick={handleBookVisitClick}
-                    disabled={isBookedListing}
-                    className={`w-full py-3 rounded font-bold text-sm transition-colors mb-3 ${
-                      isBookedListing
-                        ? 'bg-red-100 text-red-700 border border-red-200 cursor-not-allowed'
-                        : 'bg-[#3b66ff] text-white hover:bg-blue-700'
-                    }`}
-                  >
-                    <Calendar size={16} className="inline mr-2" /> {isBookedListing ? 'Property Already Booked' : 'Book a Visit'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('reviews')}
-                    className="w-full border border-blue-200 bg-blue-50 text-[#3b66ff] py-3 rounded font-bold text-sm hover:bg-blue-100 transition-colors mb-4"
-                  >
-                    <Star size={16} className="inline mr-2 text-amber-500 fill-amber-500" /> Rate and Review this Property
-                  </button>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-3 mb-8">
+                  <div className="mt-3">
                     <button
                       type="button"
-                      onClick={handleToggleFavorite}
-                      className="flex-1 flex items-center justify-center gap-2 border border-gray-300 py-2 rounded font-bold text-sm hover:bg-gray-50 transition-colors"
+                      onClick={() => setIsDescriptionOpen((prev) => !prev)}
+                      className="group inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-[#3A5AFF]"
                     >
-                      <Heart size={16} className={isFavorite ? 'fill-red-500 text-red-500' : ''} />
-                      {isFavorite ? 'Saved' : 'Save'}
+                      <Info size={15} />
+                      <span className="group-hover:underline underline-offset-4">{isDescriptionOpen ? 'Hide Description' : 'Read Description'}</span>
                     </button>
-                    <button className="flex-1 flex items-center justify-center gap-2 border border-gray-300 py-2 rounded font-bold text-sm hover:bg-gray-50 transition-colors">
-                      <Share2 size={16} /> Share
-                    </button>
-                  </div>
 
-                  {/* Specs Badges */}
-                  <div className="flex flex-wrap gap-2 mb-8">
-                    <div className="flex items-center gap-2 bg-blue-50 text-[#3b82f6] px-4 py-2 rounded-full text-xs font-bold">
-                      <Bed size={14} /> {listing.bedrooms} Bedroom
-                    </div>
-                    <div className="flex items-center gap-2 bg-blue-50 text-[#3b66ff] px-4 py-2 rounded-full text-xs font-bold">
-                      <Bath size={14} /> {listing.bathrooms} Bathroom
-                    </div>
-                    <div className="flex items-center gap-2 bg-blue-50 text-[#3b66ff] px-4 py-2 rounded-full text-xs font-bold">
-                      <Ruler size={14} /> {listing.areaSqFt} sq.ft.
-                    </div>
-                  </div>
-
-                  {/* Key Features */}
-                  <div className="mb-10">
-                    <div className="flex items-center gap-2 mb-6">
-                      <CheckCircle2 size={20} className="text-[#3b82f6]" fill="white" />
-                      <h3 className="text-lg font-bold text-[#3b66ff]">Key Features</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-y-4 gap-x-2">
-                      {featuresToDisplay.map((feature) => (
-                        <div key={feature} className="flex items-center gap-2 text-xs font-bold text-gray-600">
-                          <CheckCircle2 size={16} className="text-gray-400" /> {feature}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Reviews Section in Details Tab */}
-                  <div className="border-t border-gray-100 pt-8 mb-8">
-                    <div className="flex items-center gap-2 mb-6">
-                      <div className="bg-[#3b66ff] p-1.5 rounded-full text-white"><MessageSquare size={16} /></div>
-                      <h3 className="text-lg font-bold text-[#3b66ff]">Reviews & Ratings</h3>
-                    </div>
-
-                    {isLoadingDetailsReviews ? (
-                      <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                        Loading ratings and reviews...
-                      </div>
-                    ) : detailsReviewSummary.totalReviews > 0 ? (
-                      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                          {(() => {
-                            const allReviews = detailsReviewSummary.reviews || [];
-                            const totalReviews = detailsReviewSummary.totalReviews || allReviews.length;
-                            const verifiedCount = allReviews.filter((item) => item.isVerifiedStay).length;
-                            const recommendationPct = totalReviews > 0
-                              ? Math.round((allReviews.filter((item) => Number(item.rating) >= 4).length / totalReviews) * 100)
-                              : 0;
-                            const distribution = [5, 4, 3, 2, 1].map((star) => {
-                              const count = allReviews.filter((item) => Number(item.rating) === star).length;
-                              const percentage = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
-                              return { star, count, percentage };
-                            });
-
-                            return (
-                              <>
-                        <div className="mb-3 rounded-lg bg-[#f8fbff] px-3 py-2.5">
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#3b66ff]">Trusted renter feedback</p>
-                          <p className="mt-1 text-xs text-gray-600">
-                            {recommendationPct}% of renters rated this property 4 stars or above.
-                          </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-[110px_1fr] md:items-center">
-                          <div className="text-center md:text-left">
-                            <p className="text-4xl font-black leading-none text-gray-900">
-                              {detailsReviewSummary.averageRating.toFixed(1)}
-                            </p>
-                            <div className="mt-1 flex justify-center gap-0.5 md:justify-start">
-                              {[1, 2, 3, 4, 5].map((star) => (
-                                <Star
-                                  key={star}
-                                  size={14}
-                                  className={
-                                    star <= Math.round(detailsReviewSummary.averageRating)
-                                      ? 'fill-amber-400 text-amber-400'
-                                      : 'text-gray-300'
-                                  }
-                                />
-                              ))}
-                            </div>
-                            <p className="mt-1 text-[11px] font-medium text-gray-500">
-                              {totalReviews} review{totalReviews !== 1 ? 's' : ''}
-                            </p>
-                          </div>
-
-                          <div className="space-y-1.5">
-                            {distribution.map(({ star, count, percentage }) => (
-                              <div key={star} className="grid grid-cols-[14px_1fr_24px] items-center gap-2">
-                                <span className="text-[11px] font-semibold text-gray-600">{star}</span>
-                                <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
-                                  <div
-                                    className="h-full rounded-full bg-[#fbbc04]"
-                                    style={{ width: `${percentage}%` }}
-                                  />
-                                </div>
-                                <span className="text-right text-[11px] text-gray-500">{count}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-                            <CheckCircle2 size={12} /> {verifiedCount} verified booking{verifiedCount !== 1 ? 's' : ''}
-                          </span>
-                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                            Based on {totalReviews} renter review{totalReviews !== 1 ? 's' : ''}
-                          </span>
-                        </div>
-                              </>
-                            );
-                          })()}
-                      </div>
-                    ) : (
-                      <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                        No reviews yet for this property.
-                      </div>
+                    {isDescriptionOpen && (
+                      <section className="mt-3 rounded-xl border border-slate-200 bg-white p-4">
+                        {listingDescription ? (
+                          <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600">{listingDescription}</p>
+                        ) : (
+                          <p className="text-sm text-slate-500">No description provided for this property.</p>
+                        )}
+                      </section>
                     )}
-
                   </div>
 
-                  {/* Contact Section */}
-                  <div className="border-t border-gray-100 pt-8">
-                    <div className="flex items-center gap-2 mb-6">
-                      <div className="bg-[#3b66ff] p-1.5 rounded-full text-white"><User size={16} /></div>
-                      <h3 className="text-lg font-bold text-[#3b66ff]">Contact Owner</h3>
-                    </div>
-                    <div className="space-y-3 mb-8">
-                      <div className="flex items-center gap-3 text-sm font-semibold text-gray-600">
-                        <User size={16} className="text-gray-400" /> {listing.ownerName || 'Property Owner'}
-                      </div>
-                      <div className="flex items-center gap-3 text-sm font-semibold text-gray-600">
-                        <Phone size={16} className="text-gray-400" /> {listing.ownerPhone || 'Not provided'}
-                      </div>
-                      <div className="flex items-center gap-3 text-sm font-semibold text-gray-600">
-                        <Mail size={16} className="text-gray-400" /> {listing.ownerEmail || 'Not provided'}
-                      </div>
-                    </div>
+                  <div className="my-5 border-t border-slate-200" />
+
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-black text-[#3A5AFF]">Rs. {Number(listing.price || 0).toLocaleString()}</span>
+                    <span className="text-slate-400 font-semibold">/month</span>
                   </div>
-                </div>
-              )}
 
-              {/* Chat Tab */}
-              {activeTab === 'chat' && (
-                <div>
-                  <ChatBox
-                    listingId={listingKey}
-                    ownerId={listing?.ownerId || listing?.owner}
-                    ownerName={listing?.ownerName}
-                    ownerProfilePhoto={listing?.ownerProfilePhoto}
-                    title={listing?.title}
-                    location={listing?.location}
-                    price={listing?.price}
-                    image={listing?.image}
-                  />
-                </div>
-              )}
+                  <div className="mt-3 inline-flex items-center gap-2 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider">
+                    <Info size={13} /> Utilities Included
+                  </div>
 
-              {/* Reviews Tab */}
-              {activeTab === 'reviews' && (
-                <div>
-                  {isAuthenticated && (
-                    <ReviewForm 
-                      listingId={listing.listingId} 
-                      onReviewAdded={() => setReviewRefreshTrigger(prev => prev + 1)}
-                    />
-                  )}
-                  <ReviewsList 
-                    listingId={listing.listingId}
-                    refreshTrigger={reviewRefreshTrigger}
-                  />
+                  <div className="mt-6 space-y-3">
+                    <button
+                      type="button"
+                      onClick={handleBookVisitClick}
+                      disabled={isBookedListing}
+                      className={`w-full font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all ${
+                        isBookedListing
+                          ? 'bg-red-100 text-red-700 border border-red-200 cursor-not-allowed'
+                          : 'bg-[#3A5AFF] hover:bg-[#2F49E6] text-white shadow-lg shadow-[#3A5AFF]/30 active:scale-[0.99]'
+                      }`}
+                    >
+                      <Calendar size={16} /> {isBookedListing ? 'Property Already Booked' : 'Schedule a Visit'}
+                    </button>
+
+                    {/* <button
+                      type="button"
+                      onClick={scrollToReviewsSection}
+                      className="w-full border border-indigo-100 bg-indigo-50 text-indigo-600 py-3 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-colors"
+                    >
+                      <Star size={16} className="inline mr-2 text-amber-500 fill-amber-500" /> Rate and Review
+                    </button> */}
+                  </div>
+
+                  <section className="mt-6 border-t border-slate-200 pt-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <User size={16} className="text-[#3A5AFF]" />
+                      <h3 className="text-base md:text-lg font-bold text-slate-800">Contact Owner</h3>
+                    </div>
+                    <div className="space-y-2.5 rounded-2xl p-4">
+                      <div className="flex items-center gap-3 text-sm font-semibold text-slate-600">
+                        <User size={16} className="text-slate-400" /> {listing.ownerName || 'Property Owner'}
+                      </div>
+                      <div className="flex items-center gap-3 text-sm font-semibold text-slate-600">
+                        <Phone size={16} className="text-slate-400" /> {listing.ownerPhone || 'Not provided'}
+                      </div>
+                      <div className="flex items-center gap-3 text-sm font-semibold text-slate-600">
+                        <Mail size={16} className="text-slate-400" /> {listing.ownerEmail || 'Not provided'}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUnreadChatCount(0);
+                        setIsChatOverlayOpen(true);
+                      }}
+                      className="mt-4 w-full relative inline-flex items-center justify-center gap-2 rounded-xl bg-[#3A5AFF] px-4 py-3.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#2F49E6]"
+                    >
+                      <MessageCircle size={16} /> Chat Now
+                      {unreadChatCount > 0 && (
+                        <span className="absolute right-3 inline-flex min-w-5 h-5 px-1.5 rounded-full bg-[#ef4444] text-white text-[10px] leading-5 font-bold items-center justify-center">
+                          {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                        </span>
+                      )}
+                    </button>
+                  </section>
+
                 </div>
-              )}
+              </section>
             </div>
           </div>
+
+          <section className="rounded-3xl border border-slate-200/80 bg-slate-50/70 p-4 md:p-6 lg:p-8">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8 items-start">
+              <section className="xl:col-span-12 space-y-8 min-w-0">
+                <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                  <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                    <span className="w-1.5 h-6 bg-[#3A5AFF] rounded-full" />
+                    Key Features
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-8">
+                    {featuresToDisplay.map((feature) => (
+                      <div key={feature} className="flex items-center gap-3 text-slate-600 font-medium">
+                        <CheckCircle2 size={18} className="text-emerald-500" />
+                        {feature}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/70">
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                      <span className="w-1.5 h-6 bg-[#3A5AFF] rounded-full" />
+                      Property Location
+                    </h2>
+                  </div>
+
+                  <div className="p-4 md:p-5 bg-slate-50/40">
+                    <div className="space-y-3">
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Address</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-700">{listing.location || 'Location not specified'}</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
+                        <div className="lg:col-span-3 rounded-lg border border-slate-200 bg-slate-50 overflow-hidden h-56 lg:h-64 shadow-inner">
+                          <iframe
+                            title="Property location map"
+                            src={`https://www.google.com/maps?q=${mapQuery}&output=embed`}
+                            className="w-full h-full"
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                          />
+                        </div>
+
+                        <div className="lg:col-span-2 rounded-lg bg-slate-50 border border-slate-200 p-3.5 h-56 lg:h-64">
+                          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                            Area Highlights
+                          </h4>
+                          <div className="space-y-2.5">
+                            <div className="flex items-center gap-2.5">
+                              <div className="p-2 bg-white rounded-md shadow-xs text-[#3A5AFF] border border-slate-100">
+                                <Map size={16} />
+                              </div>
+                              <span className="text-xs font-semibold text-slate-700">5 mins walk to Market</span>
+                            </div>
+
+                            <div className="flex items-center gap-2.5">
+                              <div className="p-2 bg-white rounded-md shadow-xs text-green-500 border border-slate-100">
+                                <ShieldCheck size={16} />
+                              </div>
+                              <span className="text-xs font-semibold text-slate-700">Peaceful and secure area</span>
+                            </div>
+
+                            <div className="flex items-center gap-2.5">
+                              <div className="p-2 bg-white rounded-md shadow-xs text-orange-500 border border-slate-100">
+                                <Zap size={16} />
+                              </div>
+                              <span className="text-xs font-semibold text-slate-700">24/7 water and power</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </section>
+
+                <section className="bg-white rounded-2xl border border-slate-200 p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Star size={18} className="text-amber-500 fill-amber-500" />
+                    <h3 className="text-lg font-bold text-slate-800">Review and Ratings</h3>
+                  </div>
+
+                  {isLoadingDetailsReviews ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                      Loading ratings and reviews...
+                    </div>
+                  ) : detailsReviewSummary.totalReviews > 0 ? (
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                      {(() => {
+                        const allReviews = detailsReviewSummary.reviews || [];
+                        const totalReviews = detailsReviewSummary.totalReviews || allReviews.length;
+                        const verifiedCount = allReviews.filter((item) => item.isVerifiedStay).length;
+                        const recommendationPct = totalReviews > 0
+                          ? Math.round((allReviews.filter((item) => Number(item.rating) >= 4).length / totalReviews) * 100)
+                          : 0;
+                        const distribution = [5, 4, 3, 2, 1].map((star) => {
+                          const count = allReviews.filter((item) => Number(item.rating) === star).length;
+                          const percentage = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
+                          return { star, count, percentage };
+                        });
+
+                        return (
+                          <>
+                            <div className="mb-3 rounded-lg bg-[#3A5AFF]/10 px-3 py-2.5">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-[#3A5AFF]">Trusted renter feedback</p>
+                              <p className="mt-1 text-xs text-slate-600">
+                                {recommendationPct}% of renters rated this property 4 stars or above.
+                              </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-[110px_1fr] md:items-center">
+                              <div className="text-center md:text-left">
+                                <p className="text-4xl font-black leading-none text-slate-900">
+                                  {detailsReviewSummary.averageRating.toFixed(1)}
+                                </p>
+                                <div className="mt-1 flex justify-center gap-0.5 md:justify-start">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                      key={star}
+                                      size={14}
+                                      className={
+                                        star <= Math.round(detailsReviewSummary.averageRating)
+                                          ? 'fill-amber-400 text-amber-400'
+                                          : 'text-slate-300'
+                                      }
+                                    />
+                                  ))}
+                                </div>
+                                <p className="mt-1 text-[11px] font-medium text-slate-500">
+                                  {totalReviews} review{totalReviews !== 1 ? 's' : ''}
+                                </p>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                {distribution.map(({ star, count, percentage }) => (
+                                  <div key={star} className="grid grid-cols-[14px_1fr_24px] items-center gap-2">
+                                    <span className="text-[11px] font-semibold text-slate-600">{star}</span>
+                                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
+                                      <div className="h-full rounded-full bg-[#fbbc04]" style={{ width: `${percentage}%` }} />
+                                    </div>
+                                    <span className="text-right text-[11px] text-slate-500">{count}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                                <CheckCircle2 size={12} /> {verifiedCount} verified booking{verifiedCount !== 1 ? 's' : ''}
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                                Based on {totalReviews} renter review{totalReviews !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={scrollToReviewsSection}
+                      className="w-full py-4 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 text-slate-500 font-bold flex items-center justify-center gap-2 hover:bg-slate-200 transition-all"
+                    >
+                      <Star size={18} className="fill-slate-400 text-slate-400" />
+                      Be the first to review this property
+                    </button>
+                  )}
+                </section>
+
+                <section ref={reviewsSectionRef} className="bg-white rounded-2xl border border-slate-200 p-5 scroll-mt-24">
+                  <div className="flex items-center gap-2 mb-4">
+                    <MessageSquare size={18} className="text-[#3A5AFF]" />
+                    <h3 className="text-lg font-bold text-slate-800">Write Reviews</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    {isAuthenticated && (
+                      <ReviewForm
+                        listingId={listing.listingId}
+                        onReviewAdded={() => setReviewRefreshTrigger(prev => prev + 1)}
+                      />
+                    )}
+                    <ReviewsList
+                      listingId={listing.listingId}
+                      refreshTrigger={reviewRefreshTrigger}
+                    />
+                  </div>
+                </section>
+              </section>
+
+            </div>
+          </section>
         </div>
       </div>
+
+      {isChatOverlayOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/35 backdrop-blur-[1px] flex items-start justify-end px-4 md:px-8 py-4 md:py-8"
+          onClick={() => setIsChatOverlayOpen(false)}
+        >
+          <section
+            className="w-full max-w-136 h-[min(88vh,760px)] rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden flex flex-col"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3 bg-linear-to-r from-slate-50 to-[#3A5AFF]/10">
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">Owner Chat Assistant</h3>
+                <p className="text-[11px] text-slate-500">Quick conversation about this listing.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsChatOverlayOpen(false)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Close chat overlay"
+              >
+                <X size={16} />
+              </button>
+            </header>
+
+            <div className="flex-1 min-h-0 overflow-y-auto bg-slate-50/60 p-2.5">
+              <ChatBox
+                listingId={listingKey}
+                ownerId={listing?.ownerId || listing?.owner}
+                ownerName={listing?.ownerName}
+                ownerProfilePhoto={listing?.ownerProfilePhoto}
+                title={listing?.title}
+                location={listing?.location}
+                price={listing?.price}
+                image={listing?.image}
+                compact
+              />
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 };

@@ -453,7 +453,7 @@ const BookingForm = ({ listingId, ownerId, title, location, price, image, isBook
   );
 };
 
-const ChatBox = ({ listingId, ownerId, ownerName, ownerProfilePhoto, title, location, price, image }) => {
+const ChatBox = ({ listingId, ownerId, ownerName, ownerProfilePhoto, title, location, price, image, compact = false }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -601,8 +601,8 @@ const ChatBox = ({ listingId, ownerId, ownerName, ownerProfilePhoto, title, loca
   };
 
   return (
-    <section className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm">
-      <header className="px-5 py-4 border-b border-slate-100 bg-white flex items-center gap-3">
+    <section className={`rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm ${compact ? 'h-full flex flex-col' : ''}`}>
+      <header className={`${compact ? 'px-4 py-3' : 'px-5 py-4'} border-b border-slate-100 bg-white flex items-center gap-3`}>
         {ownerMeta.profilePhoto ? (
           <img
             src={ownerMeta.profilePhoto}
@@ -622,7 +622,7 @@ const ChatBox = ({ listingId, ownerId, ownerName, ownerProfilePhoto, title, loca
         </div>
       </header>
 
-      <div ref={messagesContainerRef} className="h-90 overflow-y-auto p-5 space-y-3 bg-[radial-gradient(circle_at_top_left,#eef4ff_0%,#ffffff_50%)]">
+      <div ref={messagesContainerRef} className={`${compact ? 'h-70 p-4' : 'h-90 p-5'} ${compact ? 'md:h-[25rem]' : ''} overflow-y-auto space-y-3 bg-[radial-gradient(circle_at_top_left,#eef4ff_0%,#ffffff_50%)] ${compact ? 'flex-1 min-h-0' : ''}`}>
         {loadingHistory ? (
           <div className="flex items-center justify-center h-full text-center">
             <p className="text-sm text-gray-500">Loading messages...</p>
@@ -636,7 +636,7 @@ const ChatBox = ({ listingId, ownerId, ownerName, ownerProfilePhoto, title, loca
           messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
-                className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 text-sm ${
+                className={`max-w-[80%] rounded-2xl ${compact ? 'px-3 py-2 text-[13px]' : 'px-3.5 py-2.5 text-sm'} ${
                   msg.sender === 'user'
                     ? 'bg-linear-to-r from-[#3b66ff] to-[#2346c7] text-white rounded-br-md shadow-sm'
                     : 'bg-white border border-slate-200 text-slate-700 rounded-bl-md shadow-[0_2px_8px_rgba(15,23,42,0.05)]'
@@ -652,21 +652,21 @@ const ChatBox = ({ listingId, ownerId, ownerName, ownerProfilePhoto, title, loca
         )}
       </div>
 
-      <footer className="p-4 border-t border-slate-100 bg-white">
-        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full px-3 py-2">
+      <footer className={`${compact ? 'p-3' : 'p-4'} border-t border-slate-100 bg-white`}>
+        <div className={`flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full ${compact ? 'px-2.5 py-1.5' : 'px-3 py-2'}`}>
           <input
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-            className="flex-1 bg-transparent px-2 py-1 text-sm outline-none"
+            className={`flex-1 bg-transparent px-2 py-1 ${compact ? 'text-[13px]' : 'text-sm'} outline-none`}
             placeholder="Type your message..."
             disabled={loading || loadingHistory}
           />
           <button
             onClick={handleSendMessage}
             disabled={loading || loadingHistory || !newMessage.trim()}
-            className="inline-flex items-center justify-center h-9 w-9 bg-[#3b66ff] text-white rounded-full hover:bg-[#2346c7] transition-colors disabled:opacity-60"
+            className={`inline-flex items-center justify-center ${compact ? 'h-8 w-8' : 'h-9 w-9'} bg-[#3b66ff] text-white rounded-full hover:bg-[#2346c7] transition-colors disabled:opacity-60`}
           >
             <Send size={15} />
           </button>

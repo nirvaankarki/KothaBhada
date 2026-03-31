@@ -273,7 +273,7 @@ const ViewListingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-[#f6f8fb] to-[#edf2f7] px-5 md:px-10 lg:px-16 py-10">
+    <div className="min-h-screen bg-linear-to-b from-[#fafbfc] to-[#f3f5f9] px-5 md:px-10 lg:px-16 py-10">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-4xl md:text-5xl font-black tracking-tight text-[#132238]">View Listings</h1>
@@ -282,7 +282,7 @@ const ViewListingPage = () => {
           </p>
         </div>
 
-        <section className="bg-white border border-gray-100 rounded-sm shadow-sm p-4 md:p-5 mb-7">
+        <section className="bg-white rounded-2xl shadow-xl p-4 md:p-8 mb-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
             <div className="md:col-span-2 relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -291,7 +291,7 @@ const ViewListingPage = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by title, location, or keyword"
-                className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-300"
+                className="w-full pl-9 pr-3 py-2.5 bg-gray-50 rounded outline-none focus:ring-2 focus:ring-blue-200 border-none shadow-sm"
               />
             </div>
 
@@ -301,7 +301,7 @@ const ViewListingPage = () => {
                 <select
                   value={locationFilter}
                   onChange={(e) => setLocationFilter(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-300"
+                  className="w-full pl-9 pr-3 py-2.5 bg-gray-50 rounded outline-none focus:ring-2 focus:ring-blue-200 border-none shadow-sm"
                 >
                   {locations.map((location) => (
                     <option key={location} value={location}>
@@ -323,10 +323,10 @@ const ViewListingPage = () => {
                   key={bucket.id}
                   type="button"
                   onClick={() => setPriceBucket(bucket.id)}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-colors ${
                     priceBucket === bucket.id
-                      ? 'bg-[#1d4ed8] text-white border-[#1d4ed8]'
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                      ? 'bg-[#1d4ed8] text-white shadow'
+                      : 'bg-white text-gray-600 hover:bg-gray-50 border-none shadow-sm'
                   }`}
                 >
                   {bucket.label}
@@ -341,7 +341,7 @@ const ViewListingPage = () => {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-sm outline-none focus:ring-2 focus:ring-blue-300"
+                className="px-3 py-2 text-sm bg-gray-50 rounded outline-none focus:ring-2 focus:ring-blue-200 border-none shadow-sm"
               >
                 {SORT_OPTIONS.map((option) => (
                   <option key={option.id} value={option.id}>
@@ -359,13 +359,13 @@ const ViewListingPage = () => {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="h-80 rounded-2xl border border-gray-100 bg-white animate-pulse" />
+                <div key={index} className="h-80 rounded-2xl bg-white animate-pulse shadow-sm" />
               ))}
             </div>
           ) : filteredListings.length === 0 ? (
-            <div className="bg-white border border-gray-100 rounded-2xl p-10 text-center">
+            <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
               <Box size={20} className="mx-auto text-gray-400 mb-2" />
               <p className="text-gray-600">No listings match your filters.</p>
               <button
@@ -382,7 +382,7 @@ const ViewListingPage = () => {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredListings.map((listing) => {
                 const listingId = getListingId(listing);
                 const listingImage = getListingImage(listing);
@@ -391,7 +391,7 @@ const ViewListingPage = () => {
                 return (
                   <article
                     key={listingId}
-                    className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                    className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl hover:-translate-y-0.5 transition-all"
                   >
                     <div onClick={() => handleOpenListing(listing)} className="cursor-pointer">
                       <div className="relative h-48 w-full overflow-hidden">
