@@ -10,6 +10,7 @@ const initialForm = {
   price: '',
   description: '',
   keyFeatures: [],
+  areaHighlights: [],
   bedrooms: '1',
   bathrooms: '1',
   areaSqFt: '',
@@ -34,6 +35,21 @@ const parseKeyFeaturesInput = (value) => {
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, 20);
+};
+
+const parseAreaHighlightsInput = (value) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item || '').trim())
+      .filter(Boolean)
+      .slice(0, 10);
+  }
+
+  return String(value || '')
+    .split(/[,\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 10);
 };
 
 export const useLandlordDashboardController = () => {
@@ -304,6 +320,39 @@ export const useLandlordDashboardController = () => {
     setError('');
   };
 
+  const handleAddAreaHighlight = (highlightValue) => {
+    const nextHighlight = String(highlightValue || '').trim();
+    if (!nextHighlight) return;
+
+    setForm((prev) => {
+      const current = parseAreaHighlightsInput(prev.areaHighlights);
+      const exists = current.some((item) => item.toLowerCase() === nextHighlight.toLowerCase());
+      if (exists) {
+        return { ...prev, areaHighlights: current };
+      }
+
+      return {
+        ...prev,
+        areaHighlights: [...current, nextHighlight].slice(0, 10),
+      };
+    });
+    setError('');
+  };
+
+  const handleRemoveAreaHighlight = (highlightValue) => {
+    const target = String(highlightValue || '').trim();
+    if (!target) return;
+
+    setForm((prev) => {
+      const current = parseAreaHighlightsInput(prev.areaHighlights);
+      return {
+        ...prev,
+        areaHighlights: current.filter((item) => item !== target),
+      };
+    });
+    setError('');
+  };
+
   const handleProfileChange = (key) => (e) => {
     setProfileForm((prev) => ({ ...prev, [key]: e.target.value }));
     setError('');
@@ -412,12 +461,15 @@ export const useLandlordDashboardController = () => {
 
     setSubmitting(true);
     try {
+      const parsedAreaHighlights = parseAreaHighlightsInput(form.areaHighlights);
+
       const payload = {
         title: form.title.trim(),
         location: form.location.trim(),
         price: Number(form.price),
         description: form.description.trim(),
         keyFeatures: parsedKeyFeatures,
+        areaHighlights: parsedAreaHighlights,
         bedrooms: Number(form.bedrooms) || 0,
         bathrooms: Number(form.bathrooms) || 0,
         areaSqFt: Number(form.areaSqFt) || 0,
@@ -493,6 +545,7 @@ export const useLandlordDashboardController = () => {
       price: String(listing.price || ''),
       description: listing.description || '',
       keyFeatures: parseKeyFeaturesInput(listing.keyFeatures),
+      areaHighlights: parseAreaHighlightsInput(listing.areaHighlights),
       bedrooms: String(listing.bedrooms ?? 1),
       bathrooms: String(listing.bathrooms ?? 1),
       areaSqFt: String(listing.areaSqFt || ''),
@@ -684,6 +737,8 @@ export const useLandlordDashboardController = () => {
       handleChange,
       handleAddKeyFeature,
       handleRemoveKeyFeature,
+      handleAddAreaHighlight,
+      handleRemoveAreaHighlight,
       handleProfileChange,
       handleProfileImageSelect,
       clearProfileImage,

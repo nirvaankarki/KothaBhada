@@ -4,7 +4,7 @@ import {
   Heart, Share2, CheckCircle2, User, Phone, Mail, 
   MessageSquare, Info, MousePointer2, Move, Search,
   Star,
-  MapPin, Calendar, MessageCircle, ShieldCheck, Map, Zap, X
+  MapPin, Calendar, MessageCircle, ExternalLink, Navigation, X
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -45,6 +45,12 @@ const defaultKeyFeatures = [
   'High-speed internet',
   'Kitchen appliances',
   'Laundry facilities',
+];
+
+const defaultAreaHighlights = [
+  '5 mins walk to Market',
+  'Peaceful and secure area',
+  '24/7 water and power',
 ];
 
 const Explore3DPage = () => {
@@ -399,6 +405,13 @@ const Explore3DPage = () => {
     ? listing.keyFeatures.map((feature) => String(feature || '').trim()).filter(Boolean)
     : [];
   const featuresToDisplay = listingKeyFeatures.length ? listingKeyFeatures : defaultKeyFeatures;
+  const listingAreaHighlights = Array.isArray(listing.areaHighlights)
+    ? listing.areaHighlights.map((item) => String(item || '').trim()).filter(Boolean)
+    : [];
+  const areaHighlightsToDisplay = listingAreaHighlights.length ? listingAreaHighlights : defaultAreaHighlights;
+  const locationBaseHeight = 256;
+  const extraHighlightRows = Math.max(0, areaHighlightsToDisplay.length - 3);
+  const locationPanelHeight = locationBaseHeight + (extraHighlightRows * 46);
   const listingDescription = String(listing.description || '').trim();
 
   const handleBookVisitClick = () => {
@@ -630,62 +643,75 @@ const Explore3DPage = () => {
                   </div>
                 </section>
 
-                <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                  <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/70">
-                    <h2 className="text-xl font-bold flex items-center gap-2">
-                      <span className="w-1.5 h-6 bg-[#3A5AFF] rounded-full" />
-                      Property Location
-                    </h2>
-                  </div>
-
-                  <div className="p-4 md:p-5 bg-slate-50/40">
-                    <div className="space-y-3">
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Address</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-700">{listing.location || 'Location not specified'}</p>
-                      </div>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
-                        <div className="lg:col-span-3 rounded-lg border border-slate-200 bg-slate-50 overflow-hidden h-56 lg:h-64 shadow-inner">
-                          <iframe
-                            title="Property location map"
-                            src={`https://www.google.com/maps?q=${mapQuery}&output=embed`}
-                            className="w-full h-full"
-                            loading="lazy"
-                            referrerPolicy="no-referrer-when-downgrade"
-                          />
-                        </div>
-
-                        <div className="lg:col-span-2 rounded-lg bg-slate-50 border border-slate-200 p-3.5 h-56 lg:h-64">
-                          <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 mb-2">
-                            Area Highlights
-                          </h4>
-                          <div className="space-y-2.5">
-                            <div className="flex items-center gap-2.5">
-                              <div className="p-2 bg-white rounded-md shadow-xs text-[#3A5AFF] border border-slate-100">
-                                <Map size={16} />
-                              </div>
-                              <span className="text-xs font-semibold text-slate-700">5 mins walk to Market</span>
-                            </div>
-
-                            <div className="flex items-center gap-2.5">
-                              <div className="p-2 bg-white rounded-md shadow-xs text-green-500 border border-slate-100">
-                                <ShieldCheck size={16} />
-                              </div>
-                              <span className="text-xs font-semibold text-slate-700">Peaceful and secure area</span>
-                            </div>
-
-                            <div className="flex items-center gap-2.5">
-                              <div className="p-2 bg-white rounded-md shadow-xs text-orange-500 border border-slate-100">
-                                <Zap size={16} />
-                              </div>
-                              <span className="text-xs font-semibold text-slate-700">24/7 water and power</span>
-                            </div>
-                          </div>
+                <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-4 md:p-6 lg:p-7">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-5 md:mb-6">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-1 h-8 w-1.5 rounded-full bg-[#3A5AFF]" />
+                      <div>
+                        <h2 className="text-xl md:text-2xl font-black tracking-tight text-slate-900">Location & Neighborhood</h2>
+                        <div className="mt-1 flex items-center gap-1.5 text-slate-500">
+                          <MapPin size={14} className="text-[#3A5AFF]" />
+                          <span className="text-sm font-semibold">{listing.location || 'Location not specified'}</span>
                         </div>
                       </div>
                     </div>
 
+                    <a
+                      href={`https://www.google.com/maps?q=${mapQuery}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 rounded-lg border border-[#3A5AFF] bg-[#3A5AFF]/5 px-4 py-2 text-xs md:text-sm font-bold text-[#3A5AFF] hover:bg-[#3A5AFF]/20 transition-colors"
+                    >
+                      Open Google Maps <ExternalLink size={14} />
+                    </a>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 rounded-2xl overflow-hidden border border-slate-100 shadow-lg shadow-slate-200/40 bg-white">
+                    <div
+                      className="lg:col-span-7 relative border-b lg:border-b-0 lg:border-r border-slate-100 bg-slate-100"
+                      style={{ height: `${locationPanelHeight}px` }}
+                    >
+                      <iframe
+                        title="Property location map"
+                        src={`https://www.google.com/maps?q=${mapQuery}&output=embed`}
+                        className="w-full h-full grayscale-[0.08] contrast-[1.06]"
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                      />
+
+                      {/* <div className="absolute top-3 left-3 hidden md:block rounded-xl border border-white/40 bg-white/90 px-3 py-2 backdrop-blur-sm shadow-lg">
+                        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Current Listing</p>
+                        <p className="text-xs font-bold text-slate-700">{listing.location || 'Location not specified'}</p>
+                      </div> */}
+                    </div>
+
+                    <div
+                      className="lg:col-span-5 p-5 md:p-6 bg-slate-50/60"
+                      style={{ minHeight: `${locationPanelHeight}px` }}
+                    >
+                      <h4 className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400 mb-3">Proximity & Access</h4>
+                      <div className="space-y-3">
+                        {areaHighlightsToDisplay.map((highlight, index) => (
+                          <div key={`${highlight}-${index}`} className="flex items-center justify-between rounded-xl border border-emerald-100 bg-white px-3 py-2.5">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <CheckCircle2 size={16} className="shrink-0 text-emerald-700" />
+                              <span className="text-xs md:text-sm font-semibold text-slate-700 truncate">{highlight}</span>
+                            </div>
+
+                            <div className="ml-3 flex items-center gap-1 text-slate-400 shrink-0">
+                              <Navigation size={12} className="rotate-45" />
+                              <span className="text-[11px] font-semibold">Nearby</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-6 border-t border-slate-200 pt-4">
+                        <p className="text-[10px] italic leading-relaxed text-slate-400">
+                          * Neighborhood highlights are provided by the listing owner and shown for quick local context.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </section>
 
