@@ -29,6 +29,7 @@
 
 import express from "express";
 import cors from "cors";
+import path from 'path';
 import dotenv from 'dotenv';
 import roomsRoutes from './routes/roomsRoutes.js';
 import authRoutes from './routes/authRoutes.js';
@@ -62,6 +63,7 @@ app.use(cors({
 // Increase payload size limit for image uploads (50MB max)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use('/uploads', express.static(path.resolve('uploads')));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/rooms", roomsRoutes);

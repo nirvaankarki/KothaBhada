@@ -319,8 +319,30 @@ const RentalDashboard = ({
                   <p className="text-sm text-gray-500">No favorites yet. Save listings from the listing page to track them here.</p>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                    {localFavorites.map((item) => (
+                    {localFavorites.map((item) => {
+                      const has2DRoom = Boolean(String(item?.image || '').trim() || (Array.isArray(item?.images) && item.images.length));
+                      const has3DRoomTour = Boolean(String(item?.model3dUrl || '').trim());
+
+                      return (
                       <article key={item._id || item.listingId} className="rounded-xl border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+                        {(has2DRoom || has3DRoomTour) && (
+                          <div className="mb-2">
+                            <div className="inline-flex items-center gap-1.5 flex-wrap">
+                              {has2DRoom && (
+                                <span className="inline-flex items-center rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-sky-700 border border-sky-200">
+                                  2D Room
+                                </span>
+                              )}
+                              {has3DRoomTour && (
+                                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-emerald-700 border border-emerald-200">
+                                  3D Room Tour
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-2 border-t border-gray-100" />
+                          </div>
+                        )}
+
                         <div className="flex items-start justify-between gap-3">
                           <h4 className="text-base font-bold text-gray-900 line-clamp-1">{item.title || 'Listing'}</h4>
                           <button
@@ -340,9 +362,12 @@ const RentalDashboard = ({
                           <p className="mt-0.5 text-sm font-bold text-gray-900">Rs {Number(item.price || 0).toLocaleString()}</p>
                         </div>
 
-                        <p className="mt-3 text-[11px] text-gray-500">Saved listing</p>
+                        <div className="mt-3 flex items-center gap-2 flex-wrap">
+                          <p className="text-[11px] text-gray-500">Saved listing</p>
+                        </div>
                       </article>
-                    ))}
+                      );
+                    })}
                   </div>
                 )
               )}
@@ -361,7 +386,11 @@ const RentalDashboard = ({
                         Remove All History
                       </button>
                     </div>
-                    {uniqueHistoryEntries.slice(0, 8).map((item) => (
+                    {uniqueHistoryEntries.slice(0, 8).map((item) => {
+                      const has2DRoom = Boolean(String(item?.image || '').trim() || (Array.isArray(item?.images) && item.images.length));
+                      const has3DRoomTour = Boolean(String(item?.model3dUrl || '').trim());
+
+                      return (
                       <button
                         key={item._id || item.listingId}
                         type="button"
@@ -372,12 +401,31 @@ const RentalDashboard = ({
                         className="w-full rounded-xl border border-gray-200 bg-gray-50 p-4 flex items-center justify-between gap-3 text-left hover:bg-gray-100 transition-colors"
                       >
                         <div>
+                          {(has2DRoom || has3DRoomTour) && (
+                            <div className="mb-2">
+                              <div className="inline-flex items-center gap-1.5 flex-wrap">
+                                {has2DRoom && (
+                                  <span className="inline-flex items-center rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-sky-700 border border-sky-200">
+                                    2D Room
+                                  </span>
+                                )}
+                                {has3DRoomTour && (
+                                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-700 border border-emerald-200">
+                                    3D Room Tour
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-2 border-t border-gray-100" />
+                            </div>
+                          )}
+
                           <h4 className="text-sm font-semibold text-gray-900 line-clamp-1">{item.title || 'Viewed Listing'}</h4>
-                          <p className="text-xs text-gray-600">{item.location || 'Location not set'}</p>
+                          <p className="mt-1 text-xs text-gray-600">{item.location || 'Location not set'}</p>
                         </div>
                         <span className="text-[11px] text-gray-500">{item.viewedAt ? new Date(item.viewedAt).toLocaleString() : 'Recently viewed'}</span>
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 )
               )}

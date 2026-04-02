@@ -34,6 +34,18 @@ const roomSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    latitude: {
+        type: Number,
+        min: -90,
+        max: 90,
+        default: null
+    },
+    longitude: {
+        type: Number,
+        min: -180,
+        max: 180,
+        default: null
+    },
     bedrooms: {
         type: Number,
         default: 1,
@@ -60,6 +72,48 @@ const roomSchema = new mongoose.Schema({
     image: {
         type: String,
         default: ''
+    },
+    images: {
+        type: [String],
+        default: []
+    },
+    model3dUrl: {
+        type: String,
+        default: ''
+    },
+    tourPoints: {
+        type: [{
+            _id: false,
+            label: {
+                type: String,
+                default: ''
+            },
+            x: {
+                type: Number,
+                required: true
+            },
+            y: {
+                type: Number,
+                required: true
+            },
+            z: {
+                type: Number,
+                required: true
+            },
+            lookAtX: {
+                type: Number,
+                default: 0
+            },
+            lookAtY: {
+                type: Number,
+                default: 0.82
+            },
+            lookAtZ: {
+                type: Number,
+                default: 0
+            }
+        }],
+        default: []
     },
     status: {
         type: String,

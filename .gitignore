@@ -1,0 +1,12 @@
+# macOS metadata
+.DS_Store
+
+# Dependency directories
+**/node_modules/
+
+# Local environment files
+backend/.env
+backend/.env.*
+
+# Generated uploaded 3D model binaries
+backend/uploads/models/

@@ -12,6 +12,7 @@ import {
   CalendarDays,
   ArrowUpRight,
   Heart,
+  ChevronDown,
 } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +20,7 @@ import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import { FALLBACK_LISTINGS, getListingId } from '../utils/listingData';
 import { useToast } from '../context/ToastContext';
 import RatingDisplay from '../components/RatingDisplay';
+import HoverImageSlider from '../components/HoverImageSlider';
 
 const PRICE_BUCKETS = [
   { id: 'all', label: 'All Prices' },
@@ -97,6 +99,7 @@ const ViewListingPage = () => {
   const [locationFilter, setLocationFilter] = useState('all');
   const [priceBucket, setPriceBucket] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
+  const [hoveredListingId, setHoveredListingId] = useState('');
 
   useAutoDismiss(error, () => setError(''));
   useAutoDismiss(message, () => setMessage(''));
@@ -230,6 +233,7 @@ const ViewListingPage = () => {
           location: listing.location || '',
           price: Number(listing.price || 0),
           image: getListingImage(listing),
+          model3dUrl: String(listing?.model3dUrl || '').trim(),
           source: 'viewlisting-page',
         });
       } catch {
@@ -249,6 +253,7 @@ const ViewListingPage = () => {
         location: listing.location || '',
         price: Number(listing.price || 0),
         image: getListingImage(listing),
+        model3dUrl: String(listing?.model3dUrl || '').trim(),
         source: 'viewlisting-page',
       });
 
@@ -298,10 +303,11 @@ const ViewListingPage = () => {
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <select
                   value={locationFilter}
                   onChange={(e) => setLocationFilter(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 bg-gray-50 rounded outline-none focus:ring-2 focus:ring-blue-200 border-none shadow-sm"
+                  className="w-full appearance-none pl-9 pr-10 py-2.5 bg-gray-50 rounded outline-none focus:ring-2 focus:ring-blue-200 border-none shadow-sm"
                 >
                   {locations.map((location) => (
                     <option key={location} value={location}>
@@ -338,17 +344,20 @@ const ViewListingPage = () => {
               <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 <ArrowUpDown size={14} /> Sort
               </span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 text-sm bg-gray-50 rounded outline-none focus:ring-2 focus:ring-blue-200 border-none shadow-sm"
-              >
-                {SORT_OPTIONS.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="appearance-none pl-3 pr-10 py-2 text-sm bg-gray-50 rounded outline-none focus:ring-2 focus:ring-blue-200 border-none shadow-sm"
+                >
+                  {SORT_OPTIONS.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         </section>
@@ -385,20 +394,38 @@ const ViewListingPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredListings.map((listing) => {
                 const listingId = getListingId(listing);
-                const listingImage = getListingImage(listing);
+                const fallbackCoverImage = getListingImage(listing);
                 const availabilityBadge = getAvailabilityBadge(listing, featuredListingIds.has(listingId));
                 const isFavorite = favoriteIds.has(listingId);
+                const roomImages = [
+                  String(listing?.image || '').trim(),
+                  ...(Array.isArray(listing?.images) ? listing.images.map((img) => String(img || '').trim()) : []),
+                ].filter(Boolean);
+                const uniqueRoomImages = Array.from(new Set(roomImages));
+                const displayImages = uniqueRoomImages.length
+                  ? uniqueRoomImages
+                  : [fallbackCoverImage || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1000'];
+                const room2DImageCount = uniqueRoomImages.length;
+                const has2DRoom = Boolean(String(listing?.image || '').trim() || (Array.isArray(listing?.images) && listing.images.length));
+                const has3DRoomTour = Boolean(String(listing?.model3dUrl || '').trim());
                 return (
                   <article
                     key={listingId}
                     className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl hover:-translate-y-0.5 transition-all"
                   >
                     <div onClick={() => handleOpenListing(listing)} className="cursor-pointer">
-                      <div className="relative h-48 w-full overflow-hidden">
-                        <img
-                          src={listingImage || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1000'}
-                          alt={listing.title || 'Room image'}
-                          className="h-full w-full object-cover"
+                      <div
+                        className="relative h-48 w-full overflow-hidden"
+                        onMouseEnter={() => setHoveredListingId(listingId)}
+                        onMouseLeave={() => setHoveredListingId('')}
+                      >
+                        <HoverImageSlider
+                          images={displayImages}
+                          altBase={listing.title || 'Room image'}
+                          stepIntervalMs={2000}
+                          transitionMs={750}
+                          animationType="slide"
+                          hoverActive={hoveredListingId === listingId}
                         />
 
                         <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-black/45 to-transparent" />
@@ -406,6 +433,12 @@ const ViewListingPage = () => {
                         <span className={`absolute top-3 left-3 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide ${availabilityBadge.className}`}>
                           {availabilityBadge.label}
                         </span>
+
+                        {room2DImageCount > 1 && (
+                          <span className="absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center rounded-full bg-gray-100/95 px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm">
+                            +{room2DImageCount - 1} Images
+                          </span>
+                        )}
 
                         <button
                           type="button"
@@ -440,6 +473,24 @@ const ViewListingPage = () => {
                       </div>
 
                       <div className="p-4">
+                        {(has2DRoom || has3DRoomTour) && (
+                          <div className="mb-2">
+                            <div className="inline-flex items-center gap-1.5 flex-wrap">
+                              {has2DRoom && (
+                                <span className="inline-flex items-center rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-sky-700 border border-sky-200">
+                                  2D Room
+                                </span>
+                              )}
+                              {has3DRoomTour && (
+                                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-emerald-700 border border-emerald-200">
+                                  3D Room Tour
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-2 border-t border-gray-100" />
+                          </div>
+                        )}
+
                         <div className="flex items-start justify-between gap-3">
                           <h2 className="text-lg font-extrabold text-[#132238] line-clamp-2">{listing.title || 'Untitled Listing'}</h2>
                           <ArrowUpRight size={16} className="text-blue-600 shrink-0 mt-1" />

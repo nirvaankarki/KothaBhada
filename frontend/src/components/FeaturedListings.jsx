@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
 import { FALLBACK_LISTINGS, getListingId } from '../utils/listingData';
 import RatingDisplay from './RatingDisplay';
+import HoverImageSlider from './HoverImageSlider';
 
 function getListingImage(listing) {
   return String(listing?.image || listing?.images?.[0] || '').trim();
@@ -57,8 +58,19 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const listingId = getListingId(listing);
-  const listingImage = getListingImage(listing);
+  const fallbackCoverImage = getListingImage(listing);
   const availabilityBadge = getAvailabilityBadge(listing);
+  const roomImages = [
+    String(listing?.image || '').trim(),
+    ...(Array.isArray(listing?.images) ? listing.images.map((img) => String(img || '').trim()) : []),
+  ].filter(Boolean);
+  const uniqueRoomImages = Array.from(new Set(roomImages));
+  const displayImages = uniqueRoomImages.length
+    ? uniqueRoomImages
+    : [fallbackCoverImage || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1000'];
+  const room2DImageCount = uniqueRoomImages.length;
+  const has2DRoom = Boolean(String(listing?.image || '').trim() || (Array.isArray(listing?.images) && listing.images.length));
+  const has3DRoomTour = Boolean(String(listing?.model3dUrl || '').trim());
 
   const trackViewHistory = async () => {
     if (!isAuthenticated) return;
@@ -69,7 +81,8 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
         title: listing.title,
         location: listing.location,
         price: listing.price,
-        image: listingImage,
+        image: fallbackCoverImage,
+        model3dUrl: String(listing?.model3dUrl || '').trim(),
         source: 'featured-listings'
       });
     } catch {
@@ -116,17 +129,19 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
       className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden flex flex-col h-full cursor-pointer hover:shadow-lg hover:-translate-y-0.5 transition-all"
     >
       <div className="relative h-48 w-full overflow-hidden">
-        <img 
-          src={listingImage || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1000'} 
-          alt={listing.title} 
-          className="w-full h-full object-cover"
-        />
+        <HoverImageSlider images={displayImages} altBase={listing.title || 'Room image'} />
 
         <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-black/45 to-transparent" />
 
         <div className={`absolute top-3 left-3 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide z-10 ${availabilityBadge.className}`}>
           {availabilityBadge.label}
         </div>
+
+        {room2DImageCount > 1 && (
+          <span className="absolute left-1/2 top-1/2 z-10 inline-flex -translate-x-1/2 -translate-y-1/2 items-center rounded-full bg-gray-100/95 px-2.5 py-1 text-xs font-medium text-gray-700 shadow-sm">
+            +{room2DImageCount - 1} Images
+          </span>
+        )}
 
         {/* Favorite Button */}
         <button 
@@ -157,6 +172,24 @@ const ListingCard = ({ listing, isFavorite, onToggleFavorite }) => {
       </div>
 
       <div className="p-4">
+        {(has2DRoom || has3DRoomTour) && (
+          <div className="mb-2">
+            <div className="inline-flex items-center gap-1.5 flex-wrap">
+              {has2DRoom && (
+                <span className="inline-flex items-center rounded-full bg-sky-50 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-sky-700 border border-sky-200">
+                  2D Room
+                </span>
+              )}
+              {has3DRoomTour && (
+                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-emerald-700 border border-emerald-200">
+                  3D Room Tour
+                </span>
+              )}
+            </div>
+            <div className="mt-2 border-t border-gray-100" />
+          </div>
+        )}
+
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-lg font-extrabold text-[#132238] line-clamp-2">{listing.title || 'Untitled Listing'}</h3>
           <ArrowUpRight size={16} className="text-blue-600 shrink-0 mt-1" />
@@ -268,6 +301,7 @@ const FeaturedListings = () => {
         location: listing.location,
         price: listing.price,
         image: getListingImage(listing),
+        model3dUrl: String(listing?.model3dUrl || '').trim(),
         source: 'featured-listings'
       });
 

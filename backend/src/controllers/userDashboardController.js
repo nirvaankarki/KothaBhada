@@ -43,7 +43,7 @@ export async function getFavorites(req, res) {
 
 export async function toggleFavorite(req, res) {
     try {
-        const { listingId, title, location, price, image, source } = req.body;
+        const { listingId, title, location, price, image, model3dUrl, source } = req.body;
 
         if (!listingId || !title) {
             return res.status(400).json({ message: 'listingId and title are required' });
@@ -62,6 +62,7 @@ export async function toggleFavorite(req, res) {
             location: location || '',
             price: Number(price) || 0,
             image: image || '',
+            model3dUrl: String(model3dUrl || '').trim(),
             source: source || 'web'
         });
 
@@ -73,7 +74,7 @@ export async function toggleFavorite(req, res) {
 
 export async function addViewHistory(req, res) {
     try {
-        const { listingId, title, location, price, image, source } = req.body;
+        const { listingId, title, location, price, image, model3dUrl, source } = req.body;
 
         if (!listingId || !title) {
             return res.status(400).json({ message: 'listingId and title are required' });
@@ -86,6 +87,7 @@ export async function addViewHistory(req, res) {
             location: location || '',
             price: Number(price) || 0,
             image: image || '',
+            model3dUrl: String(model3dUrl || '').trim(),
             source: source || 'web',
             viewedAt: new Date()
         });

@@ -30,6 +30,10 @@ const favoriteSchema = new mongoose.Schema({
     image: {
         type: String,
         default: ''
+    },
+    model3dUrl: {
+        type: String,
+        default: ''
     }
 }, {
     timestamps: true

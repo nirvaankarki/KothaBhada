@@ -31,6 +31,10 @@ const viewHistorySchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    model3dUrl: {
+        type: String,
+        default: ''
+    },
     viewedAt: {
         type: Date,
         default: Date.now
