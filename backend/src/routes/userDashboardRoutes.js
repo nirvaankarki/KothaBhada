@@ -22,7 +22,8 @@ import {
     markOwnerChatSeen,
     getNotifications,
     markNotificationAsRead,
-    markAllNotificationsAsRead
+    markAllNotificationsAsRead,
+    clearAllNotifications
 } from '../controllers/userDashboardController.js';
 
 const router = express.Router();
@@ -49,5 +50,6 @@ router.post('/chats/:chatId/seen', authenticate, markOwnerChatSeen);
 router.get('/notifications', authenticate, getNotifications);
 router.post('/notifications/read-all', authenticate, markAllNotificationsAsRead);
 router.post('/notifications/:notificationId/read', authenticate, markNotificationAsRead);
+router.delete('/notifications', authenticate, clearAllNotifications);
 
 export default router;

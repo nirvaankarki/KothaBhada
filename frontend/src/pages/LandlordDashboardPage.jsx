@@ -79,8 +79,6 @@ const LandlordDashboardPage = () => {
             handleChange={handlers.handleChange}
             handleAddKeyFeature={handlers.handleAddKeyFeature}
             handleRemoveKeyFeature={handlers.handleRemoveKeyFeature}
-            handleAddAreaHighlight={handlers.handleAddAreaHighlight}
-            handleRemoveAreaHighlight={handlers.handleRemoveAreaHighlight}
             handleSubmit={handlers.handleSubmit}
             submitting={state.submitting}
             fileInputRef={refs.fileInputRef}

@@ -4,7 +4,8 @@ import {
   Heart, Share2, CheckCircle2, User, Phone, Mail, 
   MessageSquare, Info, MousePointer2, Move, Search,
   Star,
-  MapPin, Calendar, MessageCircle, ExternalLink, Navigation, X
+  MapPin, Calendar, MessageCircle, ExternalLink, Navigation, X,
+  Hospital, Pill, GraduationCap, Bus, Store, Landmark, UtensilsCrossed, Shield, Building2
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -53,6 +54,217 @@ const defaultAreaHighlights = [
   '24/7 water and power',
 ];
 
+const PLACE_TYPE_PRIORITY = {
+  hospital: 1,
+  clinic: 1,
+  pharmacy: 2,
+  school: 2,
+  college: 2,
+  university: 2,
+  bus_station: 3,
+  station: 3,
+  supermarket: 4,
+  marketplace: 4,
+  mall: 4,
+  bank: 5,
+  police: 5,
+  restaurant: 6,
+  cafe: 6,
+};
+
+const IMPORTANT_CATEGORY_ORDER = ['health', 'education', 'transport', 'shopping', 'safety'];
+
+const TYPE_TO_CATEGORY = {
+  hospital: 'health',
+  clinic: 'health',
+  pharmacy: 'health',
+  school: 'education',
+  college: 'education',
+  university: 'education',
+  bus_station: 'transport',
+  station: 'transport',
+  supermarket: 'shopping',
+  marketplace: 'shopping',
+  mall: 'shopping',
+  convenience: 'shopping',
+  bank: 'safety',
+  police: 'safety',
+  restaurant: 'dining',
+  cafe: 'dining',
+};
+
+const CATEGORY_LABELS = {
+  health: 'Health',
+  education: 'Education',
+  transport: 'Transport',
+  shopping: 'Shopping',
+  safety: 'Safety',
+  dining: 'Dining',
+  other: 'Other',
+};
+
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.openstreetmap.ru/api/interpreter',
+];
+
+function toRad(value) {
+  return (value * Math.PI) / 180;
+}
+
+function getDistanceInMeters(lat1, lon1, lat2, lon2) {
+  const earthRadius = 6371000;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(earthRadius * c);
+}
+
+function formatDistance(meters) {
+  if (!Number.isFinite(meters)) {
+    return 'Nearby';
+  }
+
+  if (meters < 1000) {
+    return `${meters} m`;
+  }
+
+  return `${(meters / 1000).toFixed(1)} km`;
+}
+
+function buildOverpassQuery(lat, lon, radiusMeters = 1500) {
+  return `[out:json][timeout:25];
+(
+  node(around:${radiusMeters},${lat},${lon})[amenity~"hospital|clinic|pharmacy|school|college|university|bus_station|bank|police|restaurant|cafe|marketplace"];
+  way(around:${radiusMeters},${lat},${lon})[amenity~"hospital|clinic|pharmacy|school|college|university|bus_station|bank|police|restaurant|cafe|marketplace"];
+  node(around:${radiusMeters},${lat},${lon})[shop~"supermarket|mall|convenience"];
+  way(around:${radiusMeters},${lat},${lon})[shop~"supermarket|mall|convenience"];
+  node(around:${radiusMeters},${lat},${lon})[public_transport~"station"];
+  way(around:${radiusMeters},${lat},${lon})[public_transport~"station"];
+);
+out center;`;
+}
+
+function normalizeOverpassElement(element) {
+  const tags = element?.tags || {};
+  const lat = Number(element?.lat ?? element?.center?.lat);
+  const lon = Number(element?.lon ?? element?.center?.lon);
+  const name = String(tags.name || '').trim();
+  const type = String(tags.amenity || tags.shop || tags.public_transport || '').trim().toLowerCase();
+
+  if (!name || !type || !Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return null;
+  }
+
+  return { name, type, lat, lon };
+}
+
+function formatPlaceType(type) {
+  return String(type || '')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getCategoryByType(type) {
+  const normalizedType = String(type || '').toLowerCase();
+  return TYPE_TO_CATEGORY[normalizedType] || 'other';
+}
+
+async function fetchOverpassWithFallback(query, options = {}) {
+  const { signal, timeoutMs = 12000 } = options;
+  let lastError = null;
+
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    if (signal?.aborted) {
+      throw new Error('Request aborted');
+    }
+
+    const requestController = new AbortController();
+    const timeoutId = setTimeout(() => {
+      requestController.abort();
+    }, timeoutMs);
+
+    const relayAbort = () => {
+      requestController.abort();
+    };
+
+    if (signal) {
+      signal.addEventListener('abort', relayAbort, { once: true });
+    }
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        signal: requestController.signal,
+        headers: {
+          'Content-Type': 'text/plain;charset=UTF-8',
+        },
+        body: query,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Nearby places lookup failed with status ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (signal?.aborted) {
+        throw error;
+      }
+      lastError = error;
+    } finally {
+      clearTimeout(timeoutId);
+      if (signal) {
+        signal.removeEventListener('abort', relayAbort);
+      }
+    }
+  }
+
+  throw lastError || new Error('Nearby places lookup failed on all providers');
+}
+
+function getPlaceVisuals(type) {
+  const normalizedType = String(type || '').toLowerCase();
+
+  if (['hospital', 'clinic'].includes(normalizedType)) {
+    return { Icon: Hospital, badgeClass: 'bg-red-50 text-red-700 border-red-100' };
+  }
+
+  if (normalizedType === 'pharmacy') {
+    return { Icon: Pill, badgeClass: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100' };
+  }
+
+  if (['school', 'college', 'university'].includes(normalizedType)) {
+    return { Icon: GraduationCap, badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-100' };
+  }
+
+  if (['bus_station', 'station'].includes(normalizedType)) {
+    return { Icon: Bus, badgeClass: 'bg-sky-50 text-sky-700 border-sky-100' };
+  }
+
+  if (['supermarket', 'marketplace', 'mall', 'convenience'].includes(normalizedType)) {
+    return { Icon: Store, badgeClass: 'bg-orange-50 text-orange-700 border-orange-100' };
+  }
+
+  if (normalizedType === 'bank') {
+    return { Icon: Landmark, badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
+  }
+
+  if (normalizedType === 'police') {
+    return { Icon: Shield, badgeClass: 'bg-slate-100 text-slate-700 border-slate-200' };
+  }
+
+  if (['restaurant', 'cafe'].includes(normalizedType)) {
+    return { Icon: UtensilsCrossed, badgeClass: 'bg-amber-50 text-amber-700 border-amber-100' };
+  }
+
+  return { Icon: Building2, badgeClass: 'bg-slate-100 text-slate-700 border-slate-200' };
+}
+
 const Explore3DPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -82,6 +294,10 @@ const Explore3DPage = () => {
   const seenOwnerMessageAtRef = useRef('');
   const initializedOwnerMessageRef = useRef(false);
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
+  const [dynamicAreaHighlights, setDynamicAreaHighlights] = useState([]);
+  const [isLoadingDynamicAreaHighlights, setIsLoadingDynamicAreaHighlights] = useState(false);
+  const [dynamicAreaHighlightsError, setDynamicAreaHighlightsError] = useState('');
+  const highlightsCacheRef = useRef(new Map());
   const reviewsSectionRef = useRef(null);
 
   useAutoDismiss(message, () => setMessage(''));
@@ -344,6 +560,139 @@ const Explore3DPage = () => {
     };
   }, [isChatOverlayOpen]);
 
+  useEffect(() => {
+    const locationText = String(listing?.location || '').trim();
+
+    if (!locationText) {
+      setDynamicAreaHighlights([]);
+      setDynamicAreaHighlightsError('');
+      setIsLoadingDynamicAreaHighlights(false);
+      return;
+    }
+
+    const cached = highlightsCacheRef.current.get(locationText);
+    if (cached) {
+      setDynamicAreaHighlights(cached);
+      setDynamicAreaHighlightsError('');
+      setIsLoadingDynamicAreaHighlights(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const fetchNearbyHighlights = async () => {
+      setIsLoadingDynamicAreaHighlights(true);
+      setDynamicAreaHighlightsError('');
+      setDynamicAreaHighlights([]);
+
+      try {
+        const geocodeResponse = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(locationText)}`,
+          {
+            signal: controller.signal,
+            headers: {
+              Accept: 'application/json',
+            },
+          }
+        );
+
+        if (!geocodeResponse.ok) {
+          throw new Error('Geocoding failed');
+        }
+
+        const geocodeData = await geocodeResponse.json();
+        const place = Array.isArray(geocodeData) ? geocodeData[0] : null;
+        const lat = Number(place?.lat);
+        const lon = Number(place?.lon);
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+          throw new Error('Coordinates not found for listing location');
+        }
+
+        const overpassData = await fetchOverpassWithFallback(buildOverpassQuery(lat, lon), {
+          signal: controller.signal,
+        });
+        const rawElements = Array.isArray(overpassData?.elements) ? overpassData.elements : [];
+
+        const uniqueByName = new Map();
+        rawElements.forEach((element) => {
+          const normalized = normalizeOverpassElement(element);
+          if (!normalized) return;
+
+          const dedupeKey = `${normalized.name.toLowerCase()}-${normalized.type}`;
+          if (uniqueByName.has(dedupeKey)) return;
+
+          const distance = getDistanceInMeters(lat, lon, normalized.lat, normalized.lon);
+          uniqueByName.set(dedupeKey, {
+            name: normalized.name,
+            type: normalized.type,
+            category: getCategoryByType(normalized.type),
+            distance,
+            typeLabel: formatPlaceType(normalized.type),
+            label: normalized.name,
+          });
+        });
+
+        const rankedPlaces = Array.from(uniqueByName.values())
+          .sort((a, b) => {
+            const aCategoryPriority = IMPORTANT_CATEGORY_ORDER.indexOf(a.category);
+            const bCategoryPriority = IMPORTANT_CATEGORY_ORDER.indexOf(b.category);
+            const aCategoryRank = aCategoryPriority === -1 ? 99 : aCategoryPriority;
+            const bCategoryRank = bCategoryPriority === -1 ? 99 : bCategoryPriority;
+            if (aCategoryRank !== bCategoryRank) return aCategoryRank - bCategoryRank;
+
+            const aPriority = PLACE_TYPE_PRIORITY[a.type] ?? 99;
+            const bPriority = PLACE_TYPE_PRIORITY[b.type] ?? 99;
+            if (aPriority !== bPriority) return aPriority - bPriority;
+            return a.distance - b.distance;
+          });
+
+        const selected = [];
+        const selectedCategories = new Set();
+
+        IMPORTANT_CATEGORY_ORDER.forEach((category) => {
+          const match = rankedPlaces.find((place) => place.category === category && !selectedCategories.has(category));
+          if (!match || selected.length >= 5) return;
+
+          selected.push({
+            ...match,
+            categoryLabel: CATEGORY_LABELS[category] || 'Other',
+          });
+          selectedCategories.add(category);
+        });
+
+        if (selected.length < 5) {
+          rankedPlaces.forEach((place) => {
+            if (selected.length >= 5) return;
+            if (selectedCategories.has(place.category)) return;
+
+            selected.push({
+              ...place,
+              categoryLabel: CATEGORY_LABELS[place.category] || 'Other',
+            });
+            selectedCategories.add(place.category);
+          });
+        }
+
+        highlightsCacheRef.current.set(locationText, selected);
+        setDynamicAreaHighlights(selected);
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+        setDynamicAreaHighlights([]);
+        setDynamicAreaHighlightsError('Could not fetch live neighborhood highlights right now.');
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoadingDynamicAreaHighlights(false);
+        }
+      }
+    };
+
+    fetchNearbyHighlights();
+
+    return () => {
+      controller.abort();
+    };
+  }, [listing?.location]);
+
   if (isLoading && !listing) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -408,7 +757,20 @@ const Explore3DPage = () => {
   const listingAreaHighlights = Array.isArray(listing.areaHighlights)
     ? listing.areaHighlights.map((item) => String(item || '').trim()).filter(Boolean)
     : [];
-  const areaHighlightsToDisplay = listingAreaHighlights.length ? listingAreaHighlights : defaultAreaHighlights;
+  const fallbackAreaHighlights = listingAreaHighlights.length ? listingAreaHighlights : defaultAreaHighlights;
+  const shouldShowFallbackHighlights = !isLoadingDynamicAreaHighlights && !dynamicAreaHighlights.length;
+  const areaHighlightsToDisplay = dynamicAreaHighlights.length
+    ? dynamicAreaHighlights
+    : shouldShowFallbackHighlights
+      ? fallbackAreaHighlights.map((label) => ({
+          category: 'other',
+          categoryLabel: 'Local',
+          type: 'local',
+          typeLabel: 'Local',
+          label,
+          distance: null,
+        }))
+      : [];
   const locationBaseHeight = 256;
   const extraHighlightRows = Math.max(0, areaHighlightsToDisplay.length - 3);
   const locationPanelHeight = locationBaseHeight + (extraHighlightRows * 46);
@@ -666,10 +1028,9 @@ const Explore3DPage = () => {
                     </a>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 rounded-2xl overflow-hidden border border-slate-100 shadow-lg shadow-slate-200/40 bg-white">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 rounded-2xl overflow-hidden border border-slate-100 shadow-lg shadow-slate-200/40 bg-white items-stretch">
                     <div
-                      className="lg:col-span-7 relative border-b lg:border-b-0 lg:border-r border-slate-100 bg-slate-100"
-                      style={{ height: `${locationPanelHeight}px` }}
+                      className="lg:col-span-7 relative border-b lg:border-b-0 lg:border-r border-slate-100 bg-slate-100 h-full"
                     >
                       <iframe
                         title="Property location map"
@@ -689,18 +1050,60 @@ const Explore3DPage = () => {
                       className="lg:col-span-5 p-5 md:p-6 bg-slate-50/60"
                       style={{ minHeight: `${locationPanelHeight}px` }}
                     >
-                      <h4 className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400 mb-3">Proximity & Access</h4>
+                      <h4 className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400 mb-3">Neighborhood Highlights</h4>
                       <div className="space-y-3">
+                        {isLoadingDynamicAreaHighlights && (
+                          <div className="rounded-xl border border-slate-200 bg-white p-3.5">
+                            <div className="flex items-center gap-2.5 text-slate-600">
+                              <span className="h-4 w-4 rounded-full border-2 border-slate-300 border-t-[#3A5AFF] animate-spin" />
+                              <p className="text-xs font-semibold">Fetching live nearby places...</p>
+                            </div>
+                            <p className="mt-1.5 text-[11px] text-slate-500">
+                              We are checking important neighborhood services around this location.
+                            </p>
+
+                            <div className="mt-3 space-y-2.5" aria-hidden="true">
+                              {Array.from({ length: 5 }).map((_, idx) => (
+                                <div key={`highlight-loading-${idx}`} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 animate-pulse">
+                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <span className="h-7 w-7 rounded-lg bg-slate-200 shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="h-3.5 w-3/4 rounded bg-slate-200" />
+                                      <div className="mt-1.5 h-3 w-18 rounded bg-slate-200" />
+                                    </div>
+                                  </div>
+                                  <div className="ml-3 h-3.5 w-12 rounded bg-slate-200 shrink-0" />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         {areaHighlightsToDisplay.map((highlight, index) => (
-                          <div key={`${highlight}-${index}`} className="flex items-center justify-between rounded-xl border border-emerald-100 bg-white px-3 py-2.5">
+                          <div key={`${highlight.label}-${index}`} className="flex items-center justify-between rounded-xl border border-emerald-100 bg-white px-3 py-2.5">
                             <div className="flex items-center gap-2.5 min-w-0">
-                              <CheckCircle2 size={16} className="shrink-0 text-emerald-700" />
-                              <span className="text-xs md:text-sm font-semibold text-slate-700 truncate">{highlight}</span>
+                              {(() => {
+                                const { Icon, badgeClass } = getPlaceVisuals(highlight.type);
+                                return (
+                                  <>
+                                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                                      <Icon size={14} />
+                                    </span>
+
+                                    <div className="min-w-0">
+                                      <p className="text-xs md:text-sm font-semibold text-slate-700 truncate">{highlight.label}</p>
+                                      <span className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${badgeClass}`}>
+                                        {highlight.categoryLabel || highlight.typeLabel || 'Nearby'}
+                                      </span>
+                                    </div>
+                                  </>
+                                );
+                              })()}
                             </div>
 
                             <div className="ml-3 flex items-center gap-1 text-slate-400 shrink-0">
                               <Navigation size={12} className="rotate-45" />
-                              <span className="text-[11px] font-semibold">Nearby</span>
+                              <span className="text-[11px] font-semibold">{formatDistance(highlight.distance)}</span>
                             </div>
                           </div>
                         ))}
@@ -708,7 +1111,11 @@ const Explore3DPage = () => {
 
                       <div className="mt-6 border-t border-slate-200 pt-4">
                         <p className="text-[10px] italic leading-relaxed text-slate-400">
-                          * Neighborhood highlights are provided by the listing owner and shown for quick local context.
+                          {dynamicAreaHighlights.length
+                            ? '* Live nearby places are fetched in real time from map data around this location.'
+                            : dynamicAreaHighlightsError
+                              ? '* Live data unavailable. Showing listing-provided neighborhood context.'
+                              : '* Showing listing-provided neighborhood context.'}
                         </p>
                       </div>
                     </div>

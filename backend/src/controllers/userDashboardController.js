@@ -713,3 +713,21 @@ export async function markAllNotificationsAsRead(req, res) {
         return res.status(500).json({ message: 'Failed to mark all notifications as read', error: error.message });
     }
 }
+
+export async function clearAllNotifications(req, res) {
+    try {
+        const role = req.user.role === 'landlord' ? 'landlord' : 'user';
+
+        const result = await Notification.deleteMany({
+            userId: req.user.userId,
+            role
+        });
+
+        return res.status(200).json({
+            message: 'All notifications cleared',
+            deletedCount: result.deletedCount || 0
+        });
+    } catch (error) {
+        return res.status(500).json({ message: 'Failed to clear notifications', error: error.message });
+    }
+}

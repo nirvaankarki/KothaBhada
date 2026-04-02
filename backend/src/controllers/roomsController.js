@@ -21,6 +21,25 @@ function parseKeyFeatures(input) {
     return [];
 }
 
+function parseAreaHighlights(input) {
+    if (Array.isArray(input)) {
+        return input
+            .map((item) => String(item || '').trim())
+            .filter(Boolean)
+            .slice(0, 10);
+    }
+
+    if (typeof input === 'string') {
+        return input
+            .split(/[\n,]/)
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .slice(0, 10);
+    }
+
+    return [];
+}
+
 export async function getAllRooms(req, res) {
     try {
         const rooms = await Room.find({ status: 'active' }).sort({ createdAt: -1 }).lean();
@@ -65,6 +84,7 @@ export async function createRooms(req, res) {
             bathrooms,
             areaSqFt,
             keyFeatures,
+            areaHighlights,
             image,
             ownerPhone,
             status,
@@ -88,6 +108,8 @@ export async function createRooms(req, res) {
             return res.status(400).json({ message: 'At least one key feature is required' });
         }
 
+        const parsedAreaHighlights = parseAreaHighlights(areaHighlights);
+
         const owner = await User.findById(req.user.userId).select('name email phone');
         if (!owner) {
             return res.status(404).json({ message: 'Landlord account not found' });
@@ -106,6 +128,7 @@ export async function createRooms(req, res) {
             bathrooms: Number(bathrooms) || 1,
             areaSqFt: Number(areaSqFt) || 0,
             keyFeatures: parsedKeyFeatures,
+            areaHighlights: parsedAreaHighlights,
             image: String(image || '').trim(),
             status: status === 'inactive' ? 'inactive' : 'active',
         });
@@ -133,7 +156,7 @@ export async function updateRooms(req, res) {
             return res.status(403).json({ message: 'You can update only your own listings' });
         }
 
-        const allowedKeys = ['title', 'price', 'description', 'location', 'bedrooms', 'bathrooms', 'areaSqFt', 'keyFeatures', 'image', 'ownerPhone', 'status'];
+        const allowedKeys = ['title', 'price', 'description', 'location', 'bedrooms', 'bathrooms', 'areaSqFt', 'keyFeatures', 'areaHighlights', 'image', 'ownerPhone', 'status'];
         const updates = {};
         for (const key of allowedKeys) {
             if (req.body[key] !== undefined) {
@@ -155,6 +178,9 @@ export async function updateRooms(req, res) {
             if (!updates.keyFeatures.length) {
                 return res.status(400).json({ message: 'At least one key feature is required' });
             }
+        }
+        if (updates.areaHighlights !== undefined) {
+            updates.areaHighlights = parseAreaHighlights(updates.areaHighlights);
         }
 
         const updatedRoom = await Room.findByIdAndUpdate(id, updates, { new: true, runValidators: true });

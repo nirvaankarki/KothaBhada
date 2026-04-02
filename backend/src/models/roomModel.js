@@ -53,6 +53,10 @@ const roomSchema = new mongoose.Schema({
         type: [String],
         default: []
     },
+    areaHighlights: {
+        type: [String],
+        default: []
+    },
     image: {
         type: String,
         default: ''

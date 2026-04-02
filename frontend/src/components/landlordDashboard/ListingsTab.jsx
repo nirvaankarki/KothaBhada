@@ -23,8 +23,6 @@ const ListingsTab = ({
   handleChange,
   handleAddKeyFeature,
   handleRemoveKeyFeature,
-  handleAddAreaHighlight,
-  handleRemoveAreaHighlight,
   handleSubmit,
   submitting,
   fileInputRef,
@@ -44,7 +42,6 @@ const ListingsTab = ({
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [deleteCandidate, setDeleteCandidate] = React.useState(null);
   const [featureInput, setFeatureInput] = React.useState('');
-  const [areaHighlightInput, setAreaHighlightInput] = React.useState('');
 
   const keyFeatures = Array.isArray(form.keyFeatures)
     ? form.keyFeatures
@@ -53,29 +50,19 @@ const ListingsTab = ({
       .map((item) => item.trim())
       .filter(Boolean);
 
-  const areaHighlights = Array.isArray(form.areaHighlights)
-    ? form.areaHighlights
-    : String(form.areaHighlights || '')
-      .split(/[,\n]/)
-      .map((item) => item.trim())
-      .filter(Boolean);
-
   const openCreateModal = () => {
     handleStartNewListing();
     setFeatureInput('');
-    setAreaHighlightInput('');
     setIsCreateModalOpen(true);
   };
   const closeCreateModal = () => {
     setFeatureInput('');
-    setAreaHighlightInput('');
     setIsCreateModalOpen(false);
   };
 
   const handleEditAndOpenForm = (item) => {
     handleEditDraft(item);
     setFeatureInput('');
-    setAreaHighlightInput('');
     setIsCreateModalOpen(true);
   };
 
@@ -90,20 +77,6 @@ const ListingsTab = ({
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
       addFeatureFromInput();
-    }
-  };
-
-  const addAreaHighlightFromInput = () => {
-    const candidate = areaHighlightInput.trim();
-    if (!candidate) return;
-    handleAddAreaHighlight(candidate);
-    setAreaHighlightInput('');
-  };
-
-  const handleAreaHighlightKeyDown = (e) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      addAreaHighlightFromInput();
     }
   };
 
@@ -428,54 +401,6 @@ const ListingsTab = ({
                     <p className="mt-1 text-[11px] text-gray-500">Add multiple features to show property highlights on listing details.</p>
                   </div>
 
-                  <div className="md:col-span-2">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Area Highlights
-                    </label>
-                    <div className="mt-1 rounded-xl border border-gray-200 bg-gray-50 p-3">
-                      <div className="flex flex-wrap gap-2 mb-3 min-h-6">
-                        {areaHighlights.length === 0 ? (
-                          <p className="text-xs text-gray-500">No area highlights added yet.</p>
-                        ) : (
-                          areaHighlights.map((highlight) => (
-                            <span
-                              key={highlight}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-xs font-semibold text-emerald-700"
-                            >
-                              {highlight}
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveAreaHighlight(highlight)}
-                                className="text-emerald-600 hover:text-emerald-800"
-                                aria-label={`Remove ${highlight}`}
-                              >
-                                <X size={12} />
-                              </button>
-                            </span>
-                          ))
-                        )}
-                      </div>
-
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={areaHighlightInput}
-                          onChange={(e) => setAreaHighlightInput(e.target.value)}
-                          onKeyDown={handleAreaHighlightKeyDown}
-                          placeholder="Type an area highlight and press Enter"
-                          className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-300"
-                        />
-                        <button
-                          type="button"
-                          onClick={addAreaHighlightFromInput}
-                          className="px-3 py-2 rounded-lg bg-[#2563eb] text-white text-xs font-semibold hover:bg-blue-700"
-                        >
-                          Add
-                        </button>
-                      </div>
-                    </div>
-                    <p className="mt-1 text-[11px] text-gray-500">Add nearby conveniences or neighborhood advantages shown in the location section.</p>
-                  </div>
                 </div>
 
                 <div className="lg:col-span-4">
