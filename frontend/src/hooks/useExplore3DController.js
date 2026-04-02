@@ -484,7 +484,7 @@ export function useExplore3DController() {
   const locationPanelHeight = locationBaseHeight + (extraHighlightRows * 46);
 
   const listingDescription = String(listing?.description || '').trim();
-  const model3dUrl = String(listing?.model3dUrl || '/models/room.glb').trim();
+  const model3dUrl = String(listing?.model3dUrl || '').trim();
   const tourPoints = useMemo(() => parseListingTourPoints(listing?.tourPoints), [listing?.tourPoints]);
 
   const roomImages = useMemo(() => {

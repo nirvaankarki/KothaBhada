@@ -182,6 +182,12 @@ const ThreeRoomViewer = forwardRef(({ modelUrl, autoRotate = false, tourMode = f
     const mountEl = mountRef.current;
     if (!mountEl) return undefined;
 
+    const resolvedModelUrl = String(modelUrl || '').trim();
+    if (!resolvedModelUrl) {
+      setStatus({ loading: false, error: '3D tour not available for this listing.' });
+      return undefined;
+    }
+
     disposedRef.current = false;
     setStatus({ loading: true, error: '' });
 
@@ -253,7 +259,7 @@ const ThreeRoomViewer = forwardRef(({ modelUrl, autoRotate = false, tourMode = f
 
     const loader = new GLTFLoader();
     loader.load(
-      modelUrl,
+      resolvedModelUrl,
       (gltf) => {
         if (disposedRef.current) return;
 
@@ -393,7 +399,7 @@ const ThreeRoomViewer = forwardRef(({ modelUrl, autoRotate = false, tourMode = f
     <div className="relative h-full w-full overflow-hidden bg-[#111827]">
       <div ref={mountRef} className="absolute inset-0" />
 
-      {status.loading && (
+      {status.loading && !status.error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white px-4 text-center bg-[#0f172a]/65">
           <div className="w-8 h-8 border-4 border-[#3A5AFF] border-t-transparent rounded-full animate-spin mb-3" />
           <p className="text-sm font-bold tracking-wide">Loading 3D Model</p>

@@ -203,24 +203,13 @@ const RoomVisualizationSection = ({
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-linear-to-br from-[#0b1220] via-[#0f172a] to-[#1e293b] px-4">
                 <div className="max-w-md rounded-2xl border border-white/20 bg-white/95 p-6 text-center shadow-[0_20px_60px_rgba(15,23,42,0.45)] backdrop-blur">
-                  <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#3A5AFF]/10 text-[#3A5AFF] ring-1 ring-[#3A5AFF]/25">
+                  <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600 ring-1 ring-red-200">
                     <AlertCircle size={22} />
                   </div>
-                  <h3 className="text-base font-bold text-slate-800">3D Tour Not Available</h3>
+                  <h3 className="text-base font-bold text-red-700">3D Tour Not Available</h3>
                   <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                    This listing does not have a 3D model yet. Please continue with 2D photos.
+                    This listing does not have a 3D model yet. 
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIs3dTourStarted(false);
-                      setIsAutoRotateEnabled(false);
-                      setIsTourModeEnabled(false);
-                    }}
-                    className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#3A5AFF] px-4 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#2F49E6]"
-                  >
-                    <ImageIcon size={14} /> Back to 2D Photos
-                  </button>
                 </div>
               </div>
             )
