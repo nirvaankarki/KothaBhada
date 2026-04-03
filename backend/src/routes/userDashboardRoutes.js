@@ -11,6 +11,7 @@ import {
     addInquiryMessage,
     createBooking,
     getBookings,
+    updateBookingRequest,
     getOwnerInquiries,
     addOwnerInquiryMessage,
     getOwnerBookings,
@@ -20,6 +21,8 @@ import {
     getOwnerChats,
     replyToChat,
     markOwnerChatSeen,
+    getAiRecommendations,
+    getAiChatHistory,
     getNotifications,
     markNotificationAsRead,
     markAllNotificationsAsRead,
@@ -38,11 +41,14 @@ router.post('/inquiries', authenticate, createInquiry);
 router.post('/inquiries/:inquiryId/messages', authenticate, addInquiryMessage);
 router.get('/bookings', authenticate, getBookings);
 router.post('/bookings', authenticate, createBooking);
+router.patch('/bookings/:bookingId', authenticate, updateBookingRequest);
 router.get('/owner/inquiries', authenticate, getOwnerInquiries);
 router.post('/owner/inquiries/:inquiryId/messages', authenticate, addOwnerInquiryMessage);
 router.get('/owner/bookings', authenticate, getOwnerBookings);
 router.patch('/owner/bookings/:bookingId/status', authenticate, updateOwnerBookingStatus);
 router.post('/chat/send', authenticate, sendChatMessage);
+router.post('/ai/recommendations', authenticate, getAiRecommendations);
+router.get('/ai/history', authenticate, getAiChatHistory);
 router.get('/chats', authenticate, getUserChats);
 router.get('/owner/chats', authenticate, getOwnerChats);
 router.post('/chats/:chatId/reply', authenticate, replyToChat);

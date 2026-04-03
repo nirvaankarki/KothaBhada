@@ -17,6 +17,64 @@ const formatTimeSlot = (value) => {
   return slot.charAt(0).toUpperCase() + slot.slice(1);
 };
 
+const statusMetaMap = {
+  pending: {
+    label: 'Pending',
+    badgeClass: 'border-amber-200 bg-amber-50 text-amber-700',
+    mutedClass: 'text-gray-500',
+  },
+  confirmed: {
+    label: 'Confirmed',
+    badgeClass: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    mutedClass: 'text-gray-500',
+  },
+  declined: {
+    label: 'Declined',
+    badgeClass: 'border-rose-200 bg-rose-50 text-rose-700',
+    mutedClass: 'text-gray-500',
+  },
+};
+
+const getLastUpdatedValue = (booking) => booking?.updatedAt || booking?.createdAt || booking?.preferredVisitDate || '';
+
+const formatLastUpdatedLabel = (value) => {
+  if (!value) return 'Not updated yet';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Not updated yet';
+
+  return `Updated ${date.toLocaleString()}`;
+};
+
+const formatDateInputValue = (value) => {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toISOString().slice(0, 10);
+};
+
+const createBookingEditDraft = (booking) => ({
+  fullName: String(booking?.fullName || '').trim(),
+  email: String(booking?.email || '').trim(),
+  phone: String(booking?.phone || '').trim(),
+  preferredVisitDate: formatDateInputValue(booking?.preferredVisitDate),
+  preferredTime: String(booking?.preferredTime || '').trim(),
+  moveInDate: formatDateInputValue(booking?.moveInDate),
+  stayDurationMonths: String(booking?.stayDurationMonths || ''),
+  occupants: String(booking?.occupants || ''),
+  occupation: String(booking?.occupation || '').trim(),
+  monthlyIncome: String(booking?.monthlyIncome || '').trim(),
+  hasPets: String(booking?.hasPets || '').trim().toLowerCase(),
+  reasonForMoving: String(booking?.reasonForMoving || '').trim(),
+  note: String(booking?.note || '').trim(),
+});
+
+const BOOKING_WINDOW_OPTIONS = [
+  { id: 'all', label: 'All Updates', hours: 0 },
+  { id: '24h', label: 'Last 24 Hours', hours: 24 },
+  { id: '48h', label: 'Last 48 Hours', hours: 48 },
+  { id: '7d', label: 'Last 7 Days', hours: 168 },
+];
+
 const RentalDashboard = ({
   loading,
   error,
@@ -35,6 +93,10 @@ const RentalDashboard = ({
   const [localHistory, setLocalHistory] = useState(history || []);
   const [localBookings, setLocalBookings] = useState(bookings || []);
   const [bookingStatusFilter, setBookingStatusFilter] = useState('pending');
+  const [selectedBookingWindow, setSelectedBookingWindow] = useState('all');
+  const [editingBookingId, setEditingBookingId] = useState('');
+  const [bookingEditDrafts, setBookingEditDrafts] = useState({});
+  const [savingBookingId, setSavingBookingId] = useState('');
   const [showClearHistoryModal, setShowClearHistoryModal] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const { showToast } = useToast();
@@ -134,7 +196,23 @@ const RentalDashboard = ({
   };
 
   const categorizedBookings = useMemo(() => {
-    return localBookings.reduce((acc, booking) => {
+    const selectedWindow = BOOKING_WINDOW_OPTIONS.find((option) => option.id === selectedBookingWindow) || BOOKING_WINDOW_OPTIONS[0];
+    const recentCutoff = selectedWindow.hours > 0
+      ? Date.now() - (selectedWindow.hours * 60 * 60 * 1000)
+      : 0;
+
+    const sourceBookings = selectedWindow.hours > 0
+      ? localBookings.filter((booking) => {
+          const updatedValue = getLastUpdatedValue(booking);
+          const updatedDate = new Date(updatedValue || 0);
+          if (Number.isNaN(updatedDate.getTime())) return false;
+          return updatedDate.getTime() >= recentCutoff;
+        })
+      : localBookings;
+
+    const orderedBookings = [...sourceBookings].sort((a, b) => new Date(getLastUpdatedValue(b) || 0) - new Date(getLastUpdatedValue(a) || 0));
+
+    return orderedBookings.reduce((acc, booking) => {
       const status = String(booking?.status || 'pending').toLowerCase();
       if (status === 'confirmed') {
         acc.confirmed.push(booking);
@@ -145,11 +223,30 @@ const RentalDashboard = ({
       }
       return acc;
     }, { pending: [], confirmed: [], declined: [] });
-  }, [localBookings]);
+  }, [localBookings, selectedBookingWindow]);
 
   const filteredBookings = useMemo(() => {
     return categorizedBookings[bookingStatusFilter] || [];
   }, [categorizedBookings, bookingStatusFilter]);
+
+  const recentStatusHighlights = useMemo(() => {
+    const buildHighlight = (statusKey) => {
+      const list = categorizedBookings[statusKey] || [];
+      const latest = list[0] || null;
+      return {
+        key: statusKey,
+        count: list.length,
+        latest,
+      };
+    };
+
+    return [buildHighlight('pending'), buildHighlight('confirmed'), buildHighlight('declined')];
+  }, [categorizedBookings]);
+
+  const activeBookingWindowLabel = useMemo(() => {
+    const selectedWindow = BOOKING_WINDOW_OPTIONS.find((option) => option.id === selectedBookingWindow);
+    return selectedWindow?.label || 'All Updates';
+  }, [selectedBookingWindow]);
 
   const uniqueHistoryEntries = useMemo(() => {
     const seenListingIds = new Set();
@@ -168,8 +265,106 @@ const RentalDashboard = ({
     return uniqueItems;
   }, [localHistory]);
 
-  const renderBookingCard = (booking) => {
+  const setBookingEditField = (bookingId, field, value) => {
+    if (!bookingId || !field) return;
+
+    setBookingEditDrafts((prev) => ({
+      ...prev,
+      [bookingId]: {
+        ...(prev[bookingId] || {}),
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleStartBookingEdit = (booking) => {
+    if (!booking?._id) return;
+
+    const status = String(booking?.status || 'pending').toLowerCase();
+    if (status !== 'pending') {
+      showToast({
+        type: 'warning',
+        title: 'Cannot edit',
+        message: 'Only pending booking requests can be edited.',
+      });
+      return;
+    }
+
+    const bookingId = String(booking._id);
+    setEditingBookingId(bookingId);
+    setBookingEditDrafts((prev) => ({
+      ...prev,
+      [bookingId]: prev[bookingId] || createBookingEditDraft(booking),
+    }));
+  };
+
+  const handleCancelBookingEdit = (bookingId) => {
+    if (!bookingId) return;
+    setEditingBookingId((prev) => (prev === bookingId ? '' : prev));
+  };
+
+  const handleSaveBookingEdit = async (bookingId) => {
+    const draft = bookingEditDrafts[bookingId];
+    if (!draft) return;
+
+    const payload = {
+      fullName: String(draft.fullName || '').trim(),
+      email: String(draft.email || '').trim(),
+      phone: String(draft.phone || '').trim(),
+      preferredVisitDate: draft.preferredVisitDate,
+      preferredTime: String(draft.preferredTime || '').trim(),
+      moveInDate: draft.moveInDate,
+      stayDurationMonths: Number(draft.stayDurationMonths || 0),
+      occupants: Number(draft.occupants || 0),
+      occupation: String(draft.occupation || '').trim(),
+      monthlyIncome: String(draft.monthlyIncome || '').trim(),
+      hasPets: String(draft.hasPets || '').trim().toLowerCase(),
+      reasonForMoving: String(draft.reasonForMoving || '').trim(),
+      note: String(draft.note || '').trim(),
+    };
+
+    setSavingBookingId(bookingId);
+
+    try {
+      const response = await api.patch(`/user/bookings/${bookingId}`, payload);
+      const updatedBooking = response.data?.booking;
+
+      if (updatedBooking) {
+        setLocalBookings((prev) => prev.map((item) => (
+          item._id === bookingId ? updatedBooking : item
+        )));
+      }
+
+      setEditingBookingId('');
+      setBookingEditDrafts((prev) => {
+        const next = { ...prev };
+        delete next[bookingId];
+        return next;
+      });
+
+      showToast({
+        type: 'success',
+        title: 'Request updated',
+        message: 'Your pending booking request has been updated.',
+      });
+    } catch (err) {
+      showToast({
+        type: 'error',
+        title: 'Update failed',
+        message: err?.response?.data?.message || 'Could not update this booking request.',
+      });
+    } finally {
+      setSavingBookingId('');
+    }
+  };
+
+  const renderBookingCard = (booking, options = {}) => {
     const status = String(booking.status || 'pending').toLowerCase();
+    const isEditing = editingBookingId === booking._id;
+    const bookingDraft = bookingEditDrafts[booking._id] || {};
+    const isSaving = savingBookingId === booking._id;
+    const canEdit = status === 'pending';
+    const { isMostRecent = false } = options;
     const badgeClass = status === 'confirmed'
       ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
       : status === 'declined'
@@ -181,15 +376,17 @@ const RentalDashboard = ({
         ? 'border-l-rose-500'
         : 'border-l-amber-500';
     return (
-      <article key={booking._id} className={`rounded-2xl border border-gray-200 border-l-4 ${accentClass} bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.06)]`}>
+      <article key={booking._id} className={`rounded-2xl border border-gray-200 border-l-4 ${accentClass} ${isMostRecent ? 'ring-1 ring-[#3A5AFF]/40' : ''} bg-white p-5`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h4 className="text-base font-bold text-gray-900 line-clamp-1">{booking.title || 'Property'}</h4>
             <p className="mt-1 text-xs font-medium text-gray-500">{booking.location || 'Visit update'}</p>
           </div>
-          <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap ${badgeClass}`}>
-            {status.charAt(0).toUpperCase() + status.slice(1)}
-          </span>
+          <div className="flex flex-col items-end gap-1">
+            <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap ${badgeClass}`}>
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </span>
+          </div>
         </div>
 
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5 rounded-xl border border-gray-100 bg-gray-50 p-3">
@@ -223,6 +420,192 @@ const RentalDashboard = ({
             <p className="mt-1 text-sm text-gray-700 leading-relaxed">{booking.ownerResponse}</p>
           </div>
         )}
+
+        {canEdit && (
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <p className="text-[11px] text-slate-500">
+              You can edit this request while its status is pending.
+            </p>
+            {!isEditing ? (
+              <button
+                type="button"
+                onClick={() => handleStartBookingEdit(booking)}
+                className="rounded-md border border-[#3A5AFF] bg-white px-3 py-1.5 text-xs font-semibold text-[#3A5AFF] hover:bg-[#3A5AFF]/5"
+              >
+                Edit Request
+              </button>
+            ) : null}
+          </div>
+        )}
+
+        {isEditing && (
+          <div className="mt-4 rounded-xl border border-[#3A5AFF]/30 bg-[#3A5AFF]/5 p-3.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#3A5AFF]">Edit your pending request</p>
+
+            <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <label className="text-xs text-gray-600">
+                Full name
+                <input
+                  type="text"
+                  value={bookingDraft.fullName || ''}
+                  onChange={(event) => setBookingEditField(booking._id, 'fullName', event.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3A5AFF]/35"
+                />
+              </label>
+
+              <label className="text-xs text-gray-600">
+                Email
+                <input
+                  type="email"
+                  value={bookingDraft.email || ''}
+                  onChange={(event) => setBookingEditField(booking._id, 'email', event.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3A5AFF]/35"
+                />
+              </label>
+
+              <label className="text-xs text-gray-600">
+                Phone
+                <input
+                  type="text"
+                  value={bookingDraft.phone || ''}
+                  onChange={(event) => setBookingEditField(booking._id, 'phone', event.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3A5AFF]/35"
+                />
+              </label>
+
+              <label className="text-xs text-gray-600">
+                Preferred visit date
+                <input
+                  type="date"
+                  value={bookingDraft.preferredVisitDate || ''}
+                  onChange={(event) => setBookingEditField(booking._id, 'preferredVisitDate', event.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3A5AFF]/35"
+                />
+              </label>
+
+              <label className="text-xs text-gray-600">
+                Preferred time
+                <select
+                  value={bookingDraft.preferredTime || ''}
+                  onChange={(event) => setBookingEditField(booking._id, 'preferredTime', event.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3A5AFF]/35"
+                >
+                  <option value="">Select time</option>
+                  <option value="morning">Morning</option>
+                  <option value="afternoon">Afternoon</option>
+                  <option value="evening">Evening</option>
+                </select>
+              </label>
+
+              <label className="text-xs text-gray-600">
+                Move-in date
+                <input
+                  type="date"
+                  value={bookingDraft.moveInDate || ''}
+                  onChange={(event) => setBookingEditField(booking._id, 'moveInDate', event.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3A5AFF]/35"
+                />
+              </label>
+
+              <label className="text-xs text-gray-600">
+                Stay duration (months)
+                <input
+                  type="number"
+                  min={1}
+                  value={bookingDraft.stayDurationMonths || ''}
+                  onChange={(event) => setBookingEditField(booking._id, 'stayDurationMonths', event.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3A5AFF]/35"
+                />
+              </label>
+
+              <label className="text-xs text-gray-600">
+                Occupants
+                <input
+                  type="number"
+                  min={1}
+                  value={bookingDraft.occupants || ''}
+                  onChange={(event) => setBookingEditField(booking._id, 'occupants', event.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3A5AFF]/35"
+                />
+              </label>
+
+              <label className="text-xs text-gray-600">
+                Occupation
+                <input
+                  type="text"
+                  value={bookingDraft.occupation || ''}
+                  onChange={(event) => setBookingEditField(booking._id, 'occupation', event.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3A5AFF]/35"
+                />
+              </label>
+
+              <label className="text-xs text-gray-600">
+                Monthly income
+                <input
+                  type="text"
+                  value={bookingDraft.monthlyIncome || ''}
+                  onChange={(event) => setBookingEditField(booking._id, 'monthlyIncome', event.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3A5AFF]/35"
+                />
+              </label>
+
+              <label className="text-xs text-gray-600">
+                Pets
+                <select
+                  value={bookingDraft.hasPets || ''}
+                  onChange={(event) => setBookingEditField(booking._id, 'hasPets', event.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3A5AFF]/35"
+                >
+                  <option value="">Select</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </label>
+            </div>
+
+            <label className="mt-2.5 block text-xs text-gray-600">
+              Reason for moving
+              <textarea
+                rows={2}
+                value={bookingDraft.reasonForMoving || ''}
+                onChange={(event) => setBookingEditField(booking._id, 'reasonForMoving', event.target.value)}
+                className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3A5AFF]/35"
+              />
+            </label>
+
+            <label className="mt-2.5 block text-xs text-gray-600">
+              Additional note
+              <textarea
+                rows={2}
+                value={bookingDraft.note || ''}
+                onChange={(event) => setBookingEditField(booking._id, 'note', event.target.value)}
+                className="mt-1 w-full rounded-md border border-gray-300 bg-white px-2.5 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3A5AFF]/35"
+              />
+            </label>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => handleSaveBookingEdit(booking._id)}
+                disabled={isSaving}
+                className="rounded-md bg-[#3A5AFF] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#3150e0] disabled:opacity-60"
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleCancelBookingEdit(booking._id)}
+                disabled={isSaving}
+                className="rounded-md border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        <p className="mt-4 text-[11px] text-gray-500">{formatLastUpdatedLabel(getLastUpdatedValue(booking))}</p>
       </article>
     );
   };
@@ -435,61 +818,85 @@ const RentalDashboard = ({
                   <p className="text-sm text-gray-500">No booking confirmations yet.</p>
                 ) : (
                   <div className="space-y-6">
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setBookingStatusFilter('pending')}
-                        aria-pressed={bookingStatusFilter === 'pending'}
-                        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
-                          bookingStatusFilter === 'pending'
-                            ? 'border-amber-300 bg-amber-50/60 text-slate-900 shadow-sm'
-                            : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                        }`}
-                      >
-                        Pending
-                        <span className="inline-flex min-w-5 h-5 items-center justify-center rounded-full border border-amber-200 bg-amber-50 px-1.5 text-[11px] font-medium text-amber-700">
-                          {categorizedBookings.pending.length}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setBookingStatusFilter('confirmed')}
-                        aria-pressed={bookingStatusFilter === 'confirmed'}
-                        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
-                          bookingStatusFilter === 'confirmed'
-                            ? 'border-emerald-300 bg-emerald-50/60 text-slate-900 shadow-sm'
-                            : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                        }`}
-                      >
-                        Confirmed
-                        <span className="inline-flex min-w-5 h-5 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-1.5 text-[11px] font-medium text-emerald-700">
-                          {categorizedBookings.confirmed.length}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setBookingStatusFilter('declined')}
-                        aria-pressed={bookingStatusFilter === 'declined'}
-                        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
-                          bookingStatusFilter === 'declined'
-                            ? 'border-rose-300 bg-rose-50/60 text-slate-900 shadow-sm'
-                            : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                        }`}
-                      >
-                        Declined
-                        <span className="inline-flex min-w-5 h-5 items-center justify-center rounded-full border border-rose-200 bg-rose-50 px-1.5 text-[11px] font-medium text-rose-700">
-                          {categorizedBookings.declined.length}
-                        </span>
-                      </button>
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Recent update window</p>
+                        <p className="text-[11px] text-gray-500">Quickly focus booking confirmations by latest update time.</p>
+                      </div>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        {BOOKING_WINDOW_OPTIONS.map((option) => {
+                          const isActive = selectedBookingWindow === option.id;
+                          return (
+                            <button
+                              key={option.id}
+                              type="button"
+                              onClick={() => setSelectedBookingWindow(option.id)}
+                              aria-pressed={isActive}
+                              className={`inline-flex h-8 items-center rounded-md border px-3 text-xs font-medium transition-colors ${
+                                isActive
+                                  ? 'border-[#3A5AFF] bg-[#3A5AFF]/10 text-[#3A5AFF]'
+                                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 bg-white p-4">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <h4 className="text-sm font-semibold text-gray-900">Recent Booking Status Updates</h4>
+                        <p className="text-[11px] text-gray-500">Latest updates are highlighted first</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                        {recentStatusHighlights.map((item) => {
+                          const meta = statusMetaMap[item.key] || statusMetaMap.pending;
+                          const isStatusActive = bookingStatusFilter === item.key;
+
+                          return (
+                            <button
+                              key={item.key}
+                              type="button"
+                              onClick={() => setBookingStatusFilter(item.key)}
+                              className={`text-left rounded-xl border px-3 py-3 transition-colors ${
+                                isStatusActive
+                                  ? 'border-[#3A5AFF] bg-[#3A5AFF]/5'
+                                  : 'border-gray-200 bg-white hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold ${meta.badgeClass}`}>
+                                  {meta.label}
+                                </span>
+                                <span className="text-sm font-semibold text-gray-900">{item.count}</span>
+                              </div>
+
+                              <p className="mt-2 text-xs font-semibold text-gray-800 line-clamp-1">
+                                {item.latest?.title || `No ${meta.label.toLowerCase()} bookings yet`}
+                              </p>
+                              <p className={`mt-1 text-[11px] line-clamp-1 ${meta.mutedClass}`}>
+                                {item.latest
+                                  ? formatLastUpdatedLabel(getLastUpdatedValue(item.latest))
+                                  : 'Waiting for updates'}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
 
                     {filteredBookings.length === 0 ? (
                       <p className="text-sm text-gray-500 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-                        No {bookingStatusFilter} requests.
+                        {selectedBookingWindow === 'all'
+                          ? `No ${bookingStatusFilter} requests.`
+                          : `No ${bookingStatusFilter} requests in ${activeBookingWindowLabel.toLowerCase()}.`}
                       </p>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                        {filteredBookings.map((booking) => renderBookingCard(booking))}
+                        {filteredBookings.map((booking, index) => renderBookingCard(booking, { isMostRecent: index === 0 }))}
                       </div>
                     )}
                   </div>

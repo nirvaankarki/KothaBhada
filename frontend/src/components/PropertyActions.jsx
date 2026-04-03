@@ -622,7 +622,7 @@ const ChatBox = ({ listingId, ownerId, ownerName, ownerProfilePhoto, title, loca
         </div>
       </header>
 
-      <div ref={messagesContainerRef} className={`${compact ? 'h-70 p-4' : 'h-90 p-5'} ${compact ? 'md:h-[25rem]' : ''} overflow-y-auto space-y-3 bg-[radial-gradient(circle_at_top_left,#eef4ff_0%,#ffffff_50%)] ${compact ? 'flex-1 min-h-0' : ''}`}>
+      <div ref={messagesContainerRef} className={`${compact ? 'h-70 p-4' : 'h-90 p-5'} ${compact ? 'md:h-100' : ''} overflow-y-auto space-y-3 bg-[radial-gradient(circle_at_top_left,#eef4ff_0%,#ffffff_50%)] ${compact ? 'flex-1 min-h-0' : ''}`}>
         {loadingHistory ? (
           <div className="flex items-center justify-center h-full text-center">
             <p className="text-sm text-gray-500">Loading messages...</p>
