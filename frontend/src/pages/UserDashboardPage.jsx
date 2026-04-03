@@ -4,6 +4,7 @@ import DashboardTabs from '../components/userDashboard/DashboardTabs';
 import ListingCardsSection from '../components/userDashboard/ListingCardsSection';
 import InquiriesSection from '../components/userDashboard/InquiriesSection';
 import BookingsSection from '../components/userDashboard/BookingsSection';
+import ReportCenterPanel from '../components/shared/ReportCenterPanel';
 import { useUserDashboardController } from '../hooks/useUserDashboardController';
 
 const UserDashboardPage = () => {
@@ -12,7 +13,10 @@ const UserDashboardPage = () => {
     history,
     inquiries,
     bookings,
+    reports,
     loading,
+    reportsLoading,
+    reportSubmitting,
     activeTab,
     setActiveTab,
     showClearHistoryConfirm,
@@ -21,6 +25,8 @@ const UserDashboardPage = () => {
     setInquiryForm,
     bookingForm,
     setBookingForm,
+    reportForm,
+    setReportForm,
     replyDrafts,
     setReplyDrafts,
     sourceListings,
@@ -32,6 +38,8 @@ const UserDashboardPage = () => {
     handleCreateInquiry,
     handleCreateBooking,
     handleSendReply,
+    handleCreateReport,
+    refreshReports,
     statusPill,
     formatStatusLabel,
   } = useUserDashboardController();
@@ -103,6 +111,21 @@ const UserDashboardPage = () => {
                 handleCreateBooking={handleCreateBooking}
                 statusPill={statusPill}
                 formatStatusLabel={formatStatusLabel}
+              />
+            )}
+
+            {activeTab === 'reports' && (
+              <ReportCenterPanel
+                title="Report and Abuse Center"
+                subtitle="Report suspicious activity and follow status updates from admins."
+                reportForm={reportForm}
+                onReportFormChange={(field, value) => setReportForm((prev) => ({ ...prev, [field]: value }))}
+                handleCreateReport={handleCreateReport}
+                reportSubmitting={reportSubmitting}
+                reports={reports}
+                reportsLoading={reportsLoading}
+                handleRefreshReports={refreshReports}
+                emptyMessage="You have not submitted any reports yet."
               />
             )}
           </>

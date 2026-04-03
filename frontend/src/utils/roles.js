@@ -29,6 +29,15 @@ export const resolveRole = (role, token) => {
 
 export const isLandlordRole = (role) => normalizeRole(role) === 'landlord';
 
+export const isAdminRole = (role) => normalizeRole(role) === 'admin';
+
+export const getDashboardPathByRole = (role) => {
+  const normalizedRole = normalizeRole(role);
+  if (normalizedRole === 'admin') return '/admin/dashboard';
+  if (normalizedRole === 'landlord') return '/landlord/dashboard';
+  return '/rental/dashboard';
+};
+
 export const hasAllowedRole = (role, allowedRoles = []) => {
   if (!Array.isArray(allowedRoles) || allowedRoles.length === 0) {
     return true;

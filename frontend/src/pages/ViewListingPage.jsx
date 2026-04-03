@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -13,14 +13,16 @@ import {
   ArrowUpRight,
   Heart,
   ChevronDown,
+  ShieldAlert,
 } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
-import { FALLBACK_LISTINGS, getListingId } from '../utils/listingData';
+import { getListingId } from '../utils/listingData';
 import { useToast } from '../context/ToastContext';
 import RatingDisplay from '../components/RatingDisplay';
 import HoverImageSlider from '../components/HoverImageSlider';
+import ListingReportModal from '../components/shared/ListingReportModal';
 
 const PRICE_BUCKETS = [
   { id: 'all', label: 'All Prices' },
@@ -86,7 +88,7 @@ function getAvailabilityBadge(listing, isFeatured = false) {
 
 const ViewListingPage = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { showToast } = useToast();
 
   const [listings, setListings] = useState([]);
@@ -100,6 +102,12 @@ const ViewListingPage = () => {
   const [priceBucket, setPriceBucket] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
   const [hoveredListingId, setHoveredListingId] = useState('');
+  const [reportModalListing, setReportModalListing] = useState(null);
+  const [reportReasonCategory, setReportReasonCategory] = useState('fake_listing');
+  const [reportDescription, setReportDescription] = useState('');
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const activeRole = String(user?.role || '').toLowerCase();
+  const canReportProperty = isAuthenticated && activeRole === 'user';
 
   useAutoDismiss(error, () => setError(''));
   useAutoDismiss(message, () => setMessage(''));
@@ -114,43 +122,31 @@ const ViewListingPage = () => {
     showToast({ type: 'info', title: 'Notice', message });
   }, [message, showToast]);
 
-  useEffect(() => {
-    let ignore = false;
+  const loadListings = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    setMessage('');
 
-    async function loadListings() {
-      setLoading(true);
-      setError('');
+    try {
+      const response = await api.get('/rooms/demo');
+      const fetched = Array.isArray(response.data) ? response.data : [];
 
-      try {
-        const response = await api.get('/rooms/demo');
-        const fetched = Array.isArray(response.data) ? response.data : [];
+      setListings(fetched);
 
-        if (!ignore) {
-          if (fetched.length > 0) {
-            setListings(fetched);
-          } else {
-            setListings(FALLBACK_LISTINGS);
-            setMessage('No listings found in database. Showing demo listings.');
-          }
-        }
-      } catch {
-        if (!ignore) {
-          setListings(FALLBACK_LISTINGS);
-          setError('Could not load listings from server. Showing demo listings.');
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
+      if (fetched.length === 0) {
+        setMessage('No property listings are available at the moment.');
       }
+    } catch {
+      setListings([]);
+      setError('Could not load listings from server. Please try again later.');
+    } finally {
+      setLoading(false);
     }
-
-    loadListings();
-
-    return () => {
-      ignore = true;
-    };
   }, []);
+
+  useEffect(() => {
+    loadListings();
+  }, [loadListings]);
 
   useEffect(() => {
     let ignore = false;
@@ -277,6 +273,76 @@ const ViewListingPage = () => {
     }
   };
 
+  const handleReportListing = (listing, event) => {
+    if (event) {
+      event.stopPropagation();
+    }
+
+    if (!canReportProperty) {
+      showToast({ type: 'warning', title: 'Not allowed', message: 'Only renters can report listed properties.' });
+      return;
+    }
+
+    const listingId = getListingId(listing);
+    if (!listingId) {
+      showToast({ type: 'error', title: 'Missing listing', message: 'Could not identify this listing for reporting.' });
+      return;
+    }
+
+    setReportModalListing(listing);
+    setReportReasonCategory('fake_listing');
+    setReportDescription('');
+  };
+
+  const closeReportModal = (forceClose = false) => {
+    if (reportSubmitting && !forceClose) return;
+    setReportModalListing(null);
+    setReportReasonCategory('fake_listing');
+    setReportDescription('');
+  };
+
+  const submitListingReport = async () => {
+    const listing = reportModalListing;
+    const listingId = getListingId(listing);
+    if (!listing || !listingId) {
+      showToast({ type: 'error', title: 'Missing listing', message: 'Could not identify this listing for reporting.' });
+      return;
+    }
+
+    const reasonCategory = String(reportReasonCategory || '').trim().toLowerCase() || 'other';
+    const allowedReasons = new Set(['fake_listing', 'fraud', 'policy_violation', 'spam', 'harassment', 'other']);
+    const description = String(reportDescription || '').trim();
+    if (!description) {
+      showToast({ type: 'warning', title: 'Missing details', message: 'Please add details for your report.' });
+      return;
+    }
+
+    try {
+      setReportSubmitting(true);
+      await api.post('/user/reports', {
+        targetType: 'listing',
+        targetId: listingId,
+        reasonCategory: allowedReasons.has(reasonCategory) ? reasonCategory : 'other',
+        description,
+      });
+
+      showToast({
+        type: 'success',
+        title: 'Report submitted',
+        message: 'Your report was sent to admin. The landlord was also notified to respond.',
+      });
+      closeReportModal(true);
+    } catch (err) {
+      showToast({
+        type: 'error',
+        title: 'Could not submit report',
+        message: err?.response?.data?.message || 'Please try again later.',
+      });
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-linear-to-b from-[#fafbfc] to-[#f3f5f9] px-5 md:px-10 lg:px-16 py-10">
       <div className="max-w-7xl mx-auto">
@@ -364,7 +430,7 @@ const ViewListingPage = () => {
 
         <section>
           <div className="mb-4 text-sm text-gray-500 font-medium">
-            {loading ? 'Loading listings...' : `${filteredListings.length} listing(s) found`}
+            {loading ? 'Loading listings...' : listings.length === 0 ? 'No listings available' : `${filteredListings.length} listing(s) found`}
           </div>
 
           {loading ? (
@@ -372,6 +438,25 @@ const ViewListingPage = () => {
               {Array.from({ length: 6 }).map((_, index) => (
                 <div key={index} className="h-80 rounded-2xl bg-white animate-pulse shadow-sm" />
               ))}
+            </div>
+          ) : error && listings.length === 0 ? (
+            <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-red-100">
+              <Box size={20} className="mx-auto text-red-400 mb-2" />
+              <p className="text-red-700 font-semibold">Unable to load property listings.</p>
+              <p className="text-sm text-gray-600 mt-1">Please check your connection and try again.</p>
+              <button
+                type="button"
+                onClick={loadListings}
+                className="mt-4 px-4 py-2 text-sm font-semibold text-[#1d4ed8] border border-blue-200 rounded-xl hover:bg-blue-50"
+              >
+                Retry
+              </button>
+            </div>
+          ) : listings.length === 0 ? (
+            <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
+              <Box size={20} className="mx-auto text-gray-400 mb-2" />
+              <p className="text-gray-700 font-semibold">No property listings available yet.</p>
+              <p className="text-sm text-gray-500 mt-1">Please check back later for new listings.</p>
             </div>
           ) : filteredListings.length === 0 ? (
             <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
@@ -523,6 +608,15 @@ const ViewListingPage = () => {
                           <p className="inline-flex items-center gap-1.5 text-xs text-gray-500">
                             <CalendarDays size={12} /> {formatDate(listing.createdAt)}
                           </p>
+                          {canReportProperty && (
+                            <button
+                              type="button"
+                              onClick={(event) => handleReportListing(listing, event)}
+                              className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700 hover:bg-rose-100"
+                            >
+                              <ShieldAlert size={12} /> Report Property
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -533,6 +627,18 @@ const ViewListingPage = () => {
           )}
         </section>
       </div>
+
+      <ListingReportModal
+        open={Boolean(reportModalListing)}
+        listingTitle={reportModalListing?.title || ''}
+        reasonCategory={reportReasonCategory}
+        description={reportDescription}
+        onChangeReason={setReportReasonCategory}
+        onChangeDescription={setReportDescription}
+        onCancel={closeReportModal}
+        onSubmit={submitListingReport}
+        isSubmitting={reportSubmitting}
+      />
     </div>
   );
 };

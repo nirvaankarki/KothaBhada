@@ -4,6 +4,7 @@ import {
   Home,
   MessageSquare,
   CalendarDays,
+  ShieldAlert,
   UserCircle2,
 } from 'lucide-react';
 
@@ -74,6 +75,24 @@ const LandlordSidebar = ({ activeTab, setActiveTab, stats }) => {
           {stats.pendingBookings > 0 && (
             <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-[11px] font-medium text-white inline-flex items-center justify-center">
               {stats.pendingBookings}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('reports')}
+          className={`w-full px-6 py-3 flex items-center gap-3 transition-colors ${
+            activeTab === 'reports'
+              ? 'bg-blue-600/20 border-r-4 border-blue-500 text-white'
+              : 'text-slate-300 hover:bg-slate-800/70'
+          }`}
+        >
+          <ShieldAlert size={18} />
+          <span className="text-sm font-medium">Reports</span>
+          {stats.openListingReports > 0 && (
+            <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-[11px] font-medium text-white inline-flex items-center justify-center">
+              {stats.openListingReports}
             </span>
           )}
         </button>

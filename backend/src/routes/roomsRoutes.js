@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticate } from '../middleware/authMiddleware.js';
+import { authenticate, optionalAuthenticate } from '../middleware/authMiddleware.js';
 import { uploadRoomModelMiddleware } from '../middleware/modelUploadMiddleware.js';
 import { getAllRooms, getMyRooms, createRooms, updateRooms, deleteRooms, getRoomById, uploadRoomModel, getNearbyAreaHighlights } from '../controllers/roomsController.js';
 import { getAiRecommendations } from '../controllers/userDashboardController.js';
@@ -21,7 +21,7 @@ router.post(
 	]),
 	uploadRoomModel
 );
-router.get('/:id', getRoomById); // New route for fetching a single room
+router.get('/:id', optionalAuthenticate, getRoomById); // New route for fetching a single room
 router.post('/', authenticate, createRooms);
 router.put('/:id', authenticate, updateRooms);
 router.delete('/:id', authenticate, deleteRooms);

@@ -24,8 +24,15 @@ const initialForm = {
   status: 'active',
 };
 
+const initialReportForm = {
+  targetType: 'user',
+  targetId: '',
+  reasonCategory: 'other',
+  description: '',
+};
+
 const LANDLORD_TAB_STORAGE_KEY = 'landlordDashboardActiveTab';
-const LANDLORD_ALLOWED_TABS = new Set(['dashboard', 'listings', 'chat', 'bookings', 'profile']);
+const LANDLORD_ALLOWED_TABS = new Set(['dashboard', 'listings', 'chat', 'bookings', 'reports', 'profile']);
 
 const parseKeyFeaturesInput = (value) => {
   if (Array.isArray(value)) {
@@ -200,6 +207,10 @@ export const useLandlordDashboardController = () => {
   const [listings, setListings] = useState([]);
   const [ownerInquiries, setOwnerInquiries] = useState([]);
   const [ownerBookings, setOwnerBookings] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [ownerListingReports, setOwnerListingReports] = useState([]);
+  const [reportForm, setReportForm] = useState(initialReportForm);
+  const [reportResponseDrafts, setReportResponseDrafts] = useState({});
   const [bookingResponseDrafts, setBookingResponseDrafts] = useState({});
   const [ownerChats, setOwnerChats] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -213,6 +224,10 @@ export const useLandlordDashboardController = () => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [sendingChatId, setSendingChatId] = useState('');
   const [updatingBookingId, setUpdatingBookingId] = useState('');
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [ownerListingReportsLoading, setOwnerListingReportsLoading] = useState(false);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportResponseProcessingId, setReportResponseProcessingId] = useState('');
   const [deletingId, setDeletingId] = useState('');
   const [imageName, setImageName] = useState('');
   const [modelName, setModelName] = useState('');
@@ -250,18 +265,22 @@ export const useLandlordDashboardController = () => {
       setLoading(true);
       setError('');
       try {
-        const [listingsRes, inquiriesRes, bookingsRes, chatsRes, notificationsRes] = await Promise.all([
+        const [listingsRes, inquiriesRes, bookingsRes, chatsRes, notificationsRes, reportsRes, ownerReportsRes] = await Promise.all([
           api.get('/rooms/mine'),
           api.get('/user/owner/inquiries'),
           api.get('/user/owner/bookings'),
           api.get('/user/owner/chats'),
           api.get('/user/notifications'),
+          api.get('/user/reports'),
+          api.get('/user/owner/reports'),
         ]);
 
         if (!ignore) {
           setListings(Array.isArray(listingsRes.data) ? listingsRes.data : []);
           setOwnerInquiries(inquiriesRes.data?.inquiries || []);
           setOwnerBookings(bookingsRes.data?.bookings || []);
+          setReports(reportsRes.data?.reports || []);
+          setOwnerListingReports(ownerReportsRes.data?.reports || []);
           setOwnerChats(chatsRes.data?.chats || []);
           setNotifications(notificationsRes.data?.notifications || []);
           setUnreadNotifications(notificationsRes.data?.unreadCount || 0);
@@ -366,6 +385,24 @@ export const useLandlordDashboardController = () => {
       setNotifications(previousNotifications);
       setUnreadNotifications(previousUnreadCount);
       refreshNotifications();
+    }
+  };
+
+  const refreshReports = async () => {
+    setReportsLoading(true);
+    setOwnerListingReportsLoading(true);
+    try {
+      const [submittedResponse, ownerResponse] = await Promise.all([
+        api.get('/user/reports'),
+        api.get('/user/owner/reports'),
+      ]);
+      setReports(submittedResponse.data?.reports || []);
+      setOwnerListingReports(ownerResponse.data?.reports || []);
+    } catch {
+      setError('Could not load reports right now.');
+    } finally {
+      setReportsLoading(false);
+      setOwnerListingReportsLoading(false);
     }
   };
 
@@ -834,11 +871,11 @@ export const useLandlordDashboardController = () => {
             item._id === editingListingId ? res.data.room : item
           )));
         }
-        setSuccess('Listing updated successfully.');
+        setSuccess('Listing updated and resubmitted for admin review. It will go live after approval.');
       } else {
         const res = await api.post('/rooms', payload);
         if (res.data?.room) setListings((prev) => [res.data.room, ...prev]);
-        setSuccess('Listing published successfully. It is now visible to renters.');
+        setSuccess('Listing submitted successfully. It is pending admin approval before renters can view it.');
       }
 
       setForm(initialForm);
@@ -937,6 +974,79 @@ export const useLandlordDashboardController = () => {
     }
   };
 
+  const handleReportFormChange = (field, value) => {
+    if (!field) return;
+    setReportForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleCreateReport = async (event) => {
+    event.preventDefault();
+    setError('');
+    setSuccess('');
+
+    const description = String(reportForm.description || '').trim();
+    if (!description) {
+      setError('Please provide report details before submitting.');
+      return;
+    }
+
+    setReportSubmitting(true);
+    try {
+      const payload = {
+        targetType: String(reportForm.targetType || 'other').trim(),
+        targetId: String(reportForm.targetId || '').trim(),
+        reasonCategory: String(reportForm.reasonCategory || 'other').trim(),
+        description,
+      };
+
+      const response = await api.post('/user/reports', payload);
+      if (response.data?.report) {
+        setReports((prev) => [response.data.report, ...prev]);
+      }
+
+      setReportForm((prev) => ({
+        ...prev,
+        targetId: '',
+        description: '',
+      }));
+      setSuccess('Report submitted successfully. Admin will review it soon.');
+      await refreshReports();
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Could not submit report.');
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
+
+  const handleOwnerListingReportResponse = async (reportId) => {
+    const cleanedReportId = String(reportId || '').trim();
+    if (!cleanedReportId) return;
+
+    const landlordResponseNote = String(reportResponseDrafts[cleanedReportId] || '').trim();
+    if (!landlordResponseNote) {
+      setError('Please write a response before submitting to renter and admin.');
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+    setReportResponseProcessingId(cleanedReportId);
+
+    try {
+      await api.patch(`/user/owner/reports/${cleanedReportId}/respond`, {
+        landlordResponseNote,
+      });
+
+      setReportResponseDrafts((prev) => ({ ...prev, [cleanedReportId]: '' }));
+      setSuccess('Response submitted. Admin can now review your resolution details.');
+      await refreshReports();
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Could not submit report response.');
+    } finally {
+      setReportResponseProcessingId('');
+    }
+  };
+
   const handleOwnerReply = async (chatId) => {
     const message = (chatDrafts[chatId] || '').trim();
     if (!message) return;
@@ -1029,6 +1139,7 @@ export const useLandlordDashboardController = () => {
     const totalValue = listings.reduce((sum, item) => sum + Number(item.price || 0), 0);
     const unreadInquiries = ownerInquiries.filter((item) => item.status === 'open').length;
     const pendingBookings = ownerBookings.filter((item) => item.status === 'pending' || !item.status).length;
+    const openListingReports = ownerListingReports.filter((item) => ['open', 'in_review'].includes(String(item?.status || '').toLowerCase())).length;
     const activeChats = ownerChats.filter((item) => item.status === 'active').length;
     const unreadChats = ownerChats.filter((item) => isChatUnread(item)).length;
 
@@ -1039,10 +1150,11 @@ export const useLandlordDashboardController = () => {
       totalValue,
       unreadInquiries,
       pendingBookings,
+      openListingReports,
       activeChats,
       unreadChats,
     };
-  }, [listings, ownerInquiries, ownerBookings, ownerChats]);
+  }, [listings, ownerInquiries, ownerBookings, ownerListingReports, ownerChats]);
 
   const formatDate = (isoDate) => {
     if (!isoDate) return 'N/A';
@@ -1062,6 +1174,10 @@ export const useLandlordDashboardController = () => {
       listings,
       ownerInquiries,
       ownerBookings,
+      reports,
+      ownerListingReports,
+      reportForm,
+      reportResponseDrafts,
       notifications,
       unreadNotifications,
       bookingResponseDrafts,
@@ -1074,6 +1190,10 @@ export const useLandlordDashboardController = () => {
       savingProfile,
       sendingChatId,
       updatingBookingId,
+      reportsLoading,
+      ownerListingReportsLoading,
+      reportSubmitting,
+      reportResponseProcessingId,
       deletingId,
       imageName,
       modelName,
@@ -1095,9 +1215,11 @@ export const useLandlordDashboardController = () => {
       },
       setChatDrafts,
       setBookingResponseDrafts,
+      setReportResponseDrafts,
       markNotificationAsRead,
       markAllNotificationsAsRead,
       clearAllNotifications,
+      refreshReports,
       handleOpenOwnerChat,
       handleChange,
       handleAddKeyFeature,
@@ -1123,6 +1245,9 @@ export const useLandlordDashboardController = () => {
       handleEditDraft,
       handleOwnerReply,
       handleOwnerBookingDecision,
+      handleReportFormChange,
+      handleCreateReport,
+      handleOwnerListingReportResponse,
       isChatUnread,
       formatDate,
     },

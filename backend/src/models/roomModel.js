@@ -120,6 +120,26 @@ const roomSchema = new mongoose.Schema({
         enum: ['active', 'inactive'],
         default: 'active'
     },
+    moderationStatus: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: 'pending',
+        index: true,
+    },
+    moderationNote: {
+        type: String,
+        default: '',
+        trim: true,
+    },
+    moderationReviewedAt: {
+        type: Date,
+        default: null,
+    },
+    moderationReviewedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null,
+    },
     createdAt: {
         type: Date,
         default: Date.now

@@ -36,7 +36,9 @@ import authRoutes from './routes/authRoutes.js';
 import contactRoutes from './routes/contactRoutes.js'; // FIX: Added missing import
 import userDashboardRoutes from './routes/userDashboardRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 import { connectDB } from "./config/db.js";
+import { ensureDefaultAdminAccount } from './utils/bootstrapAdmin.js';
 
 dotenv.config();
 
@@ -46,8 +48,12 @@ let dbConnected = false;
 // Initialize database connection
 (async () => {
   try {
-    await connectDB();
-    dbConnected = true;
+    const connection = await connectDB();
+    dbConnected = Boolean(connection);
+
+    if (dbConnected) {
+      await ensureDefaultAdminAccount();
+    }
   } catch (err) {
     console.error('Failed to connect to database:', err.message);
   }
@@ -70,6 +76,7 @@ app.use("/api/rooms", roomsRoutes);
 app.use("/api/contact", contactRoutes); // Full path will be /api/contact/...
 app.use("/api/user", userDashboardRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/admin", adminRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

@@ -4,7 +4,7 @@ import { UserCircle2, Pencil, Check, X, Upload, Trash2, Bell } from 'lucide-reac
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
-import { isLandlordRole, resolveRole } from '../utils/roles';
+import { getDashboardPathByRole, isLandlordRole, resolveRole } from '../utils/roles';
 import { getNotificationTargetPath } from '../utils/notificationNavigation';
 import ConfirmModal from './ConfirmModal';
 
@@ -12,7 +12,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { isAuthenticated, authLoading, token, user, logout, updateUser } = useAuth();
   const activeRole = resolveRole(user?.role, token);
-  const dashboardPath = isLandlordRole(activeRole) ? '/landlord/dashboard' : '/rental/dashboard';
+  const dashboardPath = getDashboardPathByRole(activeRole);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [editingField, setEditingField] = useState('');
   const [nameInput, setNameInput] = useState(user?.name || '');

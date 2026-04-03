@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, House, Building2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, House, Building2, ShieldCheck } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
-import { isLandlordRole, normalizeRole } from '../utils/roles';
+import { getDashboardPathByRole, normalizeRole } from '../utils/roles';
 import { useToast } from '../context/ToastContext';
 
 const Login = ({ onToggle }) => {
@@ -37,8 +37,8 @@ const Login = ({ onToggle }) => {
     setLoading(true);
 
     try {
-      const selectedRole = loginIntentRole === 'landlord' ? 'landlord' : 'user';
-      const selectedRoleLabel = selectedRole === 'landlord' ? 'Landlord' : 'Renter';
+      const selectedRole = ['landlord', 'admin'].includes(loginIntentRole) ? loginIntentRole : 'user';
+      const selectedRoleLabel = selectedRole === 'landlord' ? 'Landlord' : selectedRole === 'admin' ? 'Admin' : 'Renter';
       const response = await api.post('/auth/login', { email, password });
       const responseRole = normalizeRole(response.data?.user?.role);
 
@@ -56,7 +56,7 @@ const Login = ({ onToggle }) => {
         return;
       }
 
-      const postLoginPath = isLandlordRole(activeRole) ? '/landlord/dashboard' : '/';
+      const postLoginPath = getDashboardPathByRole(activeRole);
       navigate(postLoginPath, { replace: true });
     } catch (err) {
       if (err?.response?.data?.requiresEmailVerification) {
@@ -84,7 +84,7 @@ const Login = ({ onToggle }) => {
             <label className="block text-xs font-bold tracking-widest text-gray-500 uppercase mb-2">
               Account Type
             </label>
-            <div className="grid grid-cols-2 gap-2 rounded-sm bg-gray-100 p-1">
+            <div className="grid grid-cols-3 gap-2 rounded-sm bg-gray-100 p-1">
               <button
                 type="button"
                 onClick={() => setLoginIntentRole('user')}
@@ -109,9 +109,21 @@ const Login = ({ onToggle }) => {
                 <Building2 size={16} />
                 Landlord
               </button>
+              <button
+                type="button"
+                onClick={() => setLoginIntentRole('admin')}
+                className={`flex items-center justify-center gap-2 rounded-sm py-2 text-sm font-semibold transition-colors ${
+                  loginIntentRole === 'admin'
+                    ? 'bg-[#3b66ff] text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <ShieldCheck size={16} />
+                Admin
+              </button>
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              You are signing in as {loginIntentRole === 'landlord' ? 'Landlord' : 'Renter'}.
+              You are signing in as {loginIntentRole === 'landlord' ? 'Landlord' : loginIntentRole === 'admin' ? 'Admin' : 'Renter'}.
             </p>
           </div>
 
@@ -160,16 +172,16 @@ const Login = ({ onToggle }) => {
               disabled={loading}
               className="w-full bg-[#3b66ff] text-white px-20 py-3.5 rounded-sm font-bold uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg active:scale-95"
             >
-              {loading ? 'Signing in...' : `Sign In as ${loginIntentRole === 'landlord' ? 'Landlord' : 'Renter'}`}
+              {loading ? 'Signing in...' : `Sign In as ${loginIntentRole === 'landlord' ? 'Landlord' : loginIntentRole === 'admin' ? 'Admin' : 'Renter'}`}
             </button>
           </div>
         </form>
 
         <div className={`w-full max-w-sm flex flex-col items-center transition-all duration-300 ${error ? 'mt-4' : 'mt-8'}`}>
           <div className="w-full flex items-center mb-6">
-            <div className="flex-grow h-px bg-gray-300"></div>
+            <div className="grow h-px bg-gray-300"></div>
             <span className="px-4 text-[12px] font-semibold text-gray-500 tracking-widest uppercase">OR CONTINUE WITH</span>
-            <div className="flex-grow h-px bg-gray-300"></div>
+            <div className="grow h-px bg-gray-300"></div>
           </div>
 
           <button type="button" className="flex items-center justify-center gap-3 w-full py-2 border-2 border-gray-300 rounded-sm hover:bg-blue-50 transition-all">
@@ -182,7 +194,7 @@ const Login = ({ onToggle }) => {
       <div className="w-[45%] bg-[#1F2937] flex flex-col items-center justify-center text-center p-12 text-white relative">
         <div className="absolute top-10 left-10 text-xl font-bold">Kotha<span className="text-[#3b66ff]">Bhada</span></div>
         <h2 className="text-4xl font-bold mb-8">Hello, Friend!</h2>
-        <p className="mb-12 text-lg leading-relaxed max-w-[350px] font-regular opacity-90">New to KothaBhada? <br />Create an account to get started.</p>
+        <p className="mb-12 text-lg leading-relaxed max-w-87.5 font-regular opacity-90">New to KothaBhada? <br />Create an account to get started.</p>
         <button onClick={onToggle} className="border-2 border-white text-white px-16 py-3 rounded-sm font-bold uppercase tracking-widest hover:bg-white hover:text-[#3b66ff] transition-all duration-300 active:scale-95">Sign Up</button>
       </div>
     </div>

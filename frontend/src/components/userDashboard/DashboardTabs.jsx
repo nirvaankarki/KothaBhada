@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, History, MessageSquare, CalendarDays } from 'lucide-react';
+import { Heart, History, MessageSquare, CalendarDays, ShieldAlert } from 'lucide-react';
 
 const DashboardTabs = ({ activeTab, setActiveTab }) => {
   return (
@@ -39,6 +39,15 @@ const DashboardTabs = ({ activeTab, setActiveTab }) => {
         }`}
       >
         <span className="inline-flex items-center gap-2"><CalendarDays size={15} /> Booking Requests</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => setActiveTab('reports')}
+        className={`px-4 py-2 rounded-sm text-sm font-bold transition-colors ${
+          activeTab === 'reports' ? 'bg-[#3b66ff] text-white' : 'text-gray-600 hover:bg-gray-100'
+        }`}
+      >
+        <span className="inline-flex items-center gap-2"><ShieldAlert size={15} /> Reports</span>
       </button>
     </div>
   );

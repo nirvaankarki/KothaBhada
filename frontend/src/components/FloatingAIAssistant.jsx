@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, MessageCircle, Send, Sparkles, X, MapPin, ArrowUpRight } from 'lucide-react';
+import { Bot, Send, Sparkles, X, MapPin, ArrowUpRight } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -71,11 +71,14 @@ const FloatingAIAssistant = () => {
   const { isAuthenticated, user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showGreetingBubble, setShowGreetingBubble] = useState(true);
   const [draft, setDraft] = useState('');
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState(getInitialMessages);
   const containerRef = useRef(null);
   const historyRequestRef = useRef(0);
+  const isLandlordDashboardPage = location.pathname.startsWith('/landlord/dashboard');
+  const isAdminDashboardPage = location.pathname.startsWith('/admin/dashboard');
 
   const currentListingId = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -164,6 +167,10 @@ const FloatingAIAssistant = () => {
     }
   };
 
+  if (isLandlordDashboardPage || isAdminDashboardPage) {
+    return null;
+  }
+
   return (
     <div className="fixed bottom-4 right-4 z-70 md:bottom-6 md:right-6">
       {isOpen ? (
@@ -172,17 +179,15 @@ const FloatingAIAssistant = () => {
             isExpanded ? 'w-[min(92vw,430px)] h-[min(82vh,680px)]' : 'w-[min(92vw,380px)] h-[min(74vh,560px)]'
           }`}
         >
-          <header className="relative border-b border-slate-200 bg-white px-4 py-3">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-linear-to-r from-[#3A5AFF] via-[#6d86ff] to-[#3A5AFF]" />
-
+          <header className="relative border-b border-[#111827] bg-[#1F2937] px-4 py-3 shadow-[inset_0_-1px_0_rgba(255,255,255,0.08)]">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#3A5AFF]/10 text-[#3A5AFF] ring-1 ring-[#3A5AFF]/20">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white ring-1 ring-white/20 shadow-[0_8px_16px_rgba(15,23,42,0.45)]">
                   <Bot size={18} />
                 </span>
                 <div className="min-w-0">
-                  <h3 className="text-sm font-bold text-slate-800 truncate">KothaBhada Chatbot</h3>
-                  <div className="mt-0.5 inline-flex items-center gap-1.5 text-[11px] text-slate-500">
+                  <h3 className="text-sm font-bold text-white truncate">KothaBhada Chatbot</h3>
+                  <div className="mt-0.5 inline-flex items-center gap-1.5 text-[11px] text-slate-200">
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500">
                       <span className="absolute inset-0 rounded-full bg-emerald-500/60 animate-ping" />
                     </span>
@@ -195,7 +200,7 @@ const FloatingAIAssistant = () => {
                 <button
                   type="button"
                   onClick={() => setIsExpanded((prev) => !prev)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
                   aria-label={isExpanded ? 'Collapse assistant' : 'Expand assistant'}
                   title={isExpanded ? 'Collapse' : 'Expand'}
                 >
@@ -204,7 +209,7 @@ const FloatingAIAssistant = () => {
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
                   aria-label="Close assistant"
                   title="Close"
                 >
@@ -303,39 +308,45 @@ const FloatingAIAssistant = () => {
         </section>
       ) : (
         <div className="group relative">
-          <div className="pointer-events-none absolute bottom-full right-0 mb-3 w-fit max-w-[92vw] rounded-2xl border border-[#3A5AFF]/20 bg-white p-3 shadow-[0_24px_56px_rgba(15,23,42,0.2)] opacity-0 translate-y-2 scale-[0.97] transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 group-focus-within:opacity-100 group-focus-within:translate-y-0 group-focus-within:scale-100">
-            <div className="flex items-center gap-2.5 font-sans">
-              <div className="relative shrink-0">
-                <div className="absolute -inset-1 rounded-2xl bg-[#3A5AFF]/20 blur-sm animate-pulse" />
-                <div className="relative inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[#3A5AFF]/10 text-[#3A5AFF] ring-1 ring-[#3A5AFF]/25 shadow-[0_10px_24px_rgba(58,90,255,0.24)]">
-                  <Bot size={24} />
+          {showGreetingBubble && (
+            <div className="absolute bottom-full right-0 mb-3 w-fit max-w-[92vw] rounded-2xl border border-[#3A5AFF]/20 bg-white px-3.5 py-2.5 shadow-[0_18px_46px_rgba(15,23,42,0.2)]">
+              <button
+                type="button"
+                onClick={() => setShowGreetingBubble(false)}
+                aria-label="Dismiss chatbot greeting"
+                className="absolute -top-2 -right-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-slate-50 hover:text-slate-700"
+              >
+                <X size={13} />
+              </button>
+              <div className="absolute -bottom-1.5 right-6 h-3 w-3 rotate-45 border-r border-b border-[#3A5AFF]/20 bg-white" />
+              <div className="flex items-center gap-2.5 font-sans">
+                <span className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#dbe4ff] bg-[#f6f9ff] text-[#3154cf] shadow-[0_6px_14px_rgba(58,90,255,0.12)]" aria-hidden="true">
+                  <Sparkles size={15} strokeWidth={2.2} fill="currentColor" fillOpacity={0.18} className="drop-shadow-[0_1px_2px_rgba(49,84,207,0.2)]" />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+                </span>
+                <div>
+                  <p className="text-xs sm:text-sm font-semibold leading-tight text-slate-800 whitespace-nowrap">Namaste, I&apos;m KothaBhada Chatbot</p>
+                  <p className="mt-0.5 text-[11px] sm:text-xs font-medium leading-tight text-slate-600">How can I assist you today?</p>
                 </div>
-                <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[#3A5AFF] animate-ping" />
-                <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-[#3A5AFF]" />
-              </div>
-
-              <div className="min-h-11 flex flex-col justify-center min-w-0">
-                <h2 className="text-xs sm:text-sm font-extrabold leading-tight text-slate-800 whitespace-nowrap">
-                  <span className="text-[#3A5AFF]">Namaste!</span>
-                  <span> I'm </span>
-                  <span className="text-[#3A5AFF]">KothaBhada Chatbot.</span>
-                </h2>
-                  <p className="mt-0.5 text-[11px] sm:text-xs text-slate-700 font-medium leading-tight">
-                    How can I assist you today?
-                </p>
               </div>
             </div>
-          </div>
+          )}
+
+          <div className="pointer-events-none absolute inset-0 rounded-full bg-[#3A5AFF] opacity-40 blur-xl transition-opacity duration-500 group-hover:opacity-60 animate-pulse" />
+          <div className="pointer-events-none absolute inset-0 rounded-full bg-[#7A90FF] opacity-20 animate-ping" />
 
           <button
             type="button"
             onClick={() => setIsOpen(true)}
             aria-label="Open KothaBhada Chatbot"
-            className="inline-flex h-13 w-13 items-center justify-center rounded-full bg-linear-to-r from-[#1d4ed8] to-[#3b82f6] text-sm font-bold text-white shadow-[0_18px_40px_rgba(37,99,235,0.4)] transition-transform duration-300 hover:-translate-y-0.5 focus-visible:outline-none"
+            className="relative inline-flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-linear-to-tr from-[#3A5AFF] to-[#7A90FF] text-white shadow-[0_10px_30px_rgba(59,90,255,0.4)] backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:scale-110 active:scale-90 focus-visible:outline-none"
           >
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30">
-              <Bot size={16} />
-            </span>
+            <Sparkles
+              size={28}
+              fill="currentColor"
+              fillOpacity={0.2}
+              className="text-white drop-shadow-md transition-transform duration-500 group-hover:rotate-12"
+            />
           </button>
         </div>
       )}

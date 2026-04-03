@@ -2,6 +2,7 @@ import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { User } from '../../models/userModel.js';
+import { resolveAccountAccess } from '../../utils/accountAccess.js';
 
 dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key_change_in_production';
@@ -28,6 +29,11 @@ export async function login(req, res) {
                 requiresEmailVerification: true,
                 email: user.email
             });
+        }
+
+        const access = await resolveAccountAccess(user);
+        if (access.blocked) {
+            return res.status(access.statusCode || 403).json({ message: access.message || 'Access denied' });
         }
 
         // Generate JWT token

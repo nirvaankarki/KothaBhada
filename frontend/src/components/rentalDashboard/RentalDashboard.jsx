@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CalendarDays, Heart, History, Trash2, Loader2 } from 'lucide-react';
+import { CalendarDays, Heart, History, ShieldAlert, Trash2, Loader2 } from 'lucide-react';
 import api from '../../utils/api';
 import DashboardHeader from './DashboardHeader';
 import StatCard from './StatCard';
 import RecentActivityItem from './RecentActivityItem';
 import RevenueChartCard from './RevenueChartCard';
+import ReportCenterPanel from '../shared/ReportCenterPanel';
 import { useToast } from '../../context/ToastContext';
 
 const formatTimeSlot = (value) => {
@@ -75,6 +76,13 @@ const BOOKING_WINDOW_OPTIONS = [
   { id: '7d', label: 'Last 7 Days', hours: 168 },
 ];
 
+const initialReportForm = {
+  targetType: 'listing',
+  targetId: '',
+  reasonCategory: 'other',
+  description: '',
+};
+
 const RentalDashboard = ({
   loading,
   error,
@@ -85,6 +93,7 @@ const RentalDashboard = ({
   favorites,
   history,
   bookings,
+  reports,
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -92,6 +101,10 @@ const RentalDashboard = ({
   const [localFavorites, setLocalFavorites] = useState(favorites || []);
   const [localHistory, setLocalHistory] = useState(history || []);
   const [localBookings, setLocalBookings] = useState(bookings || []);
+  const [localReports, setLocalReports] = useState(reports || []);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportForm, setReportForm] = useState(initialReportForm);
   const [bookingStatusFilter, setBookingStatusFilter] = useState('pending');
   const [selectedBookingWindow, setSelectedBookingWindow] = useState('all');
   const [editingBookingId, setEditingBookingId] = useState('');
@@ -124,9 +137,13 @@ const RentalDashboard = ({
   }, [bookings]);
 
   useEffect(() => {
+    setLocalReports(reports || []);
+  }, [reports]);
+
+  useEffect(() => {
     const query = new URLSearchParams(location.search);
     const tab = query.get('tab');
-    const allowedTabs = new Set(['favorites', 'history', 'bookings']);
+    const allowedTabs = new Set(['favorites', 'history', 'bookings', 'reports']);
     if (tab && allowedTabs.has(tab)) {
       setActiveTab(tab);
     }
@@ -193,6 +210,63 @@ const RentalDashboard = ({
 
   const handleCancelClearHistory = () => {
     setShowClearHistoryModal(false);
+  };
+
+  const handleRefreshReports = async () => {
+    setReportsLoading(true);
+
+    try {
+      const response = await api.get('/user/reports');
+      setLocalReports(response.data?.reports || []);
+    } catch (err) {
+      showToast({
+        type: 'error',
+        title: 'Could not load reports',
+        message: err?.response?.data?.message || 'Please try again later.',
+      });
+    } finally {
+      setReportsLoading(false);
+    }
+  };
+
+  const handleCreateReport = async (event) => {
+    event.preventDefault();
+
+    const description = String(reportForm.description || '').trim();
+    if (!description) {
+      showToast({ type: 'warning', title: 'Missing details', message: 'Please describe the issue before submitting.' });
+      return;
+    }
+
+    setReportSubmitting(true);
+    try {
+      const payload = {
+        targetType: String(reportForm.targetType || 'other').trim(),
+        targetId: String(reportForm.targetId || '').trim(),
+        reasonCategory: String(reportForm.reasonCategory || 'other').trim(),
+        description,
+      };
+
+      const response = await api.post('/user/reports', payload);
+      if (response.data?.report) {
+        setLocalReports((prev) => [response.data.report, ...prev]);
+      }
+
+      setReportForm((prev) => ({
+        ...prev,
+        targetId: '',
+        description: '',
+      }));
+      showToast({ type: 'success', title: 'Report submitted', message: 'Admin will review your report soon.' });
+    } catch (err) {
+      showToast({
+        type: 'error',
+        title: 'Submit failed',
+        message: err?.response?.data?.message || 'Could not submit report.',
+      });
+    } finally {
+      setReportSubmitting(false);
+    }
   };
 
   const categorizedBookings = useMemo(() => {
@@ -695,6 +769,15 @@ const RentalDashboard = ({
                 >
                   <span className="inline-flex items-center gap-2"><CalendarDays size={14} /> Booking Confirmations</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('reports')}
+                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                    activeTab === 'reports' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <span className="inline-flex items-center gap-2"><ShieldAlert size={14} /> Reports</span>
+                </button>
               </div>
 
               {activeTab === 'favorites' && (
@@ -901,6 +984,21 @@ const RentalDashboard = ({
                     )}
                   </div>
                 )
+              )}
+
+              {activeTab === 'reports' && (
+                <ReportCenterPanel
+                  title="Renter Report Center"
+                  subtitle="Report suspicious listings, users, or interactions and track admin decisions."
+                  reportForm={reportForm}
+                  onReportFormChange={(field, value) => setReportForm((prev) => ({ ...prev, [field]: value }))}
+                  handleCreateReport={handleCreateReport}
+                  reportSubmitting={reportSubmitting}
+                  reports={localReports}
+                  reportsLoading={reportsLoading}
+                  handleRefreshReports={handleRefreshReports}
+                  emptyMessage="No reports submitted yet from your renter account."
+                />
               )}
 
             </section>

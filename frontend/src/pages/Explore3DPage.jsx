@@ -7,6 +7,7 @@ import PropertySummarySection from '../components/explore3d/PropertySummarySecti
 import ReviewsSection from '../components/explore3d/ReviewsSection';
 import ReviewSummarySection from '../components/explore3d/ReviewSummarySection';
 import RoomVisualizationSection from '../components/explore3d/RoomVisualizationSection';
+import ListingReportModal from '../components/shared/ListingReportModal';
 import { useExplore3DController } from '../hooks/useExplore3DController';
 
 const Explore3DPage = () => {
@@ -47,6 +48,18 @@ const Explore3DPage = () => {
         onConfirm={() => controller.navigate('/login', { state: { from: controller.location.pathname + controller.location.search } })}
       />
 
+      <ListingReportModal
+        open={controller.isListingReportModalOpen}
+        listingTitle={controller.listing?.title || ''}
+        reasonCategory={controller.listingReportReasonCategory}
+        description={controller.listingReportDescription}
+        onChangeReason={controller.setListingReportReasonCategory}
+        onChangeDescription={controller.setListingReportDescription}
+        onCancel={controller.closeListingReportModal}
+        onSubmit={controller.submitListingReport}
+        isSubmitting={controller.listingReportSubmitting}
+      />
+
       <div className="w-full max-w-350 mx-auto">
         <div className="flex flex-col gap-6">
           <div className="grid grid-cols-1 lg:grid-cols-[68%_32%] xl:grid-cols-[70%_30%] gap-6 items-start">
@@ -72,7 +85,9 @@ const Explore3DPage = () => {
                 setIsDescriptionOpen={controller.setIsDescriptionOpen}
                 listingDescription={controller.listingDescription}
                 handleBookVisitClick={controller.handleBookVisitClick}
+                handleReportListing={controller.handleReportListing}
                 isBookedListing={controller.isBookedListing}
+                canReportListing={controller.canReportListing}
                 openChatOverlay={controller.openChatOverlay}
                 unreadChatCount={controller.unreadChatCount}
               />

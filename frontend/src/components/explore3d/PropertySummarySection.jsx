@@ -10,6 +10,7 @@ import {
   Info,
   Calendar,
   MessageCircle,
+  ShieldAlert,
 } from 'lucide-react';
 
 const PropertySummarySection = ({
@@ -18,7 +19,9 @@ const PropertySummarySection = ({
   setIsDescriptionOpen,
   listingDescription,
   handleBookVisitClick,
+  handleReportListing,
   isBookedListing,
+  canReportListing,
   openChatOverlay,
   unreadChatCount,
 }) => {
@@ -94,6 +97,16 @@ const PropertySummarySection = ({
           >
             <Calendar size={16} /> {isBookedListing ? 'Property Already Booked' : 'Schedule a Visit'}
           </button>
+
+          {canReportListing && (
+            <button
+              type="button"
+              onClick={handleReportListing}
+              className="w-full font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"
+            >
+              <ShieldAlert size={16} /> Report This Property
+            </button>
+          )}
         </div>
 
         <section className="mt-6 border-t border-slate-200 pt-5">

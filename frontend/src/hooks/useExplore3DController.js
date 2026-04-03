@@ -76,7 +76,7 @@ function parseListingTourPoints(input) {
 export function useExplore3DController() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, token, user } = useAuth();
   const { showToast } = useToast();
 
   const searchParams = new URLSearchParams(location.search);
@@ -104,6 +104,10 @@ export function useExplore3DController() {
   const seenOwnerMessageAtRef = useRef('');
   const initializedOwnerMessageRef = useRef(false);
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
+  const [isListingReportModalOpen, setIsListingReportModalOpen] = useState(false);
+  const [listingReportReasonCategory, setListingReportReasonCategory] = useState('fake_listing');
+  const [listingReportDescription, setListingReportDescription] = useState('');
+  const [listingReportSubmitting, setListingReportSubmitting] = useState(false);
   const [dynamicAreaHighlights, setDynamicAreaHighlights] = useState([]);
   const [isLoadingDynamicAreaHighlights, setIsLoadingDynamicAreaHighlights] = useState(false);
   const [dynamicAreaHighlightsError, setDynamicAreaHighlightsError] = useState('');
@@ -175,6 +179,8 @@ export function useExplore3DController() {
   }, [effectiveListingId, passedListing]);
 
   const listingKey = getListingId(listing);
+  const activeRole = String(user?.role || '').toLowerCase();
+  const canReportListing = isAuthenticated && activeRole === 'user';
 
   useEffect(() => {
     if (!listing || !isAuthenticated) return;
@@ -549,6 +555,66 @@ export function useExplore3DController() {
     navigate('/booking-visit', { state: { listing } });
   };
 
+  const openListingReportModal = () => {
+    if (!canReportListing) {
+      showToast({ type: 'warning', title: 'Not allowed', message: 'Only renters can report listed properties.' });
+      return;
+    }
+
+    if (!listing || !listingKey) {
+      showToast({ type: 'error', title: 'Missing listing', message: 'Could not identify this listing for reporting.' });
+      return;
+    }
+
+    setListingReportReasonCategory('fake_listing');
+    setListingReportDescription('');
+    setIsListingReportModalOpen(true);
+  };
+
+  const closeListingReportModal = () => {
+    if (listingReportSubmitting) return;
+    setIsListingReportModalOpen(false);
+    setListingReportReasonCategory('fake_listing');
+    setListingReportDescription('');
+  };
+
+  const submitListingReport = async () => {
+    const reasonCategory = String(listingReportReasonCategory || '').trim().toLowerCase() || 'other';
+    const allowedReasons = new Set(['fake_listing', 'fraud', 'policy_violation', 'spam', 'harassment', 'other']);
+    const description = String(listingReportDescription || '').trim();
+    if (!description) {
+      showToast({ type: 'warning', title: 'Missing details', message: 'Please add details for your report.' });
+      return;
+    }
+
+    try {
+      setListingReportSubmitting(true);
+      await api.post('/user/reports', {
+        targetType: 'listing',
+        targetId: listingKey,
+        reasonCategory: allowedReasons.has(reasonCategory) ? reasonCategory : 'other',
+        description,
+      });
+
+      showToast({
+        type: 'success',
+        title: 'Report submitted',
+        message: 'Your report was sent to admin. The landlord was notified to respond.',
+      });
+      setIsListingReportModalOpen(false);
+      setListingReportReasonCategory('fake_listing');
+      setListingReportDescription('');
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: 'Could not submit report',
+        message: error?.response?.data?.message || 'Please try again later.',
+      });
+    } finally {
+      setListingReportSubmitting(false);
+    }
+  };
+
   const showPreviousRoomImage = () => {
     if (!roomImages.length) return;
     setActiveRoomImageIndex((prev) => (prev - 1 + roomImages.length) % roomImages.length);
@@ -582,6 +648,12 @@ export function useExplore3DController() {
     isFavorite,
     showAuthModal,
     setShowAuthModal,
+    isListingReportModalOpen,
+    listingReportReasonCategory,
+    setListingReportReasonCategory,
+    listingReportDescription,
+    setListingReportDescription,
+    listingReportSubmitting,
     isChatOverlayOpen,
     openChatOverlay,
     closeChatOverlay,
@@ -606,6 +678,7 @@ export function useExplore3DController() {
     hasCoordinates,
     mapQuery,
     isBookedListing,
+    canReportListing,
     featuresToDisplay,
     areaHighlightsToDisplay,
     locationPanelHeight,
@@ -615,6 +688,9 @@ export function useExplore3DController() {
     roomImages,
     handleToggleFavorite,
     handleBookVisitClick,
+    handleReportListing: openListingReportModal,
+    closeListingReportModal,
+    submitListingReport,
     showPreviousRoomImage,
     showNextRoomImage,
     scrollToReviewsSection,

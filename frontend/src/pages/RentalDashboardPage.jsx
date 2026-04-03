@@ -46,6 +46,7 @@ const RentalDashboardPage = () => {
   const [favorites, setFavorites] = useState([]);
   const [history, setHistory] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -58,15 +59,17 @@ const RentalDashboardPage = () => {
       setError('');
 
       try {
-          const [favoritesRes, historyRes, bookingsRes] = await Promise.all([
+          const [favoritesRes, historyRes, bookingsRes, reportsRes] = await Promise.all([
           api.get('/user/favorites'),
           api.get('/user/history'),
           api.get('/user/bookings'),
+          api.get('/user/reports'),
         ]);
 
         setFavorites(favoritesRes.data?.favorites || []);
         setHistory(historyRes.data?.history || []);
         setBookings(bookingsRes.data?.bookings || []);
+        setReports(reportsRes.data?.reports || []);
       } catch (err) {
         setError(err?.response?.data?.message || 'Could not load renter dashboard data.');
       } finally {
@@ -130,6 +133,7 @@ const RentalDashboardPage = () => {
       favorites={favorites}
       history={history}
       bookings={bookings}
+      reports={reports}
     />
   );
 };

@@ -4,7 +4,7 @@ import api from '../utils/api';
 import { useAutoDismiss } from './useAutoDismiss';
 import { useToast } from '../context/ToastContext';
 
-const allowedTabs = new Set(['favorites', 'history', 'inquiries', 'bookings']);
+const allowedTabs = new Set(['favorites', 'history', 'inquiries', 'bookings', 'reports']);
 
 const initialInquiryForm = {
   listingId: '',
@@ -38,6 +38,13 @@ const initialBookingForm = {
   note: '',
 };
 
+const initialReportForm = {
+  targetType: 'listing',
+  targetId: '',
+  reasonCategory: 'other',
+  description: '',
+};
+
 export const useUserDashboardController = () => {
   const location = useLocation();
   const queryTab = new URLSearchParams(location.search).get('tab');
@@ -48,13 +55,17 @@ export const useUserDashboardController = () => {
   const [history, setHistory] = useState([]);
   const [inquiries, setInquiries] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState(false);
   const [inquiryForm, setInquiryForm] = useState(initialInquiryForm);
   const [bookingForm, setBookingForm] = useState(initialBookingForm);
+  const [reportForm, setReportForm] = useState(initialReportForm);
   const [replyDrafts, setReplyDrafts] = useState({});
 
   const bookingStatusMapRef = useRef({});
@@ -84,11 +95,12 @@ export const useUserDashboardController = () => {
       setLoading(true);
       setError('');
       try {
-        const [favoritesRes, historyRes, inquiriesRes, bookingsRes] = await Promise.all([
+        const [favoritesRes, historyRes, inquiriesRes, bookingsRes, reportsRes] = await Promise.all([
           api.get('/user/favorites'),
           api.get('/user/history'),
           api.get('/user/inquiries'),
           api.get('/user/bookings'),
+          api.get('/user/reports'),
         ]);
 
         setFavorites(favoritesRes.data?.favorites || []);
@@ -96,6 +108,7 @@ export const useUserDashboardController = () => {
         setInquiries(inquiriesRes.data?.inquiries || []);
         const initialBookings = bookingsRes.data?.bookings || [];
         setBookings(initialBookings);
+        setReports(reportsRes.data?.reports || []);
         bookingStatusMapRef.current = initialBookings.reduce((acc, booking) => {
           if (booking?._id) {
             acc[booking._id] = booking.status || 'pending';
@@ -290,6 +303,56 @@ export const useUserDashboardController = () => {
     }
   };
 
+  const refreshReports = async () => {
+    setReportsLoading(true);
+    try {
+      const response = await api.get('/user/reports');
+      setReports(response.data?.reports || []);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Could not load reports');
+    } finally {
+      setReportsLoading(false);
+    }
+  };
+
+  const handleCreateReport = async (event) => {
+    event.preventDefault();
+    setError('');
+    setSuccess('');
+
+    const description = String(reportForm.description || '').trim();
+    if (!description) {
+      setError('Please provide report details before submitting.');
+      return;
+    }
+
+    setReportSubmitting(true);
+    try {
+      const payload = {
+        targetType: String(reportForm.targetType || 'other').trim(),
+        targetId: String(reportForm.targetId || '').trim(),
+        reasonCategory: String(reportForm.reasonCategory || 'other').trim(),
+        description,
+      };
+
+      const response = await api.post('/user/reports', payload);
+      if (response.data?.report) {
+        setReports((prev) => [response.data.report, ...prev]);
+      }
+
+      setReportForm((prev) => ({
+        ...prev,
+        targetId: '',
+        description: '',
+      }));
+      setSuccess('Report submitted successfully. Admin will review it soon.');
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Could not submit report');
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
+
   const statusPill = (status) => {
     const statusMap = {
       open: 'bg-blue-50 text-blue-700',
@@ -314,7 +377,10 @@ export const useUserDashboardController = () => {
     history,
     inquiries,
     bookings,
+    reports,
     loading,
+    reportsLoading,
+    reportSubmitting,
     activeTab,
     setActiveTab,
     showClearHistoryConfirm,
@@ -323,6 +389,8 @@ export const useUserDashboardController = () => {
     setInquiryForm,
     bookingForm,
     setBookingForm,
+    reportForm,
+    setReportForm,
     replyDrafts,
     setReplyDrafts,
     sourceListings,
@@ -334,6 +402,8 @@ export const useUserDashboardController = () => {
     handleCreateInquiry,
     handleCreateBooking,
     handleSendReply,
+    handleCreateReport,
+    refreshReports,
     statusPill,
     formatStatusLabel,
   };

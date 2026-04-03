@@ -529,7 +529,13 @@ export async function getAiRecommendations(req, res) {
                 .lean();
         }
 
-        const activeRooms = await Room.find({ status: 'active' })
+        const activeRooms = await Room.find({
+            status: 'active',
+            $or: [
+                { moderationStatus: 'approved' },
+                { moderationStatus: { $exists: false } },
+            ],
+        })
             .select('title location price bedrooms bathrooms areaSqFt image images model3dUrl keyFeatures areaHighlights createdAt')
             .sort({ createdAt: -1 })
             .limit(150)

@@ -473,6 +473,16 @@ function isDataUri(value) {
     return /^data:[^;]+;base64,/.test(String(value || '').trim());
 }
 
+function getApprovedListingFilter() {
+    return {
+        status: 'active',
+        $or: [
+            { moderationStatus: 'approved' },
+            { moderationStatus: { $exists: false } },
+        ],
+    };
+}
+
 async function resolveImageUrl(value) {
     const trimmedValue = String(value || '').trim();
     if (!trimmedValue) return '';
@@ -497,7 +507,7 @@ async function resolveImageList(values) {
 
 export async function getAllRooms(req, res) {
     try {
-        const rooms = await Room.find({ status: 'active' }).sort({ createdAt: -1 }).lean();
+        const rooms = await Room.find(getApprovedListingFilter()).sort({ createdAt: -1 }).lean();
         const confirmedListingIds = await Booking.distinct('listingId', { status: 'confirmed' });
         const confirmedSet = new Set(confirmedListingIds.map((id) => String(id)));
         const roomsWithAvailability = rooms.map((room) => ({
@@ -615,6 +625,10 @@ export async function createRooms(req, res) {
             model3dUrl: String(model3dUrl || '').trim(),
             tourPoints: parsedTourPoints,
             status: status === 'inactive' ? 'inactive' : 'active',
+            moderationStatus: 'pending',
+            moderationNote: '',
+            moderationReviewedAt: null,
+            moderationReviewedBy: null,
         });
 
         await newRoom.save();
@@ -681,6 +695,12 @@ export async function updateRooms(req, res) {
             updates.images = updates.image ? [updates.image] : [];
         }
 
+        // Any landlord edit requires fresh admin review before listing goes live again.
+        updates.moderationStatus = 'pending';
+        updates.moderationNote = '';
+        updates.moderationReviewedAt = null;
+        updates.moderationReviewedBy = null;
+
         const latitudeProvided = req.body.latitude !== undefined;
         const longitudeProvided = req.body.longitude !== undefined;
 
@@ -741,6 +761,20 @@ export async function getRoomById(req, res) {
 
         if (!room) {
             return res.status(404).json({ message: 'Room not found' });
+        }
+
+        const moderationStatus = String(room?.moderationStatus || '').toLowerCase();
+        const isApprovedOrLegacy = moderationStatus === 'approved' || !moderationStatus;
+
+        if (!isApprovedOrLegacy) {
+            const requesterRole = String(req.user?.role || '').toLowerCase();
+            const requesterId = String(req.user?.userId || '');
+            const isOwner = requesterId && requesterId === String(room.ownerId || '');
+            const isAdmin = requesterRole === 'admin';
+
+            if (!isOwner && !isAdmin) {
+                return res.status(404).json({ message: 'Room not found' });
+            }
         }
 
         const hasConfirmedBooking = await Booking.exists({ listingId: String(room._id), status: 'confirmed' });

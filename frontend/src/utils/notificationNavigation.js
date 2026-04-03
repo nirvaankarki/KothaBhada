@@ -6,6 +6,14 @@ export const getNotificationTargetPath = ({ notification, isLandlord = false }) 
   const chatId = notification?.metadata?.chatId;
 
   if (isLandlord) {
+    if (type.includes('report')) {
+      return '/landlord/dashboard?tab=reports';
+    }
+
+    if (type.includes('listing')) {
+      return '/landlord/dashboard?tab=listings';
+    }
+
     if (type.includes('booking')) {
       return '/landlord/dashboard?tab=bookings';
     }
@@ -30,6 +38,10 @@ export const getNotificationTargetPath = ({ notification, isLandlord = false }) 
 
   if (type.includes('booking')) {
     return '/rental/dashboard?tab=bookings';
+  }
+
+  if (type.includes('report')) {
+    return '/rental/dashboard?tab=reports';
   }
 
   if (type.includes('inquiry')) {

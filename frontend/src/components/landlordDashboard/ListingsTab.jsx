@@ -115,6 +115,65 @@ const ListingsTab = ({
     return Array.from(new Set(imageList));
   }, [form.images, form.image]);
 
+  const getModerationMeta = (listingItem) => {
+    const moderationStatus = String(listingItem?.moderationStatus || 'pending').toLowerCase();
+    const moderationNote = String(listingItem?.moderationNote || '').trim();
+
+    if (moderationStatus === 'approved') {
+      return {
+        label: 'Approved',
+        badgeClass: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+        helperText: listingItem?.status === 'inactive'
+          ? 'Approved, but currently hidden because listing status is inactive'
+          : '',
+        helperClass: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+      };
+    }
+
+    if (moderationStatus === 'rejected') {
+      return {
+        label: 'Rejected',
+        badgeClass: 'bg-rose-50 border-rose-200 text-rose-700',
+        helperText: moderationNote || 'This listing is rejected by admin and not visible to renters.',
+        helperClass: 'text-rose-700 bg-rose-50 border-rose-200',
+      };
+    }
+
+    return {
+      label: 'Pending Review',
+      badgeClass: 'bg-amber-50 border-amber-200 text-amber-700',
+      helperText: 'Awaiting admin approval. Renters cannot view this listing yet.',
+      helperClass: 'text-amber-700 bg-amber-50 border-amber-200',
+    };
+  };
+
+  const getListingStatusMeta = (listingItem) => {
+    const moderationStatus = String(listingItem?.moderationStatus || 'pending').toLowerCase();
+    const status = String(listingItem?.status || 'active').toLowerCase();
+
+    if (moderationStatus === 'pending') {
+      return {
+        label: 'Pending',
+        dotClass: 'bg-amber-500',
+        textClass: 'text-gray-900',
+      };
+    }
+
+    if (status === 'inactive') {
+      return {
+        label: 'Inactive',
+        dotClass: 'bg-rose-500',
+        textClass: 'text-gray-900',
+      };
+    }
+
+    return {
+      label: 'Active',
+      dotClass: 'bg-emerald-500',
+      textClass: 'text-gray-900',
+    };
+  };
+
   React.useEffect(() => {
     if (!listingImages.length) {
       setActiveImageIndex(0);
@@ -203,6 +262,8 @@ const ListingsTab = ({
                 {listings.map((item) => {
                   const has2DRoom = Boolean(String(item?.image || '').trim() || (Array.isArray(item?.images) && item.images.length));
                   const has3DRoomTour = Boolean(String(item?.model3dUrl || '').trim());
+                  const moderationMeta = getModerationMeta(item);
+                  const listingStatusMeta = getListingStatusMeta(item);
 
                   return (
                   <article
@@ -277,10 +338,19 @@ const ListingsTab = ({
                         </div>
                       </div>
 
+                      {moderationMeta.helperText && (
+                        <div className={`mt-3 rounded-lg border px-3 py-2 text-xs font-semibold ${moderationMeta.helperClass}`}>
+                          {moderationMeta.helperText}
+                        </div>
+                      )}
+
                       <div className="mt-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${item.status === 'inactive' ? 'bg-gray-400' : 'bg-green-500'}`} />
-                          <span className="text-sm font-medium text-gray-700 capitalize">{item.status || 'active'}</span>
+                        <div className={`inline-flex items-center gap-2.5 text-xs font-black uppercase tracking-widest ${listingStatusMeta.textClass}`}>
+                          <span className="relative flex h-3 w-3">
+                            <span className={`absolute inline-flex h-full w-full rounded-full opacity-55 ${listingStatusMeta.dotClass}`} />
+                            <span className={`relative inline-flex h-3 w-3 rounded-full ${listingStatusMeta.dotClass}`} />
+                          </span>
+                          <span>{listingStatusMeta.label}</span>
                         </div>
 
                         <div className="flex gap-3">

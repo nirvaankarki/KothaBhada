@@ -28,6 +28,12 @@ import {
     markAllNotificationsAsRead,
     clearAllNotifications
 } from '../controllers/userDashboardController.js';
+import {
+    createReport,
+    getMyReports,
+    getOwnerListingReports,
+    respondToOwnerListingReport,
+} from '../controllers/reportController.js';
 
 const router = express.Router();
 
@@ -57,5 +63,9 @@ router.get('/notifications', authenticate, getNotifications);
 router.post('/notifications/read-all', authenticate, markAllNotificationsAsRead);
 router.post('/notifications/:notificationId/read', authenticate, markNotificationAsRead);
 router.delete('/notifications', authenticate, clearAllNotifications);
+router.post('/reports', authenticate, createReport);
+router.get('/reports', authenticate, getMyReports);
+router.get('/owner/reports', authenticate, getOwnerListingReports);
+router.patch('/owner/reports/:reportId/respond', authenticate, respondToOwnerListingReport);
 
 export default router;

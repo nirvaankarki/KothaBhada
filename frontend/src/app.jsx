@@ -11,6 +11,7 @@ import ViewListingPage from './pages/ViewListingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import RentalDashboardPage from './pages/RentalDashboardPage';
 import LandlordDashboardPage from './pages/LandlordDashboardPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import ReviewsPage from './pages/ReviewsPage';
 import BookingVisitPage from './pages/BookingVisitPage';
@@ -18,17 +19,13 @@ import FloatingAIAssistant from './components/FloatingAIAssistant';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
-import { isLandlordRole, resolveRole } from './utils/roles';
+import { getDashboardPathByRole, resolveRole } from './utils/roles';
 
 function DashboardRouteEntry() {
   const { token, user } = useAuth();
   const activeRole = resolveRole(user?.role, token);
 
-  if (isLandlordRole(activeRole)) {
-    return <Navigate to="/landlord/dashboard" replace />;
-  }
-
-  return <Navigate to="/rental/dashboard" replace />;
+  return <Navigate to={getDashboardPathByRole(activeRole)} replace />;
 }
 
 export function App() {
@@ -52,6 +49,19 @@ export function App() {
               allowedRoles={['landlord']}
             >
               <LandlordDashboardPage />
+            </ProtectedRoute>
+          )}
+        />
+
+        {/* Admin dashboard - no navbar/footer */}
+        <Route
+          path="/admin/dashboard"
+          element={(
+            <ProtectedRoute
+              message="Please log in as an admin to access admin dashboard."
+              allowedRoles={['admin']}
+            >
+              <AdminDashboardPage />
             </ProtectedRoute>
           )}
         />

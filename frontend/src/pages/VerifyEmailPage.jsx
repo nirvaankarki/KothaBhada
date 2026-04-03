@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
-import { isLandlordRole, resolveRole } from '../utils/roles';
+import { getDashboardPathByRole, resolveRole } from '../utils/roles';
 import { useToast } from '../context/ToastContext';
 
 const VerifyEmailPage = () => {
@@ -59,7 +59,7 @@ const VerifyEmailPage = () => {
       if (fromPath && !['/login', '/signup', '/forgot-password', '/verify-email'].includes(fromPath)) {
         navigate(fromPath, { replace: true });
       } else {
-        navigate(isLandlordRole(activeRole) ? '/landlord/dashboard' : '/', { replace: true });
+        navigate(getDashboardPathByRole(activeRole), { replace: true });
       }
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to verify email');
