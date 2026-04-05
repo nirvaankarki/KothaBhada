@@ -63,6 +63,7 @@ export const useUserDashboardController = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showClearHistoryConfirm, setShowClearHistoryConfirm] = useState(false);
+  const [pendingFavoriteRemoval, setPendingFavoriteRemoval] = useState(null);
   const [inquiryForm, setInquiryForm] = useState(initialInquiryForm);
   const [bookingForm, setBookingForm] = useState(initialBookingForm);
   const [reportForm, setReportForm] = useState(initialReportForm);
@@ -176,7 +177,7 @@ export const useUserDashboardController = () => {
     }, []);
   }, [favorites, history]);
 
-  const handleRemoveFavorite = async (item) => {
+  const executeRemoveFavorite = async (item) => {
     setError('');
     setSuccess('');
     try {
@@ -189,6 +190,23 @@ export const useUserDashboardController = () => {
     } catch (err) {
       setError(err?.response?.data?.message || 'Could not remove favorite');
     }
+  };
+
+  const handleRemoveFavoriteRequest = (item) => {
+    if (!item?.listingId) return;
+    setPendingFavoriteRemoval(item);
+  };
+
+  const handleCancelRemoveFavorite = () => {
+    setPendingFavoriteRemoval(null);
+  };
+
+  const handleConfirmRemoveFavorite = async () => {
+    const item = pendingFavoriteRemoval;
+    if (!item) return;
+
+    setPendingFavoriteRemoval(null);
+    await executeRemoveFavorite(item);
   };
 
   const handleClearHistoryRequest = () => {
@@ -385,6 +403,7 @@ export const useUserDashboardController = () => {
     setActiveTab,
     showClearHistoryConfirm,
     setShowClearHistoryConfirm,
+    pendingFavoriteRemoval,
     inquiryForm,
     setInquiryForm,
     bookingForm,
@@ -394,7 +413,9 @@ export const useUserDashboardController = () => {
     replyDrafts,
     setReplyDrafts,
     sourceListings,
-    handleRemoveFavorite,
+    handleRemoveFavoriteRequest,
+    handleCancelRemoveFavorite,
+    handleConfirmRemoveFavorite,
     handleClearHistoryRequest,
     handleConfirmClearHistory,
     handleListingSelectForInquiry,

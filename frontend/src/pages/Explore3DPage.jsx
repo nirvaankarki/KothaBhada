@@ -30,7 +30,7 @@ const Explore3DPage = () => {
           <button
             type="button"
             onClick={() => controller.navigate('/viewlisting')}
-            className="mt-4 px-4 py-2 text-sm font-semibold text-[#3A5AFF] border border-[#3A5AFF]/25 rounded-sm hover:bg-[#3A5AFF]/10"
+            className="mt-4 kb-btn kb-btn-secondary"
           >
             Back to Listings
           </button>

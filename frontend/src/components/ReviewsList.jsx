@@ -438,7 +438,7 @@ const ReviewsList = ({ listingId, refreshTrigger }) => {
                         type="button"
                         onClick={handleCancelEdit}
                         disabled={isSavingEdit}
-                        className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                        className="kb-btn kb-btn-secondary kb-btn-sm"
                       >
                         Cancel
                       </button>
@@ -446,7 +446,7 @@ const ReviewsList = ({ listingId, refreshTrigger }) => {
                         type="button"
                         onClick={() => handleSaveEdit(review._id)}
                         disabled={isSavingEdit}
-                        className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                        className="kb-btn kb-btn-primary kb-btn-sm"
                       >
                         {isSavingEdit ? <Loader2 size={14} className="animate-spin" /> : null}
                         Save

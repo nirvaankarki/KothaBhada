@@ -69,7 +69,7 @@ const ListingReportModal = ({
               type="button"
               onClick={onCancel}
               disabled={isSubmitting}
-              className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              className="kb-btn kb-btn-secondary"
             >
               Cancel
             </button>
@@ -77,7 +77,7 @@ const ListingReportModal = ({
               type="button"
               onClick={onSubmit}
               disabled={isSubmitting}
-              className="px-4 py-2 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
+              className="kb-btn kb-btn-danger"
             >
               {isSubmitting ? 'Submitting...' : 'Submit Report'}
             </button>

@@ -20,6 +20,33 @@ const landlordTargetTypeOptions = [
   { value: 'other', label: 'Other' },
 ];
 
+const landlordHeaderMetaByTab = {
+  dashboard: {
+    title: 'Overview',
+    subtitle: 'Track listing performance, booking status, and dashboard activity from one place.',
+  },
+  listings: {
+    title: 'Listings',
+    subtitle: 'Create, update, and manage your rental inventory including photos and 3D models.',
+  },
+  chat: {
+    title: 'Messages',
+    subtitle: 'Respond to renter conversations quickly to improve trust and conversion.',
+  },
+  bookings: {
+    title: 'Bookings',
+    subtitle: 'Review incoming booking requests and update renters with clear decisions.',
+  },
+  reports: {
+    title: 'Reports',
+    subtitle: 'Handle disputes, report abuse, and respond to listing complaints for admin review.',
+  },
+  profile: {
+    title: 'Owner Profile',
+    subtitle: 'Maintain owner identity, contact details, and KYC verification status.',
+  },
+};
+
 const LandlordDashboardPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -56,6 +83,8 @@ const LandlordDashboardPage = () => {
     navigate(targetPath);
   };
 
+  const activeHeaderMeta = landlordHeaderMetaByTab[state.activeTab] || landlordHeaderMetaByTab.dashboard;
+
   return (
     <div className="flex min-h-screen bg-[#f4f7fe] font-sans text-gray-800">
       <LandlordSidebar
@@ -68,6 +97,8 @@ const LandlordDashboardPage = () => {
         <DashboardHeader
           profilePhoto={state.profileForm.profilePhoto}
           profileName={state.profileForm.name}
+          title={activeHeaderMeta.title}
+          subtitle={activeHeaderMeta.subtitle}
           notifications={state.notifications}
           unreadNotifications={state.unreadNotifications}
           onMarkNotificationRead={handlers.markNotificationAsRead}
@@ -229,7 +260,7 @@ const LandlordDashboardPage = () => {
                               type="button"
                               onClick={() => handlers.handleOwnerListingReportResponse(reportId)}
                               disabled={isResponding}
-                              className="px-4 py-2 rounded-md bg-[#132238] text-white text-xs font-bold hover:bg-[#0b1627] disabled:opacity-60"
+                              className="kb-btn kb-btn-primary kb-btn-sm"
                             >
                               {isResponding ? 'Submitting...' : 'Submit Resolution Response'}
                             </button>
@@ -251,8 +282,11 @@ const LandlordDashboardPage = () => {
             handleProfileSubmit={handlers.handleProfileSubmit}
             savingProfile={state.savingProfile}
             profileImageInputRef={refs.profileImageInputRef}
+            profileKycDocumentInputRef={refs.profileKycDocumentInputRef}
             handleProfileImageSelect={handlers.handleProfileImageSelect}
             clearProfileImage={handlers.clearProfileImage}
+            handleLandlordKycDocumentSelect={handlers.handleLandlordKycDocumentSelect}
+            clearLandlordKycDocument={handlers.clearLandlordKycDocument}
           />
         )}
       </main>

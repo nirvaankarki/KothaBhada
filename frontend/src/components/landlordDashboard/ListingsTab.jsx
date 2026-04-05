@@ -241,7 +241,7 @@ const ListingsTab = ({
           <button
             type="button"
             onClick={openCreateModal}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#2563eb] text-white text-sm font-semibold hover:bg-blue-700"
+            className="kb-btn kb-btn-primary"
           >
             <PlusCircle size={16} /> Create New Listing
           </button>
@@ -583,7 +583,7 @@ const ListingsTab = ({
                         <button
                           type="button"
                           onClick={addFeatureFromInput}
-                          className="px-3 py-2 rounded-lg bg-[#2563eb] text-white text-xs font-semibold hover:bg-blue-700"
+                          className="kb-btn kb-btn-primary kb-btn-sm"
                         >
                           Add
                         </button>
@@ -664,7 +664,7 @@ const ListingsTab = ({
                         <button
                           type="button"
                           onClick={clearSelectedImage}
-                          className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-50"
+                          className="kb-btn kb-btn-soft-danger kb-btn-sm"
                         >
                           <XCircle size={14} /> Remove All
                         </button>
@@ -718,7 +718,7 @@ const ListingsTab = ({
                         <button
                           type="button"
                           onClick={clearSelectedModel}
-                          className="inline-flex items-center gap-1 px-3 py-2 rounded-xl border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-50"
+                          className="kb-btn kb-btn-soft-danger kb-btn-sm"
                         >
                           <XCircle size={14} /> Remove 3D Model
                         </button>
@@ -758,7 +758,7 @@ const ListingsTab = ({
                     <button
                       type="submit"
                       disabled={submitting || uploadingModel}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#2563eb] text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60"
+                      className="kb-btn kb-btn-primary"
                     >
                       <Building2 size={15} /> {submitting ? (editingListingId ? 'Saving...' : 'Publishing...') : (editingListingId ? 'Save Changes' : 'Publish Listing')}
                     </button>
@@ -784,7 +784,7 @@ const ListingsTab = ({
                   type="button"
                   onClick={cancelDelete}
                   disabled={deletingId === deleteCandidate._id}
-                  className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                  className="kb-btn kb-btn-secondary"
                 >
                   Cancel
                 </button>
@@ -792,7 +792,7 @@ const ListingsTab = ({
                   type="button"
                   onClick={confirmDelete}
                   disabled={deletingId === deleteCandidate._id}
-                  className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-60"
+                  className="kb-btn kb-btn-danger"
                 >
                   {deletingId === deleteCandidate._id ? 'Deleting...' : 'Delete'}
                 </button>

@@ -510,9 +510,17 @@ export async function getAllRooms(req, res) {
         const rooms = await Room.find(getApprovedListingFilter()).sort({ createdAt: -1 }).lean();
         const confirmedListingIds = await Booking.distinct('listingId', { status: 'confirmed' });
         const confirmedSet = new Set(confirmedListingIds.map((id) => String(id)));
+        const ownerIds = Array.from(new Set(rooms.map((room) => String(room.ownerId || '')).filter(Boolean)));
+
+        const ownerRows = ownerIds.length
+            ? await User.find({ _id: { $in: ownerIds } }).select('_id isLandlordVerified').lean()
+            : [];
+        const ownerVerificationMap = new Map(ownerRows.map((owner) => [String(owner._id), Boolean(owner.isLandlordVerified)]));
+
         const roomsWithAvailability = rooms.map((room) => ({
             ...room,
-            isBooked: confirmedSet.has(String(room._id))
+            isBooked: confirmedSet.has(String(room._id)),
+            ownerIsVerified: ownerVerificationMap.get(String(room.ownerId || '')) || false,
         }));
 
         res.status(200).json(roomsWithAvailability);
@@ -777,10 +785,15 @@ export async function getRoomById(req, res) {
             }
         }
 
-        const hasConfirmedBooking = await Booking.exists({ listingId: String(room._id), status: 'confirmed' });
+        const [hasConfirmedBooking, owner] = await Promise.all([
+            Booking.exists({ listingId: String(room._id), status: 'confirmed' }),
+            room.ownerId ? User.findById(room.ownerId).select('isLandlordVerified').lean() : null,
+        ]);
+
         res.status(200).json({
             ...room,
-            isBooked: Boolean(hasConfirmedBooking)
+            isBooked: Boolean(hasConfirmedBooking),
+            ownerIsVerified: Boolean(owner?.isLandlordVerified),
         });
     } catch (error) {
         res.status(500).json({ message: 'Error fetching room', error: error.message });

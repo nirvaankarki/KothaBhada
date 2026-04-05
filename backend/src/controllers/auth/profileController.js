@@ -1,5 +1,11 @@
 import { User } from '../../models/userModel.js';
 
+const ALLOWED_KYC_DOC_TYPES = new Set(['citizenship', 'license']);
+
+function normalizeKycDocType(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
 export async function getCurrentUser(req, res) {
     try {
         const user = await User.findById(req.user.userId).select('-password -resetCode -resetCodeExpiry');
@@ -15,7 +21,14 @@ export async function getCurrentUser(req, res) {
                 email: user.email,
                 role: user.role,
                 phone: user.phone || '',
-                profilePhoto: user.profilePhoto || null
+                profilePhoto: user.profilePhoto || null,
+                isLandlordVerified: Boolean(user.isLandlordVerified),
+                landlordKycDocumentType: user.landlordKycDocumentType || '',
+                landlordKycDocumentImage: user.landlordKycDocumentImage || '',
+                landlordKycStatus: user.landlordKycStatus || 'not_submitted',
+                landlordKycSubmittedAt: user.landlordKycSubmittedAt || null,
+                landlordKycReviewedAt: user.landlordKycReviewedAt || null,
+                landlordKycReviewNote: user.landlordKycReviewNote || ''
             }
         });
     } catch (error) {
@@ -25,7 +38,13 @@ export async function getCurrentUser(req, res) {
 
 export async function updateCurrentUser(req, res) {
     try {
-        const { name, phone, profilePhoto } = req.body;
+        const {
+            name,
+            phone,
+            profilePhoto,
+            landlordKycDocumentType,
+            landlordKycDocumentImage,
+        } = req.body;
         const updatePayload = {};
 
         if (name !== undefined) {
@@ -58,6 +77,51 @@ export async function updateCurrentUser(req, res) {
             }
         }
 
+        const isLandlord = String(req.user?.role || '').toLowerCase() === 'landlord';
+        const hasKycTypeInPayload = landlordKycDocumentType !== undefined;
+        const hasKycImageInPayload = landlordKycDocumentImage !== undefined;
+
+        if ((hasKycTypeInPayload || hasKycImageInPayload) && !isLandlord) {
+            return res.status(403).json({ message: 'Only landlord accounts can manage KYC documents' });
+        }
+
+        if (isLandlord && (hasKycTypeInPayload || hasKycImageInPayload)) {
+            const normalizedDocType = normalizeKycDocType(landlordKycDocumentType);
+            const isClearingDoc = landlordKycDocumentImage === null || String(landlordKycDocumentImage || '').trim() === '';
+
+            if (isClearingDoc) {
+                updatePayload.landlordKycDocumentType = '';
+                updatePayload.landlordKycDocumentImage = '';
+                updatePayload.landlordKycStatus = 'not_submitted';
+                updatePayload.landlordKycSubmittedAt = null;
+                updatePayload.landlordKycReviewedAt = null;
+                updatePayload.landlordKycReviewedBy = null;
+                updatePayload.landlordKycReviewNote = '';
+                updatePayload.isLandlordVerified = false;
+            } else {
+                if (!ALLOWED_KYC_DOC_TYPES.has(normalizedDocType)) {
+                    return res.status(400).json({ message: 'KYC document type must be citizenship or license' });
+                }
+
+                if (typeof landlordKycDocumentImage !== 'string' || !landlordKycDocumentImage.startsWith('data:image')) {
+                    return res.status(400).json({ message: 'KYC document must be a valid image file' });
+                }
+
+                if (landlordKycDocumentImage.length > 10485760) {
+                    return res.status(400).json({ message: 'KYC document image must be smaller than 10MB' });
+                }
+
+                updatePayload.landlordKycDocumentType = normalizedDocType;
+                updatePayload.landlordKycDocumentImage = landlordKycDocumentImage;
+                updatePayload.landlordKycStatus = 'pending';
+                updatePayload.landlordKycSubmittedAt = new Date();
+                updatePayload.landlordKycReviewedAt = null;
+                updatePayload.landlordKycReviewedBy = null;
+                updatePayload.landlordKycReviewNote = '';
+                updatePayload.isLandlordVerified = false;
+            }
+        }
+
         if (Object.keys(updatePayload).length === 0) {
             return res.status(400).json({ message: 'No profile fields provided for update' });
         }
@@ -80,7 +144,14 @@ export async function updateCurrentUser(req, res) {
                 email: updatedUser.email,
                 role: updatedUser.role,
                 phone: updatedUser.phone || '',
-                profilePhoto: updatedUser.profilePhoto || null
+                profilePhoto: updatedUser.profilePhoto || null,
+                isLandlordVerified: Boolean(updatedUser.isLandlordVerified),
+                landlordKycDocumentType: updatedUser.landlordKycDocumentType || '',
+                landlordKycDocumentImage: updatedUser.landlordKycDocumentImage || '',
+                landlordKycStatus: updatedUser.landlordKycStatus || 'not_submitted',
+                landlordKycSubmittedAt: updatedUser.landlordKycSubmittedAt || null,
+                landlordKycReviewedAt: updatedUser.landlordKycReviewedAt || null,
+                landlordKycReviewNote: updatedUser.landlordKycReviewNote || ''
             }
         });
     } catch (error) {

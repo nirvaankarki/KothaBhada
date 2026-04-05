@@ -26,6 +26,7 @@ export function normalizeListing(rawListing) {
     ownerPhone: rawListing.ownerPhone || '',
     ownerEmail: rawListing.ownerEmail || '',
     ownerProfilePhoto: rawListing.ownerProfilePhoto || rawListing.owner?.profilePhoto || '',
+    ownerIsVerified: Boolean(rawListing.ownerIsVerified),
   };
 }
 

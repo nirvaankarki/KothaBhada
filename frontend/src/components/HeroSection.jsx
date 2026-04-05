@@ -56,7 +56,7 @@ const HeroSection = () => {
             </p>
 
             <div className="mt-6">
-              <button className="bg-[#3b66ff] hover:bg-blue-700 text-white font-black py-5 px-10 uppercase tracking-widest text-sm transition-all duration-300 shadow-[0_10px_30px_rgba(59,102,255,0.4)] active:scale-95">
+              <button className="kb-btn kb-btn-primary kb-btn-lg font-black uppercase tracking-widest shadow-[0_10px_30px_rgba(58,90,255,0.35)]">
                 Find Your Dream Room
               </button>
             </div>

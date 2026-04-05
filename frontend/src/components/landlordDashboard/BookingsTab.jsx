@@ -75,7 +75,7 @@ const BookingsTab = ({
                         type="button"
                         onClick={() => handleOwnerBookingDecision(booking._id, 'confirmed')}
                         disabled={updatingBookingId === booking._id}
-                        className="px-4 py-2 rounded-md bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 disabled:opacity-60"
+                        className="kb-btn kb-btn-primary kb-btn-sm"
                       >
                         {updatingBookingId === booking._id ? 'Updating...' : 'Accept Request'}
                       </button>
@@ -83,7 +83,7 @@ const BookingsTab = ({
                         type="button"
                         onClick={() => handleOwnerBookingDecision(booking._id, 'declined')}
                         disabled={updatingBookingId === booking._id}
-                        className="px-4 py-2 rounded-md bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 disabled:opacity-60"
+                        className="kb-btn kb-btn-danger kb-btn-sm"
                       >
                         {updatingBookingId === booking._id ? 'Updating...' : 'Decline Request'}
                       </button>

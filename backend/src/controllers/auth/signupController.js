@@ -69,7 +69,9 @@ export async function signup(req, res) {
                     role: newUser.role,
                     phone: newUser.phone || '',
                     profilePhoto: newUser.profilePhoto || null,
-                    isEmailVerified: true
+                    isEmailVerified: true,
+                    isLandlordVerified: Boolean(newUser.isLandlordVerified),
+                    landlordKycStatus: newUser.landlordKycStatus || 'not_submitted'
                 }
             });
         }

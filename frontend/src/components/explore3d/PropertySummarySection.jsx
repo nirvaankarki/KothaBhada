@@ -11,6 +11,7 @@ import {
   Calendar,
   MessageCircle,
   ShieldAlert,
+  BadgeCheck,
 } from 'lucide-react';
 
 const PropertySummarySection = ({
@@ -117,6 +118,11 @@ const PropertySummarySection = ({
           <div className="space-y-2.5 rounded-2xl p-4">
             <div className="flex items-center gap-3 text-sm font-semibold text-slate-600">
               <User size={16} className="text-slate-400" /> {listing.ownerName || 'Property Owner'}
+              {listing.ownerIsVerified ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                  <BadgeCheck size={12} /> Verified
+                </span>
+              ) : null}
             </div>
             <div className="flex items-center gap-3 text-sm font-semibold text-slate-600">
               <Phone size={16} className="text-slate-400" /> {listing.ownerPhone || 'Not provided'}

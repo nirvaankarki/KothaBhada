@@ -32,7 +32,7 @@ export async function getManagedUsers(req, res) {
     }
 
     const users = await User.find(filter)
-      .select('_id name email role phone createdAt isEmailVerified accountStatus suspensionUntil accountActionReason accountActionAt')
+      .select('_id name email role phone createdAt isEmailVerified accountStatus suspensionUntil accountActionReason accountActionAt isLandlordVerified landlordKycStatus')
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
@@ -102,6 +102,8 @@ export async function getManagedUsers(req, res) {
         role,
         phone: user.phone || '',
         isEmailVerified: Boolean(user.isEmailVerified),
+        isLandlordVerified: Boolean(user.isLandlordVerified),
+        landlordKycStatus: user.landlordKycStatus || 'not_submitted',
         accountStatus: String(user.accountStatus || 'active').toLowerCase(),
         suspensionUntil: user.suspensionUntil || null,
         accountActionReason: user.accountActionReason || '',

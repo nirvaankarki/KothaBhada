@@ -35,7 +35,9 @@ export async function verifyEmail(req, res) {
                     email: user.email,
                     role: user.role,
                     phone: user.phone || '',
-                    isEmailVerified: true
+                    isEmailVerified: true,
+                    isLandlordVerified: Boolean(user.isLandlordVerified),
+                    landlordKycStatus: user.landlordKycStatus || 'not_submitted'
                 }
             });
         }
@@ -68,7 +70,9 @@ export async function verifyEmail(req, res) {
                 email: user.email,
                 role: user.role,
                 phone: user.phone || '',
-                isEmailVerified: true
+                isEmailVerified: true,
+                isLandlordVerified: Boolean(user.isLandlordVerified),
+                landlordKycStatus: user.landlordKycStatus || 'not_submitted'
             }
         });
     } catch (error) {

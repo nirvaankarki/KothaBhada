@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CalendarDays, Heart, History, ShieldAlert, Trash2, Loader2 } from 'lucide-react';
+import { CalendarDays, Heart, History, ShieldAlert, Trash2 } from 'lucide-react';
 import api from '../../utils/api';
 import DashboardHeader from './DashboardHeader';
 import StatCard from './StatCard';
 import RecentActivityItem from './RecentActivityItem';
 import RevenueChartCard from './RevenueChartCard';
 import ReportCenterPanel from '../shared/ReportCenterPanel';
+import ConfirmModal from '../ConfirmModal';
 import { useToast } from '../../context/ToastContext';
 
 const formatTimeSlot = (value) => {
@@ -111,6 +112,7 @@ const RentalDashboard = ({
   const [bookingEditDrafts, setBookingEditDrafts] = useState({});
   const [savingBookingId, setSavingBookingId] = useState('');
   const [showClearHistoryModal, setShowClearHistoryModal] = useState(false);
+  const [pendingFavoriteRemoval, setPendingFavoriteRemoval] = useState(null);
   const [isClearing, setIsClearing] = useState(false);
   const { showToast } = useToast();
 
@@ -167,7 +169,7 @@ const RentalDashboard = ({
     });
   };
 
-  const handleRemoveFavorite = async (item) => {
+  const executeRemoveFavorite = async (item) => {
     const previousFavorites = localFavorites;
     setLocalFavorites((prev) => prev.filter((fav) => fav.listingId !== item.listingId));
 
@@ -182,6 +184,23 @@ const RentalDashboard = ({
       setLocalFavorites(previousFavorites);
       showToast({ type: 'error', title: 'Action failed', message: err?.response?.data?.message || 'Could not remove favorite.' });
     }
+  };
+
+  const handleRemoveFavoriteRequest = (item) => {
+    if (!item?.listingId) return;
+    setPendingFavoriteRemoval(item);
+  };
+
+  const handleCancelRemoveFavorite = () => {
+    setPendingFavoriteRemoval(null);
+  };
+
+  const handleConfirmRemoveFavorite = async () => {
+    const item = pendingFavoriteRemoval;
+    if (!item) return;
+
+    setPendingFavoriteRemoval(null);
+    await executeRemoveFavorite(item);
   };
 
   const handleRequestClearHistory = () => {
@@ -206,10 +225,6 @@ const RentalDashboard = ({
     } finally {
       setIsClearing(false);
     }
-  };
-
-  const handleCancelClearHistory = () => {
-    setShowClearHistoryModal(false);
   };
 
   const handleRefreshReports = async () => {
@@ -504,7 +519,7 @@ const RentalDashboard = ({
               <button
                 type="button"
                 onClick={() => handleStartBookingEdit(booking)}
-                className="rounded-md border border-[#3A5AFF] bg-white px-3 py-1.5 text-xs font-semibold text-[#3A5AFF] hover:bg-[#3A5AFF]/5"
+                className="kb-btn kb-btn-secondary kb-btn-sm"
               >
                 Edit Request
               </button>
@@ -662,7 +677,7 @@ const RentalDashboard = ({
                 type="button"
                 onClick={() => handleSaveBookingEdit(booking._id)}
                 disabled={isSaving}
-                className="rounded-md bg-[#3A5AFF] px-3.5 py-2 text-xs font-semibold text-white hover:bg-[#3150e0] disabled:opacity-60"
+                className="kb-btn kb-btn-primary kb-btn-sm"
               >
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
@@ -671,7 +686,7 @@ const RentalDashboard = ({
                 type="button"
                 onClick={() => handleCancelBookingEdit(booking._id)}
                 disabled={isSaving}
-                className="rounded-md border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                className="kb-btn kb-btn-secondary kb-btn-sm"
               >
                 Cancel
               </button>
@@ -813,7 +828,7 @@ const RentalDashboard = ({
                           <h4 className="text-base font-bold text-gray-900 line-clamp-1">{item.title || 'Listing'}</h4>
                           <button
                             type="button"
-                            onClick={() => handleRemoveFavorite(item)}
+                            onClick={() => handleRemoveFavoriteRequest(item)}
                             aria-label="Remove favorite"
                             className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
                           >
@@ -1006,33 +1021,28 @@ const RentalDashboard = ({
         )}
       </main>
 
-      {showClearHistoryModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-lg max-w-sm w-full p-6 border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Remove all history?</h3>
-            <p className="text-sm text-gray-600 mb-6">This will permanently delete your entire viewing history. This action cannot be undone.</p>
-            <div className="flex gap-3 justify-end">
-              <button
-                type="button"
-                onClick={handleCancelClearHistory}
-                disabled={isClearing}
-                className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmClearHistory}
-                disabled={isClearing}
-                className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                {isClearing && <Loader2 size={14} className="animate-spin" />}
-                {isClearing ? 'Removing...' : 'Remove All'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        open={Boolean(pendingFavoriteRemoval)}
+        title="Remove favorite listing"
+        message="Are you sure you want to remove this listing from favorites?"
+        onCancel={handleCancelRemoveFavorite}
+        onConfirm={handleConfirmRemoveFavorite}
+        cancelLabel="Cancel"
+        confirmLabel="Remove"
+        confirmVariant="danger"
+      />
+
+      <ConfirmModal
+        open={showClearHistoryModal}
+        title="Remove all history?"
+        message="This will permanently delete your entire viewing history. This action cannot be undone."
+        onCancel={() => setShowClearHistoryModal(false)}
+        onConfirm={handleConfirmClearHistory}
+        cancelLabel="Cancel"
+        confirmLabel={isClearing ? 'Removing...' : 'Remove All'}
+        confirmVariant="danger"
+        isBusy={isClearing}
+      />
     </div>
   );
 };

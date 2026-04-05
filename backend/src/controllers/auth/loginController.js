@@ -53,7 +53,9 @@ export async function login(req, res) {
                 role: user.role,
                 phone: user.phone || '',
                 profilePhoto: user.profilePhoto || null,
-                isEmailVerified: user.isEmailVerified
+                isEmailVerified: user.isEmailVerified,
+                isLandlordVerified: Boolean(user.isLandlordVerified),
+                landlordKycStatus: user.landlordKycStatus || 'not_submitted'
             }
         });
     } catch (error) {

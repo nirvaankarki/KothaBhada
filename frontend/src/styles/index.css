@@ -6,6 +6,13 @@
   font-family: 'Poppins', sans-serif;
 }
 
+button:not(:disabled),
+input[type='button']:not(:disabled),
+input[type='submit']:not(:disabled),
+input[type='reset']:not(:disabled) {
+  cursor: pointer;
+}
+
 /* Tailwind v4 Custom Theme Section */
 @theme {
   /* Define Animations */
@@ -37,4 +44,122 @@
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+.kb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  border-radius: 0.75rem;
+  padding: 0.55rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: all 180ms ease;
+}
+
+.kb-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.kb-btn-primary {
+  background: #3A5AFF;
+  color: #ffffff;
+  border: 1px solid transparent;
+}
+
+.kb-btn-primary:hover:not(:disabled) {
+  background: #2F4DE0;
+}
+
+.kb-btn-secondary {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+.kb-btn-secondary:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.kb-btn-danger {
+  background: #e11d48;
+  color: #ffffff;
+  border: 1px solid transparent;
+}
+
+.kb-btn-danger:hover:not(:disabled) {
+  background: #be123c;
+}
+
+.kb-btn-success {
+  background: #059669;
+  color: #ffffff;
+  border: 1px solid transparent;
+}
+
+.kb-btn-success:hover:not(:disabled) {
+  background: #047857;
+}
+
+.kb-btn-warning {
+  background: #d97706;
+  color: #ffffff;
+  border: 1px solid transparent;
+}
+
+.kb-btn-warning:hover:not(:disabled) {
+  background: #b45309;
+}
+
+.kb-btn-soft-danger {
+  background: #fff1f2;
+  color: #be123c;
+  border: 1px solid #fecdd3;
+}
+
+.kb-btn-soft-danger:hover:not(:disabled) {
+  background: #ffe4e6;
+}
+
+.kb-btn-soft-success {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.kb-btn-soft-success:hover:not(:disabled) {
+  background: #d1fae5;
+}
+
+.kb-btn-soft-warning {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.kb-btn-soft-warning:hover:not(:disabled) {
+  background: #fef3c7;
+}
+
+.kb-btn-soft-info {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.kb-btn-soft-info:hover:not(:disabled) {
+  background: #dbeafe;
+}
+
+.kb-btn-sm {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.75rem;
+}
+
+.kb-btn-lg {
+  padding: 0.85rem 1.4rem;
 }

@@ -25,6 +25,7 @@ export async function getAdminOverview(req, res) {
       totalReports,
       openReports,
       inReviewReports,
+      pending3dModels,
     ] = await Promise.all([
       User.countDocuments({ role: { $in: ['user', 'landlord'] } }),
       User.countDocuments({ role: 'user' }),
@@ -55,6 +56,10 @@ export async function getAdminOverview(req, res) {
       Report.countDocuments({}),
       Report.countDocuments({ status: 'open' }),
       Report.countDocuments({ status: 'in_review' }),
+      Room.countDocuments({
+        moderationStatus: 'pending',
+        model3dUrl: { $exists: true, $type: 'string', $ne: '' },
+      }),
     ]);
 
     return res.status(200).json({
@@ -66,8 +71,10 @@ export async function getAdminOverview(req, res) {
         suspendedUsers,
         bannedUsers,
         totalListings,
+        activeRooms: activeListings,
         activeListings,
         pendingListings,
+        pending3dModels,
         approvedListings,
         rejectedListings,
         totalBookings,

@@ -406,7 +406,7 @@ const BookingForm = ({ listingId, ownerId, title, location, price, image, isBook
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-[#3b66ff] hover:bg-blue-700 text-white font-bold py-3 rounded-sm transition-colors disabled:bg-blue-300 flex items-center justify-center gap-2"
+          className="w-full kb-btn kb-btn-primary kb-btn-lg"
         >
           {loading ? 'Sending Request...' : (
             <>
@@ -433,14 +433,14 @@ const BookingForm = ({ listingId, ownerId, title, location, price, image, isBook
                     setShowBookedConfirmModal(false);
                     setPendingBookingPayload(null);
                   }}
-                  className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50"
+                  className="kb-btn kb-btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmBookedSubmission}
-                  className="px-4 py-2 rounded-lg bg-[#3b66ff] text-white text-sm font-semibold hover:bg-blue-700"
+                  className="kb-btn kb-btn-primary"
                 >
                   Send Request Anyway
                 </button>

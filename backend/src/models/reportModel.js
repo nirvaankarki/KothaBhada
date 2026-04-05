@@ -80,7 +80,7 @@ const reportSchema = new mongoose.Schema({
   },
   adminDecisionAction: {
     type: String,
-    enum: ['none', 'reject_listing', 'ban_landlord'],
+    enum: ['none', 'reject_listing', 'ban_landlord', 'warn_landlord', 'delete_listing'],
     default: 'none',
     index: true,
   },

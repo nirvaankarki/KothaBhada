@@ -7,6 +7,8 @@ import ConfirmModal from '../ConfirmModal';
 const DashboardHeader = ({
   profilePhoto,
   profileName,
+  title = 'Overview',
+  subtitle = 'Manage your profile and publish rental inventory from one place.',
   notifications = [],
   unreadNotifications = 0,
   onMarkNotificationRead,
@@ -63,8 +65,8 @@ const DashboardHeader = ({
     <>
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-7">
         <div>
-          <h2 className="text-3xl font-black text-gray-800">Overview</h2>
-          <p className="mt-1 text-sm text-gray-500">Manage your profile and publish rental inventory from one place.</p>
+          <h2 className="text-3xl font-black text-gray-800">{title}</h2>
+          <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
         </div>
         <div className="flex items-center gap-5">
           <div className="relative" ref={notificationMenuRef}>
@@ -193,7 +195,7 @@ const DashboardHeader = ({
                 <button
                   type="button"
                   onClick={handleLogoutRequest}
-                  className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors text-sm font-semibold"
+                  className="mt-3 w-full kb-btn kb-btn-soft-danger"
                 >
                   <LogOut size={16} /> Logout
                 </button>
@@ -203,33 +205,16 @@ const DashboardHeader = ({
         </div>
       </header>
 
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-[1px] p-4">
-          <div className="min-h-full flex items-center justify-center">
-            <section className="w-full max-w-md bg-white p-6 rounded-2xl shadow-xl border border-slate-200">
-              <h3 className="text-lg font-bold text-[#132238]">Confirm Logout</h3>
-              <p className="mt-2 text-sm text-gray-600">Are you sure you want to logout from your account?</p>
-
-              <div className="mt-5 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowLogoutConfirm(false)}
-                  className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700"
-                >
-                  Logout
-                </button>
-              </div>
-            </section>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        open={showLogoutConfirm}
+        title="Confirm Logout"
+        message="Are you sure you want to logout from your account?"
+        onCancel={() => setShowLogoutConfirm(false)}
+        onConfirm={handleLogout}
+        cancelLabel="Cancel"
+        confirmLabel="Logout"
+        confirmVariant="danger"
+      />
 
       <ConfirmModal
         open={showClearNotificationsConfirm}

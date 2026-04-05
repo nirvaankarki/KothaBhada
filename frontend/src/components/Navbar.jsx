@@ -27,6 +27,7 @@ const Navbar = () => {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [showClearNotificationsConfirm, setShowClearNotificationsConfirm] = useState(false);
+  const [showRemovePhotoConfirm, setShowRemovePhotoConfirm] = useState(false);
   const fileInputRef = useRef(null);
   const menuRef = useRef(null);
   const notificationRef = useRef(null);
@@ -161,6 +162,16 @@ const Navbar = () => {
   const handleLogoutRequest = () => {
     setIsMenuOpen(false);
     setShowLogoutConfirm(true);
+  };
+
+  const handleRemovePhotoRequest = () => {
+    if (!user?.profilePhoto || isSavingPhoto) return;
+    setShowRemovePhotoConfirm(true);
+  };
+
+  const handleConfirmRemovePhoto = async () => {
+    await handleRemovePhoto();
+    setShowRemovePhotoConfirm(false);
   };
 
   const handleSaveField = async (field) => {
@@ -518,16 +529,16 @@ const Navbar = () => {
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isSavingPhoto}
-                            className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg bg-[#3b82f6] hover:bg-blue-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
+                            className="flex-1 kb-btn kb-btn-primary kb-btn-sm"
                           >
                             <Upload size={14} /> Upload
                           </button>
                           {user?.profilePhoto && (
                             <button
                               type="button"
-                              onClick={handleRemovePhoto}
+                              onClick={handleRemovePhotoRequest}
                               disabled={isSavingPhoto}
-                              className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-60 text-xs font-bold text-white transition-colors"
+                              className="flex-1 kb-btn kb-btn-danger kb-btn-sm"
                             >
                               <Trash2 size={14} /> Remove
                             </button>
@@ -677,7 +688,7 @@ const Navbar = () => {
                 <button
                   type="button"
                   onClick={handleLogoutRequest}
-                  className="mt-3 w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors text-sm font-semibold"
+                  className="mt-3 w-full kb-btn kb-btn-soft-danger"
                 >
                   <Trash2 size={14} /> Logout
                 </button>
@@ -696,33 +707,16 @@ const Navbar = () => {
         </div>
       )}
 
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-[1px] p-4">
-          <div className="min-h-full flex items-center justify-center">
-            <section className="w-full max-w-md bg-white p-6 rounded-2xl shadow-xl border border-slate-200">
-              <h3 className="text-lg font-bold text-[#132238]">Confirm Logout</h3>
-              <p className="mt-2 text-sm text-gray-600">Are you sure you want to logout from your account?</p>
-
-              <div className="mt-5 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowLogoutConfirm(false)}
-                  className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700"
-                >
-                  Logout
-                </button>
-              </div>
-            </section>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        open={showLogoutConfirm}
+        title="Confirm Logout"
+        message="Are you sure you want to logout from your account?"
+        onCancel={() => setShowLogoutConfirm(false)}
+        onConfirm={handleLogout}
+        cancelLabel="Cancel"
+        confirmLabel="Logout"
+        confirmVariant="danger"
+      />
 
       <ConfirmModal
         open={showClearNotificationsConfirm}
@@ -733,6 +727,18 @@ const Navbar = () => {
         cancelLabel="Cancel"
         confirmLabel="Clear all"
         confirmVariant="danger"
+      />
+
+      <ConfirmModal
+        open={showRemovePhotoConfirm}
+        title="Remove profile photo"
+        message="Are you sure you want to remove your profile photo?"
+        onCancel={() => setShowRemovePhotoConfirm(false)}
+        onConfirm={handleConfirmRemovePhoto}
+        cancelLabel="Cancel"
+        confirmLabel="Remove"
+        confirmVariant="danger"
+        isBusy={isSavingPhoto}
       />
     </nav>
   );

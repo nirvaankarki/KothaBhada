@@ -61,7 +61,7 @@ const ReportCenterPanel = ({
             <button
               type="button"
               onClick={handleRefreshReports}
-              className="px-3 py-2 rounded-sm text-xs font-bold text-gray-700 border border-gray-200 hover:bg-gray-50"
+              className="kb-btn kb-btn-secondary kb-btn-sm"
             >
               Refresh
             </button>
@@ -124,7 +124,7 @@ const ReportCenterPanel = ({
           <button
             type="submit"
             disabled={reportSubmitting}
-            className="px-4 py-2 rounded-sm bg-[#3b66ff] text-white text-sm font-bold hover:bg-[#2f55d4] disabled:opacity-60"
+            className="kb-btn kb-btn-primary"
           >
             {reportSubmitting ? 'Submitting...' : 'Submit Report'}
           </button>

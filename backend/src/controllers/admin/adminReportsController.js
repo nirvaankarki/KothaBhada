@@ -2,18 +2,13 @@ import mongoose from 'mongoose';
 import { Report } from '../../models/reportModel.js';
 import { Notification } from '../../models/notificationModel.js';
 import { Room } from '../../models/roomModel.js';
-import { User } from '../../models/userModel.js';
 import { logAdminAction } from '../../utils/adminAuditLogger.js';
 
 const ALLOWED_REPORT_STATUSES = new Set(['open', 'in_review', 'resolved', 'dismissed']);
+const ALLOWED_LISTING_CONTENT_ACTIONS = new Set(['delete_listing', 'warn_landlord']);
 
 function cleanText(value) {
   return String(value || '').trim();
-}
-
-function normalizeSeverity(value) {
-  const normalized = cleanText(value).toLowerCase();
-  return ['minor', 'major'].includes(normalized) ? normalized : '';
 }
 
 export async function getAdminReports(req, res) {
@@ -65,22 +60,22 @@ export async function getAdminReports(req, res) {
   }
 }
 
-export async function applyAdminListingReportDecision(req, res) {
+export async function applyAdminReportedListingAction(req, res) {
   try {
     const { reportId } = req.params;
-    const severity = normalizeSeverity(req.body?.severity);
+    const action = cleanText(req.body?.action).toLowerCase();
     const adminNote = cleanText(req.body?.adminNote);
 
     if (!mongoose.Types.ObjectId.isValid(String(reportId || ''))) {
       return res.status(400).json({ message: 'Invalid report id' });
     }
 
-    if (!severity) {
-      return res.status(400).json({ message: 'Severity must be minor or major' });
+    if (!ALLOWED_LISTING_CONTENT_ACTIONS.has(action)) {
+      return res.status(400).json({ message: 'action must be delete_listing or warn_landlord' });
     }
 
     if (!adminNote) {
-      return res.status(400).json({ message: 'Admin decision note is required' });
+      return res.status(400).json({ message: 'Admin note is required for this action' });
     }
 
     const report = await Report.findById(reportId);
@@ -89,79 +84,26 @@ export async function applyAdminListingReportDecision(req, res) {
     }
 
     if (String(report.targetType || '').toLowerCase() !== 'listing') {
-      return res.status(400).json({ message: 'This decision endpoint is only for listing reports' });
+      return res.status(400).json({ message: 'This action is only allowed for listing reports' });
     }
 
     if (['resolved', 'dismissed'].includes(String(report.status || '').toLowerCase())) {
       return res.status(409).json({ message: 'This report is already finalized' });
     }
 
-    const listingIdCandidate = report.targetListingId || (mongoose.Types.ObjectId.isValid(String(report.targetId || '')) ? report.targetId : null);
-    const listing = listingIdCandidate
-      ? await Room.findById(listingIdCandidate)
-      : null;
-
+    const listingIdCandidate = report.targetListingId
+      || (mongoose.Types.ObjectId.isValid(String(report.targetId || '')) ? report.targetId : null);
+    const listing = listingIdCandidate ? await Room.findById(listingIdCandidate) : null;
     const landlordId = report.targetOwnerId || listing?.ownerId || null;
-    const reportReason = String(report.reasonCategory || 'policy_violation').replace('_', ' ');
 
-    if (severity === 'minor') {
-      if (!listing) {
-        return res.status(400).json({ message: 'Listing is required to apply minor report decision' });
-      }
-
-      listing.status = 'inactive';
-      listing.moderationStatus = 'rejected';
-      listing.moderationNote = `Rejected after renter report (${reportReason}). ${adminNote}`;
-      listing.moderationReviewedAt = new Date();
-      listing.moderationReviewedBy = req.user?.userId || null;
-      await listing.save();
-    }
-
-    if (severity === 'major') {
-      if (!landlordId || !mongoose.Types.ObjectId.isValid(String(landlordId))) {
-        return res.status(400).json({ message: 'Landlord account could not be determined for this report' });
-      }
-
-      const landlordUser = await User.findById(landlordId);
-      if (!landlordUser) {
-        return res.status(404).json({ message: 'Landlord account not found for this report' });
-      }
-
-      landlordUser.accountStatus = 'banned';
-      landlordUser.suspensionUntil = null;
-      landlordUser.accountActionReason = `Banned after major listing report: ${adminNote}`;
-      landlordUser.accountActionBy = req.user?.userId || null;
-      landlordUser.accountActionAt = new Date();
-      await landlordUser.save();
-
-      if (listing) {
-        listing.status = 'inactive';
-        listing.moderationStatus = 'rejected';
-        listing.moderationNote = `Rejected and owner banned after major report. ${adminNote}`;
-        listing.moderationReviewedAt = new Date();
-        listing.moderationReviewedBy = req.user?.userId || null;
-        await listing.save();
-      }
-
-      await Notification.create({
-        userId: landlordUser._id,
-        role: 'landlord',
-        type: 'account_action',
-        title: 'Account banned',
-        message: `Your account has been banned by admin after report review. Reason: ${adminNote}`,
-        metadata: {
-          accountStatus: 'banned',
-          reason: adminNote,
-          reportId: String(report._id),
-          listingId: listing ? String(listing._id) : String(report.targetId || ''),
-        },
-      });
+    if (action === 'delete_listing' && listing) {
+      await Room.findByIdAndDelete(listing._id);
     }
 
     report.status = 'resolved';
     report.adminNote = adminNote;
-    report.adminDecisionSeverity = severity;
-    report.adminDecisionAction = severity === 'major' ? 'ban_landlord' : 'reject_listing';
+    report.adminDecisionSeverity = action === 'delete_listing' ? 'major' : 'minor';
+    report.adminDecisionAction = action;
     report.resolvedBy = req.user?.userId || null;
     report.resolvedAt = new Date();
     if (!report.targetListingId && listing?._id) {
@@ -172,61 +114,62 @@ export async function applyAdminListingReportDecision(req, res) {
     }
     await report.save();
 
-    await Notification.create({
-      userId: report.reporterId,
-      role: report.reporterRole,
-      type: 'report_status_updated',
-      title: 'Report decision completed',
-      message: severity === 'major'
-        ? `Your listing report was marked major. The landlord account has been banned. Note: ${adminNote}`
-        : `Your listing report was marked minor. The property has been rejected. Note: ${adminNote}`,
-      metadata: {
-        reportId: String(report._id),
-        severity,
-        listingId: listing ? String(listing._id) : String(report.targetId || ''),
-      },
-    });
-
-    if (landlordId && severity === 'minor') {
+    if (landlordId && mongoose.Types.ObjectId.isValid(String(landlordId))) {
       await Notification.create({
         userId: landlordId,
         role: 'landlord',
-        type: 'listing_rejected',
-        title: 'Listing rejected after report review',
-        message: `Your listing was rejected after admin reviewed a renter report. Reason: ${adminNote}`,
+        type: action === 'delete_listing' ? 'listing_deleted_by_admin' : 'listing_warning',
+        title: action === 'delete_listing' ? 'Listing removed by admin' : 'Warning on your listing',
+        message: action === 'delete_listing'
+          ? `Your listing has been removed by admin after report review. Reason: ${adminNote}`
+          : `Admin warning on your listing: ${adminNote}`,
         metadata: {
           reportId: String(report._id),
           listingId: listing ? String(listing._id) : String(report.targetId || ''),
-          moderationStatus: 'rejected',
-          moderationNote: adminNote,
+          action,
         },
       });
     }
 
+    await Notification.create({
+      userId: report.reporterId,
+      role: report.reporterRole,
+      type: 'report_status_updated',
+      title: action === 'delete_listing' ? 'Reported listing removed' : 'Warning sent to landlord',
+      message: action === 'delete_listing'
+        ? `Admin removed the reported listing. Note: ${adminNote}`
+        : `Admin sent a warning to the landlord. Note: ${adminNote}`,
+      metadata: {
+        reportId: String(report._id),
+        action,
+        status: 'resolved',
+      },
+    });
+
     await logAdminAction({
       adminUser: req.user,
-      action: severity === 'major' ? 'resolve_report_major_ban_landlord' : 'resolve_report_minor_reject_listing',
+      action: action === 'delete_listing' ? 'delete_reported_listing' : 'warn_landlord_for_listing_report',
       targetType: 'report',
       targetId: String(report._id),
       targetLabel: listing?.title || String(report.targetId || 'listing-report'),
       reason: adminNote,
       metadata: {
-        severity,
+        action,
         listingId: listing ? String(listing._id) : String(report.targetId || ''),
         landlordId: landlordId ? String(landlordId) : '',
       },
     });
 
     return res.status(200).json({
-      message: severity === 'major'
-        ? 'Major report resolved: landlord banned and listing blocked'
-        : 'Minor report resolved: listing rejected',
+      message: action === 'delete_listing'
+        ? 'Reported listing deleted successfully'
+        : 'Warning sent to landlord successfully',
       report,
-      listing: listing || null,
+      listingDeleted: action === 'delete_listing',
     });
   } catch (error) {
     return res.status(500).json({
-      message: 'Failed to apply listing report decision',
+      message: 'Failed to apply reported listing action',
       error: error.message,
     });
   }

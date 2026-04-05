@@ -194,10 +194,20 @@ export const useLandlordDashboardController = () => {
   const fileInputRef = useRef(null);
   const modelInputRef = useRef(null);
   const profileImageInputRef = useRef(null);
+  const profileKycDocumentInputRef = useRef(null);
 
   const [form, setForm] = useState(initialForm);
   const [editingListingId, setEditingListingId] = useState('');
-  const [profileForm, setProfileForm] = useState({ name: '', phone: '', profilePhoto: '' });
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    phone: '',
+    profilePhoto: '',
+    landlordKycDocumentType: 'citizenship',
+    landlordKycDocumentImage: '',
+    landlordKycStatus: 'not_submitted',
+    isLandlordVerified: false,
+    landlordKycReviewNote: '',
+  });
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window === 'undefined') return 'dashboard';
 
@@ -450,8 +460,22 @@ export const useLandlordDashboardController = () => {
       name: user?.name || '',
       phone: user?.phone || '',
       profilePhoto: user?.profilePhoto || '',
+      landlordKycDocumentType: user?.landlordKycDocumentType || 'citizenship',
+      landlordKycDocumentImage: user?.landlordKycDocumentImage || '',
+      landlordKycStatus: user?.landlordKycStatus || 'not_submitted',
+      isLandlordVerified: Boolean(user?.isLandlordVerified),
+      landlordKycReviewNote: user?.landlordKycReviewNote || '',
     });
-  }, [user?.name, user?.phone, user?.profilePhoto]);
+  }, [
+    user?.name,
+    user?.phone,
+    user?.profilePhoto,
+    user?.landlordKycDocumentType,
+    user?.landlordKycDocumentImage,
+    user?.landlordKycStatus,
+    user?.isLandlordVerified,
+    user?.landlordKycReviewNote,
+  ]);
 
   const handleChange = (key) => (e) => {
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
@@ -556,13 +580,59 @@ export const useLandlordDashboardController = () => {
     if (profileImageInputRef.current) profileImageInputRef.current.value = '';
   };
 
+  const handleLandlordKycDocumentSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload a valid KYC image file.');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setError('KYC image must be smaller than 10MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const encoded = event.target?.result;
+      if (typeof encoded === 'string') {
+        setProfileForm((prev) => ({
+          ...prev,
+          landlordKycDocumentImage: encoded,
+          landlordKycStatus: 'pending',
+          isLandlordVerified: false,
+          landlordKycReviewNote: '',
+        }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearLandlordKycDocument = () => {
+    setProfileForm((prev) => ({
+      ...prev,
+      landlordKycDocumentImage: '',
+      landlordKycStatus: 'not_submitted',
+      isLandlordVerified: false,
+      landlordKycReviewNote: '',
+    }));
+    if (profileKycDocumentInputRef.current) profileKycDocumentInputRef.current.value = '';
+  };
+
   const handleProfileSubmit = async (e) => {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     setError('');
     setSuccess('');
 
     if (!profileForm.name.trim()) {
       setError('Owner name cannot be empty.');
+      return;
+    }
+
+    if (profileForm.landlordKycDocumentImage && !profileForm.landlordKycDocumentType) {
+      setError('Please choose KYC document type before saving profile.');
       return;
     }
 
@@ -572,10 +642,18 @@ export const useLandlordDashboardController = () => {
         name: profileForm.name.trim(),
         phone: profileForm.phone.trim(),
         profilePhoto: profileForm.profilePhoto || null,
+        landlordKycDocumentType: profileForm.landlordKycDocumentImage
+          ? profileForm.landlordKycDocumentType
+          : '',
+        landlordKycDocumentImage: profileForm.landlordKycDocumentImage || null,
       };
       const response = await api.put('/auth/me', payload);
       if (response.data?.user) updateUser(response.data.user);
-      setSuccess('Profile updated successfully.');
+      setSuccess(
+        profileForm.landlordKycDocumentImage
+          ? 'Profile updated. Your KYC is submitted for admin review.'
+          : 'Profile updated successfully.'
+      );
     } catch (err) {
       setError(err?.response?.data?.message || 'Could not update profile.');
     } finally {
@@ -1207,6 +1285,7 @@ export const useLandlordDashboardController = () => {
       fileInputRef,
       modelInputRef,
       profileImageInputRef,
+      profileKycDocumentInputRef,
     },
     handlers: {
       setActiveTab: (tab) => {
@@ -1229,6 +1308,8 @@ export const useLandlordDashboardController = () => {
       handleProfileChange,
       handleProfileImageSelect,
       clearProfileImage,
+      handleLandlordKycDocumentSelect,
+      clearLandlordKycDocument,
       handleProfileSubmit,
       handleImageSelect,
       clearSelectedImage,

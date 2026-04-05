@@ -21,6 +21,7 @@ const UserDashboardPage = () => {
     setActiveTab,
     showClearHistoryConfirm,
     setShowClearHistoryConfirm,
+    pendingFavoriteRemoval,
     inquiryForm,
     setInquiryForm,
     bookingForm,
@@ -30,7 +31,9 @@ const UserDashboardPage = () => {
     replyDrafts,
     setReplyDrafts,
     sourceListings,
-    handleRemoveFavorite,
+    handleRemoveFavoriteRequest,
+    handleCancelRemoveFavorite,
+    handleConfirmRemoveFavorite,
     handleClearHistoryRequest,
     handleConfirmClearHistory,
     handleListingSelectForInquiry,
@@ -56,6 +59,16 @@ const UserDashboardPage = () => {
         confirmVariant="danger"
       />
 
+      <ConfirmModal
+        open={Boolean(pendingFavoriteRemoval)}
+        title="Remove favorite listing"
+        message="Are you sure you want to remove this listing from your favorites?"
+        onCancel={handleCancelRemoveFavorite}
+        onConfirm={handleConfirmRemoveFavorite}
+        confirmLabel="Remove"
+        confirmVariant="danger"
+      />
+
       <div className="max-w-300 mx-auto">
         <h1 className="text-4xl font-black text-[#1a222e] mb-6 tracking-tight">My Dashboard</h1>
 
@@ -78,11 +91,11 @@ const UserDashboardPage = () => {
             )}
 
             {activeTab === 'favorites' && (
-              <ListingCardsSection cards={favorites} cardType="favorites" onRemoveFavorite={handleRemoveFavorite} />
+              <ListingCardsSection cards={favorites} cardType="favorites" onRemoveFavorite={handleRemoveFavoriteRequest} />
             )}
 
             {activeTab === 'history' && (
-              <ListingCardsSection cards={history} cardType="history" onRemoveFavorite={handleRemoveFavorite} />
+              <ListingCardsSection cards={history} cardType="history" onRemoveFavorite={handleRemoveFavoriteRequest} />
             )}
 
             {activeTab === 'inquiries' && (

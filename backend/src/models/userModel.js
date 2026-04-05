@@ -52,6 +52,44 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: null
     },
+    landlordKycDocumentType: {
+        type: String,
+        enum: ['', 'citizenship', 'license'],
+        default: ''
+    },
+    landlordKycDocumentImage: {
+        type: String,
+        default: ''
+    },
+    landlordKycStatus: {
+        type: String,
+        enum: ['not_submitted', 'pending', 'verified', 'rejected'],
+        default: 'not_submitted',
+        index: true
+    },
+    landlordKycSubmittedAt: {
+        type: Date,
+        default: null
+    },
+    landlordKycReviewedAt: {
+        type: Date,
+        default: null
+    },
+    landlordKycReviewedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    landlordKycReviewNote: {
+        type: String,
+        default: '',
+        trim: true
+    },
+    isLandlordVerified: {
+        type: Boolean,
+        default: false,
+        index: true
+    },
     resetCode: {
         type: String,
         default: null
