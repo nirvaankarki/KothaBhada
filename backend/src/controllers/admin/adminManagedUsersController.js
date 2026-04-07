@@ -2,8 +2,9 @@ import { User } from '../../models/userModel.js';
 import { Room } from '../../models/roomModel.js';
 import { Booking } from '../../models/bookingModel.js';
 import { Inquiry } from '../../models/inquiryModel.js';
+import { ViewHistory } from '../../models/viewHistoryModel.js';
 
-const ALLOWED_ROLE_FILTERS = new Set(['user', 'landlord', 'admin']);
+const ALLOWED_ROLE_FILTERS = new Set(['user', 'landlord', 'moderator', 'admin']);
 
 function toCountMap(rows = []) {
   return new Map(rows.map((row) => [String(row._id), Number(row.count || 0)]));
@@ -20,7 +21,7 @@ export async function getManagedUsers(req, res) {
     if (ALLOWED_ROLE_FILTERS.has(roleFilter)) {
       filter.role = roleFilter;
     } else {
-      filter.role = { $in: ['user', 'landlord'] };
+      filter.role = { $in: ['user', 'landlord', 'moderator'] };
     }
 
     if (searchText) {
@@ -32,7 +33,7 @@ export async function getManagedUsers(req, res) {
     }
 
     const users = await User.find(filter)
-      .select('_id name email role phone createdAt isEmailVerified accountStatus suspensionUntil accountActionReason accountActionAt isLandlordVerified landlordKycStatus')
+      .select('_id name email role phone createdAt isEmailVerified accountStatus suspensionUntil accountActionReason accountActionAt isLandlordVerified landlordKycStatus lastLoginAt moderatorPermissions')
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
@@ -57,6 +58,8 @@ export async function getManagedUsers(req, res) {
       landlordActiveListingRows,
       landlordBookingRows,
       landlordInquiryRows,
+      lastViewedRows,
+      landlordLastUpdatedRows,
     ] = await Promise.all([
       Booking.aggregate([
         { $match: { userId: { $in: userIds } } },
@@ -82,6 +85,14 @@ export async function getManagedUsers(req, res) {
         { $match: { ownerId: { $in: userIds } } },
         { $group: { _id: '$ownerId', count: { $sum: 1 } } },
       ]),
+      ViewHistory.aggregate([
+        { $match: { userId: { $in: userIds } } },
+        { $group: { _id: '$userId', lastViewedAt: { $max: '$viewedAt' } } },
+      ]),
+      Room.aggregate([
+        { $match: { ownerId: { $in: userIds } } },
+        { $group: { _id: '$ownerId', lastListingUpdatedAt: { $max: '$updatedAt' } } },
+      ]),
     ]);
 
     const renterBookingsMap = toCountMap(renterBookingRows);
@@ -90,6 +101,8 @@ export async function getManagedUsers(req, res) {
     const landlordActiveListingsMap = toCountMap(landlordActiveListingRows);
     const landlordBookingsMap = toCountMap(landlordBookingRows);
     const landlordInquiriesMap = toCountMap(landlordInquiryRows);
+    const lastViewedMap = new Map(lastViewedRows.map((row) => [String(row._id), row.lastViewedAt || null]));
+    const landlordLastUpdatedMap = new Map(landlordLastUpdatedRows.map((row) => [String(row._id), row.lastListingUpdatedAt || null]));
 
     const enrichedUsers = users.map((user) => {
       const userId = String(user._id);
@@ -101,6 +114,7 @@ export async function getManagedUsers(req, res) {
         email: user.email,
         role,
         phone: user.phone || '',
+        moderatorPermissions: Array.isArray(user.moderatorPermissions) ? user.moderatorPermissions : [],
         isEmailVerified: Boolean(user.isEmailVerified),
         isLandlordVerified: Boolean(user.isLandlordVerified),
         landlordKycStatus: user.landlordKycStatus || 'not_submitted',
@@ -108,6 +122,9 @@ export async function getManagedUsers(req, res) {
         suspensionUntil: user.suspensionUntil || null,
         accountActionReason: user.accountActionReason || '',
         accountActionAt: user.accountActionAt || null,
+        lastLoginAt: user.lastLoginAt || null,
+        lastViewedAt: lastViewedMap.get(userId) || null,
+        landlordLastListingUpdatedAt: landlordLastUpdatedMap.get(userId) || null,
         createdAt: user.createdAt,
         activity: {
           renterBookings: renterBookingsMap.get(userId) || 0,

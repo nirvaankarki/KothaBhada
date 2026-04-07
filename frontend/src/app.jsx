@@ -58,8 +58,8 @@ export function App() {
           path="/admin/dashboard"
           element={(
             <ProtectedRoute
-              message="Please log in as an admin to access admin dashboard."
-              allowedRoles={['admin']}
+              message="Please log in as an admin or moderator to access admin dashboard."
+              allowedRoles={['admin', 'moderator']}
             >
               <AdminDashboardPage />
             </ProtectedRoute>

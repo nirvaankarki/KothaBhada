@@ -19,7 +19,7 @@ export async function authenticate(req, res, next) {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
 
-        const userDoc = await User.findById(decoded.userId).select('email role accountStatus suspensionUntil accountActionReason accountActionAt accountActionBy');
+        const userDoc = await User.findById(decoded.userId).select('email role moderatorPermissions accountStatus suspensionUntil accountActionReason accountActionAt accountActionBy');
         const access = await resolveAccountAccess(userDoc);
 
         if (access.blocked) {
@@ -30,6 +30,7 @@ export async function authenticate(req, res, next) {
             userId: String(userDoc._id),
             email: userDoc.email,
             role: String(userDoc.role || '').toLowerCase(),
+            moderatorPermissions: Array.isArray(userDoc.moderatorPermissions) ? userDoc.moderatorPermissions : [],
         };
 
         next();
@@ -50,7 +51,7 @@ export async function optionalAuthenticate(req, res, next) {
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        const userDoc = await User.findById(decoded.userId).select('email role accountStatus suspensionUntil accountActionReason accountActionAt accountActionBy');
+        const userDoc = await User.findById(decoded.userId).select('email role moderatorPermissions accountStatus suspensionUntil accountActionReason accountActionAt accountActionBy');
         const access = await resolveAccountAccess(userDoc);
 
         if (access.blocked) {
@@ -62,6 +63,7 @@ export async function optionalAuthenticate(req, res, next) {
             userId: String(userDoc._id),
             email: userDoc.email,
             role: String(userDoc.role || '').toLowerCase(),
+            moderatorPermissions: Array.isArray(userDoc.moderatorPermissions) ? userDoc.moderatorPermissions : [],
         };
     } catch {
         req.user = null;

@@ -36,6 +36,9 @@ export async function login(req, res) {
             return res.status(access.statusCode || 403).json({ message: access.message || 'Access denied' });
         }
 
+        user.lastLoginAt = new Date();
+        await user.save();
+
         // Generate JWT token
         const token = jwt.sign(
             { userId: user._id, email: user.email, role: user.role },
@@ -55,7 +58,8 @@ export async function login(req, res) {
                 profilePhoto: user.profilePhoto || null,
                 isEmailVerified: user.isEmailVerified,
                 isLandlordVerified: Boolean(user.isLandlordVerified),
-                landlordKycStatus: user.landlordKycStatus || 'not_submitted'
+                landlordKycStatus: user.landlordKycStatus || 'not_submitted',
+                moderatorPermissions: Array.isArray(user.moderatorPermissions) ? user.moderatorPermissions : []
             }
         });
     } catch (error) {

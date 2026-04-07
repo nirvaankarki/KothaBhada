@@ -1,7 +1,10 @@
 import mongoose from 'mongoose';
 import { User } from '../../models/userModel.js';
+import { Notification } from '../../models/notificationModel.js';
+import { logAdminAction } from '../../utils/adminAuditLogger.js';
+import { MODERATOR_PERMISSIONS, normalizePermissionList } from '../../utils/adminPermissions.js';
 
-const ALLOWED_ROLES = new Set(['user', 'landlord', 'admin']);
+const ALLOWED_ROLES = new Set(['user', 'landlord', 'moderator', 'admin']);
 
 function normalizeRole(role) {
   return String(role || '').trim().toLowerCase();
@@ -9,24 +12,26 @@ function normalizeRole(role) {
 
 export async function setUserRole(req, res) {
   try {
-    const { userId, email, role } = req.body;
+    const requestUserId = req.params?.userId || req.body?.userId;
+    const { email, role, moderatorPermissions = [] } = req.body;
     const normalizedRole = normalizeRole(role);
+    const normalizedPermissions = normalizePermissionList(moderatorPermissions);
 
     if (!normalizedRole || !ALLOWED_ROLES.has(normalizedRole)) {
-      return res.status(400).json({ message: 'Role must be user, landlord, or admin' });
+      return res.status(400).json({ message: 'Role must be user, landlord, moderator, or admin' });
     }
 
-    if (!userId && !email) {
+    if (!requestUserId && !email) {
       return res.status(400).json({ message: 'Provide userId or email to update role' });
     }
 
     let targetUser = null;
 
-    if (userId) {
-      if (!mongoose.Types.ObjectId.isValid(String(userId))) {
+    if (requestUserId) {
+      if (!mongoose.Types.ObjectId.isValid(String(requestUserId))) {
         return res.status(400).json({ message: 'Invalid userId format' });
       }
-      targetUser = await User.findById(userId);
+      targetUser = await User.findById(requestUserId);
     } else {
       const normalizedEmail = String(email || '').trim().toLowerCase();
       if (!normalizedEmail) {
@@ -54,7 +59,7 @@ export async function setUserRole(req, res) {
       }
     }
 
-    if (currentRole === normalizedRole) {
+    if (currentRole === normalizedRole && normalizedRole !== 'moderator') {
       return res.status(200).json({
         message: 'User role is already set',
         user: {
@@ -66,8 +71,43 @@ export async function setUserRole(req, res) {
       });
     }
 
+    if (normalizedRole === 'moderator' && !normalizedPermissions.length) {
+      return res.status(400).json({
+        message: `Please provide moderatorPermissions. Allowed permissions: ${MODERATOR_PERMISSIONS.join(', ')}`,
+      });
+    }
+
     targetUser.role = normalizedRole;
+    targetUser.moderatorPermissions = normalizedRole === 'moderator' ? normalizedPermissions : [];
     await targetUser.save();
+
+    await Notification.create({
+      userId: targetUser._id,
+      role: normalizedRole,
+      type: 'role_updated',
+      title: 'Account role updated',
+      message: normalizedRole === 'moderator'
+        ? `Your account role is now moderator. Permissions: ${normalizedPermissions.join(', ')}`
+        : `Your account role is now ${normalizedRole}.`,
+      metadata: {
+        role: normalizedRole,
+        moderatorPermissions: normalizedPermissions,
+      },
+    });
+
+    await logAdminAction({
+      adminUser: req.user,
+      action: 'update_user_role',
+      targetType: 'user',
+      targetId: String(targetUser._id),
+      targetLabel: targetUser.email,
+      reason: `Role changed to ${normalizedRole}`,
+      metadata: {
+        previousRole: currentRole,
+        role: normalizedRole,
+        moderatorPermissions: normalizedPermissions,
+      },
+    });
 
     return res.status(200).json({
       message: 'User role updated successfully',
@@ -76,6 +116,7 @@ export async function setUserRole(req, res) {
         name: targetUser.name,
         email: targetUser.email,
         role: targetUser.role,
+        moderatorPermissions: Array.isArray(targetUser.moderatorPermissions) ? targetUser.moderatorPermissions : [],
       },
     });
   } catch (error) {

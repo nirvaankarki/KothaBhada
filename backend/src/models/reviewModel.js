@@ -31,6 +31,26 @@ const reviewSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  moderationStatus: {
+    type: String,
+    enum: ['visible', 'hidden', 'removed'],
+    default: 'visible',
+    index: true,
+  },
+  moderationNote: {
+    type: String,
+    default: '',
+    trim: true,
+  },
+  moderatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
+  moderatedAt: {
+    type: Date,
+    default: null,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -469,6 +469,25 @@ function parseImages(input) {
     return [];
 }
 
+function parseTags(input) {
+    if (Array.isArray(input)) {
+        return Array.from(new Set(input
+            .map((tag) => String(tag || '').trim())
+            .filter(Boolean)
+            .slice(0, 20)));
+    }
+
+    if (typeof input === 'string') {
+        return Array.from(new Set(String(input || '')
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter(Boolean)
+            .slice(0, 20)));
+    }
+
+    return [];
+}
+
 function isDataUri(value) {
     return /^data:[^;]+;base64,/.test(String(value || '').trim());
 }
@@ -507,7 +526,7 @@ async function resolveImageList(values) {
 
 export async function getAllRooms(req, res) {
     try {
-        const rooms = await Room.find(getApprovedListingFilter()).sort({ createdAt: -1 }).lean();
+        const rooms = await Room.find(getApprovedListingFilter()).sort({ isFeatured: -1, featuredRank: -1, createdAt: -1 }).lean();
         const confirmedListingIds = await Booking.distinct('listingId', { status: 'confirmed' });
         const confirmedSet = new Set(confirmedListingIds.map((id) => String(id)));
         const ownerIds = Array.from(new Set(rooms.map((room) => String(room.ownerId || '')).filter(Boolean)));
@@ -566,6 +585,7 @@ export async function createRooms(req, res) {
             tourPoints,
             ownerPhone,
             status,
+            tags,
         } = req.body;
 
         if (!title || !String(title).trim()) {
@@ -637,6 +657,11 @@ export async function createRooms(req, res) {
             moderationNote: '',
             moderationReviewedAt: null,
             moderationReviewedBy: null,
+            model3dHealthStatus: model3dUrl ? 'unchecked' : 'unchecked',
+            model3dHealthNote: '',
+            model3dReviewedAt: null,
+            model3dReviewedBy: null,
+            tags: parseTags(tags),
         });
 
         await newRoom.save();
@@ -662,7 +687,7 @@ export async function updateRooms(req, res) {
             return res.status(403).json({ message: 'You can update only your own listings' });
         }
 
-        const allowedKeys = ['title', 'price', 'description', 'location', 'latitude', 'longitude', 'bedrooms', 'bathrooms', 'areaSqFt', 'keyFeatures', 'areaHighlights', 'image', 'images', 'model3dUrl', 'tourPoints', 'ownerPhone', 'status'];
+        const allowedKeys = ['title', 'price', 'description', 'location', 'latitude', 'longitude', 'bedrooms', 'bathrooms', 'areaSqFt', 'keyFeatures', 'areaHighlights', 'image', 'images', 'model3dUrl', 'tourPoints', 'ownerPhone', 'status', 'tags'];
         const updates = {};
         for (const key of allowedKeys) {
             if (req.body[key] !== undefined) {
@@ -691,6 +716,9 @@ export async function updateRooms(req, res) {
         if (updates.areaHighlights !== undefined) {
             updates.areaHighlights = parseAreaHighlights(updates.areaHighlights);
         }
+        if (updates.tags !== undefined) {
+            updates.tags = parseTags(updates.tags);
+        }
 
         if (updates.images !== undefined) {
             if (!updates.images.length && updates.image) {
@@ -708,6 +736,12 @@ export async function updateRooms(req, res) {
         updates.moderationNote = '';
         updates.moderationReviewedAt = null;
         updates.moderationReviewedBy = null;
+        if (updates.model3dUrl !== undefined) {
+            updates.model3dHealthStatus = 'unchecked';
+            updates.model3dHealthNote = '';
+            updates.model3dReviewedAt = null;
+            updates.model3dReviewedBy = null;
+        }
 
         const latitudeProvided = req.body.latitude !== undefined;
         const longitudeProvided = req.body.longitude !== undefined;
@@ -778,7 +812,7 @@ export async function getRoomById(req, res) {
             const requesterRole = String(req.user?.role || '').toLowerCase();
             const requesterId = String(req.user?.userId || '');
             const isOwner = requesterId && requesterId === String(room.ownerId || '');
-            const isAdmin = requesterRole === 'admin';
+            const isAdmin = requesterRole === 'admin' || requesterRole === 'moderator';
 
             if (!isOwner && !isAdmin) {
                 return res.status(404).json({ message: 'Room not found' });

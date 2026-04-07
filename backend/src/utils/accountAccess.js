@@ -8,7 +8,7 @@ export async function resolveAccountAccess(userDoc) {
   }
 
   const currentStatus = String(userDoc.accountStatus || 'active').toLowerCase();
-  if (currentStatus === 'active') {
+  if (currentStatus === 'active' || currentStatus === 'shadow_banned') {
     return { blocked: false, status: 'active' };
   }
 

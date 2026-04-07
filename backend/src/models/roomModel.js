@@ -81,6 +81,26 @@ const roomSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    model3dHealthStatus: {
+        type: String,
+        enum: ['unchecked', 'verified', 'broken'],
+        default: 'unchecked',
+        index: true,
+    },
+    model3dHealthNote: {
+        type: String,
+        default: '',
+        trim: true,
+    },
+    model3dReviewedAt: {
+        type: Date,
+        default: null,
+    },
+    model3dReviewedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null,
+    },
     tourPoints: {
         type: [{
             _id: false,
@@ -140,10 +160,27 @@ const roomSchema = new mongoose.Schema({
         ref: 'User',
         default: null,
     },
+    isFeatured: {
+        type: Boolean,
+        default: false,
+        index: true,
+    },
+    featuredRank: {
+        type: Number,
+        default: 0,
+        index: true,
+    },
+    tags: {
+        type: [String],
+        default: [],
+        index: true,
+    },
     createdAt: {
         type: Date,
         default: Date.now
     }
+}, {
+    timestamps: true,
 });
 
 export const Room = mongoose.model('Room', roomSchema);

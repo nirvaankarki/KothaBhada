@@ -37,20 +37,22 @@ const Login = ({ onToggle }) => {
     setLoading(true);
 
     try {
-      const selectedRole = ['landlord', 'admin'].includes(loginIntentRole) ? loginIntentRole : 'user';
-      const selectedRoleLabel = selectedRole === 'landlord' ? 'Landlord' : selectedRole === 'admin' ? 'Admin' : 'Renter';
+      const selectedRole = ['landlord', 'admin', 'moderator'].includes(loginIntentRole) ? loginIntentRole : 'user';
+      const selectedRoleLabel = selectedRole === 'landlord' ? 'Landlord' : ['admin', 'moderator'].includes(selectedRole) ? 'Admin' : 'Renter';
       const response = await api.post('/auth/login', { email, password });
       const responseRole = normalizeRole(response.data?.user?.role);
+      const isAdminIntentRoleAllowed = selectedRole === 'admin' && ['admin', 'moderator'].includes(responseRole);
 
-      if (responseRole && responseRole !== selectedRole) {
+      if (responseRole && responseRole !== selectedRole && !isAdminIntentRoleAllowed) {
         setError(`This account is not a ${selectedRoleLabel} account. Please switch role and try again.`);
         return;
       }
 
       const nextUser = await login(response.data?.token, response.data?.user);
       const activeRole = normalizeRole(nextUser?.role || response.data?.user?.role);
+      const isAdminIntentActiveRoleAllowed = selectedRole === 'admin' && ['admin', 'moderator'].includes(activeRole);
 
-      if (activeRole && activeRole !== selectedRole) {
+      if (activeRole && activeRole !== selectedRole && !isAdminIntentActiveRoleAllowed) {
         logout();
         setError(`This account is not a ${selectedRoleLabel} account. Please switch role and try again.`);
         return;

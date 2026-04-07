@@ -86,7 +86,7 @@ export const getListingReviews = async (req, res) => {
     }
 
     // Get all reviews for this listing, sorted by newest first
-    const reviews = await Review.find({ listingId })
+    const reviews = await Review.find({ listingId, moderationStatus: 'visible' })
       .populate('userId', 'name profilePhoto')
       .sort({ createdAt: -1 })
       .lean();
@@ -155,7 +155,7 @@ export const getListingAverageRating = async (req, res) => {
       });
     }
 
-    const reviews = await Review.find({ listingId }).lean();
+    const reviews = await Review.find({ listingId, moderationStatus: 'visible' }).lean();
     
     const averageRating = reviews.length > 0
       ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
@@ -180,7 +180,7 @@ export const getHighlightedReviews = async (req, res) => {
       : 3;
 
     // Pull a broad top set first, then prioritize verified + high rated + recent.
-    const baseReviews = await Review.find({})
+    const baseReviews = await Review.find({ moderationStatus: 'visible' })
       .sort({ rating: -1, createdAt: -1 })
       .limit(150)
       .populate('userId', 'name profilePhoto')

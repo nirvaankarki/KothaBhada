@@ -9,6 +9,8 @@ const DashboardHeader = ({
   profileName,
   title = 'Overview',
   subtitle = 'Manage your profile and publish rental inventory from one place.',
+  roleLabel = 'Landlord',
+  contactValue,
   notifications = [],
   unreadNotifications = 0,
   onMarkNotificationRead,
@@ -184,11 +186,11 @@ const DashboardHeader = ({
                 <div className="mt-3 rounded-xl border border-slate-200 overflow-hidden">
                   <div className="px-3 py-2.5 bg-white">
                     <p className="text-[11px] uppercase tracking-wide text-slate-400">Role</p>
-                    <p className="text-sm font-semibold text-slate-700">Landlord</p>
+                    <p className="text-sm font-semibold text-slate-700">{roleLabel}</p>
                   </div>
                   <div className="px-3 py-2.5 border-t border-slate-100 bg-white">
                     <p className="text-[11px] uppercase tracking-wide text-slate-400">Contact</p>
-                    <p className="text-sm font-semibold text-slate-700 truncate">{user?.phone || 'Not set'}</p>
+                    <p className="text-sm font-semibold text-slate-700 truncate">{contactValue || user?.phone || 'Not set'}</p>
                   </div>
                 </div>
 

@@ -3,8 +3,8 @@ import { User } from '../../models/userModel.js';
 import { Notification } from '../../models/notificationModel.js';
 import { logAdminAction } from '../../utils/adminAuditLogger.js';
 
-const ALLOWED_KYC_STATUSES = new Set(['pending', 'verified', 'rejected', 'all']);
-const ALLOWED_DECISIONS = new Set(['verify', 'reject']);
+const ALLOWED_KYC_STATUSES = new Set(['pending', 'reupload_requested', 'verified', 'rejected', 'all']);
+const ALLOWED_DECISIONS = new Set(['verify', 'reject', 'request_reupload']);
 
 function cleanText(value) {
   return String(value || '').trim();
@@ -17,7 +17,7 @@ export async function getLandlordKycQueue(req, res) {
     const limit = Math.max(1, Math.min(200, Number(req.query?.limit) || 80));
 
     if (!ALLOWED_KYC_STATUSES.has(status)) {
-      return res.status(400).json({ message: 'status must be pending, verified, rejected, or all' });
+      return res.status(400).json({ message: 'status must be pending, reupload_requested, verified, rejected, or all' });
     }
 
     const filter = {
@@ -87,11 +87,11 @@ export async function reviewLandlordKyc(req, res) {
     }
 
     if (!ALLOWED_DECISIONS.has(decision)) {
-      return res.status(400).json({ message: 'decision must be verify or reject' });
+      return res.status(400).json({ message: 'decision must be verify, reject, or request_reupload' });
     }
 
-    if (decision === 'reject' && !reviewNote) {
-      return res.status(400).json({ message: 'Please provide rejection reason for landlord feedback' });
+    if ((decision === 'reject' || decision === 'request_reupload') && !reviewNote) {
+      return res.status(400).json({ message: 'Please provide review note for landlord feedback' });
     }
 
     const landlord = await User.findById(userId);
@@ -103,7 +103,11 @@ export async function reviewLandlordKyc(req, res) {
       return res.status(400).json({ message: 'No KYC document uploaded by this landlord' });
     }
 
-    landlord.landlordKycStatus = decision === 'verify' ? 'verified' : 'rejected';
+    landlord.landlordKycStatus = decision === 'verify'
+      ? 'verified'
+      : decision === 'request_reupload'
+        ? 'reupload_requested'
+        : 'rejected';
     landlord.isLandlordVerified = decision === 'verify';
     landlord.landlordKycReviewedAt = new Date();
     landlord.landlordKycReviewedBy = req.user?.userId || null;
@@ -114,11 +118,13 @@ export async function reviewLandlordKyc(req, res) {
     await Notification.create({
       userId: landlord._id,
       role: 'landlord',
-      type: decision === 'verify' ? 'kyc_verified' : 'kyc_rejected',
-      title: decision === 'verify' ? 'KYC verified by admin' : 'KYC rejected by admin',
+      type: decision === 'verify' ? 'kyc_verified' : decision === 'request_reupload' ? 'kyc_reupload_requested' : 'kyc_rejected',
+      title: decision === 'verify' ? 'KYC verified by admin' : decision === 'request_reupload' ? 'KYC re-upload requested' : 'KYC rejected by admin',
       message: decision === 'verify'
         ? 'Your landlord KYC is approved. A verified badge is now visible on your listings.'
-        : `Your landlord KYC was rejected. ${reviewNote || 'Please upload a clear and valid document.'}`,
+        : decision === 'request_reupload'
+          ? `Please re-upload your KYC document. ${reviewNote}`
+          : `Your landlord KYC was rejected. ${reviewNote || 'Please upload a clear and valid document.'}`,
       metadata: {
         decision,
         reviewNote,
@@ -128,7 +134,7 @@ export async function reviewLandlordKyc(req, res) {
 
     await logAdminAction({
       adminUser: req.user,
-      action: decision === 'verify' ? 'verify_landlord_kyc' : 'reject_landlord_kyc',
+      action: decision === 'verify' ? 'verify_landlord_kyc' : decision === 'request_reupload' ? 'request_landlord_kyc_reupload' : 'reject_landlord_kyc',
       targetType: 'user',
       targetId: String(landlord._id),
       targetLabel: landlord.email || landlord.name || 'landlord',
@@ -142,6 +148,8 @@ export async function reviewLandlordKyc(req, res) {
     return res.status(200).json({
       message: decision === 'verify'
         ? 'Landlord marked as verified successfully'
+        : decision === 'request_reupload'
+          ? 'Re-upload request sent to landlord successfully'
         : 'Landlord KYC rejected successfully',
       landlord: {
         id: landlord._id,

@@ -31,8 +31,11 @@ export const isLandlordRole = (role) => normalizeRole(role) === 'landlord';
 
 export const isAdminRole = (role) => normalizeRole(role) === 'admin';
 
+export const isModeratorRole = (role) => normalizeRole(role) === 'moderator';
+
 export const getDashboardPathByRole = (role) => {
   const normalizedRole = normalizeRole(role);
+  if (normalizedRole === 'moderator') return '/admin/dashboard';
   if (normalizedRole === 'admin') return '/admin/dashboard';
   if (normalizedRole === 'landlord') return '/landlord/dashboard';
   return '/rental/dashboard';

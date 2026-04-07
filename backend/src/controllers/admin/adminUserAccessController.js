@@ -3,7 +3,7 @@ import { User } from '../../models/userModel.js';
 import { Notification } from '../../models/notificationModel.js';
 import { logAdminAction } from '../../utils/adminAuditLogger.js';
 
-const ALLOWED_STATUSES = new Set(['active', 'suspended', 'banned']);
+const ALLOWED_STATUSES = new Set(['active', 'suspended', 'shadow_banned', 'banned']);
 
 function cleanText(value) {
   return String(value || '').trim();
@@ -21,7 +21,7 @@ export async function setUserAccountStatus(req, res) {
     }
 
     if (!ALLOWED_STATUSES.has(accountStatus)) {
-      return res.status(400).json({ message: 'accountStatus must be active, suspended, or banned' });
+      return res.status(400).json({ message: 'accountStatus must be active, suspended, shadow_banned, or banned' });
     }
 
     const targetUser = await User.findById(userId);
@@ -55,6 +55,12 @@ export async function setUserAccountStatus(req, res) {
       targetUser.accountActionReason = reason;
       targetUser.accountActionBy = req.user?.userId || null;
       targetUser.accountActionAt = new Date();
+    } else if (accountStatus === 'shadow_banned') {
+      targetUser.accountStatus = 'shadow_banned';
+      targetUser.suspensionUntil = null;
+      targetUser.accountActionReason = reason;
+      targetUser.accountActionBy = req.user?.userId || null;
+      targetUser.accountActionAt = new Date();
     } else {
       targetUser.accountStatus = 'active';
       targetUser.suspensionUntil = null;
@@ -70,10 +76,16 @@ export async function setUserAccountStatus(req, res) {
         userId: targetUser._id,
         role: targetRole,
         type: 'account_action',
-        title: accountStatus === 'banned' ? 'Account banned' : 'Account suspended',
+        title: accountStatus === 'banned'
+          ? 'Account banned'
+          : accountStatus === 'shadow_banned'
+            ? 'Account restricted'
+            : 'Account suspended',
         message: accountStatus === 'banned'
           ? `Your account has been banned by admin. Reason: ${reason}`
-          : `Your account has been suspended by admin${targetUser.suspensionUntil ? ` until ${targetUser.suspensionUntil.toLocaleString()}` : ''}. Reason: ${reason}`,
+          : accountStatus === 'shadow_banned'
+            ? `Your account has limited platform visibility due to policy concerns. Reason: ${reason}`
+            : `Your account has been suspended by admin${targetUser.suspensionUntil ? ` until ${targetUser.suspensionUntil.toLocaleString()}` : ''}. Reason: ${reason}`,
         metadata: {
           accountStatus,
           reason,

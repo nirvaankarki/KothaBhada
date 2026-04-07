@@ -17,12 +17,16 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['user', 'landlord', 'admin'],
+        enum: ['user', 'landlord', 'moderator', 'admin'],
         default: 'user'
+    },
+    moderatorPermissions: {
+        type: [String],
+        default: [],
     },
     accountStatus: {
         type: String,
-        enum: ['active', 'suspended', 'banned'],
+        enum: ['active', 'suspended', 'shadow_banned', 'banned'],
         default: 'active',
         index: true
     },
@@ -63,7 +67,7 @@ const userSchema = new mongoose.Schema({
     },
     landlordKycStatus: {
         type: String,
-        enum: ['not_submitted', 'pending', 'verified', 'rejected'],
+        enum: ['not_submitted', 'pending', 'reupload_requested', 'verified', 'rejected'],
         default: 'not_submitted',
         index: true
     },
@@ -101,6 +105,11 @@ const userSchema = new mongoose.Schema({
     isEmailVerified: {
         type: Boolean,
         default: true
+    },
+    lastLoginAt: {
+        type: Date,
+        default: null,
+        index: true,
     },
     emailVerificationCode: {
         type: String,
