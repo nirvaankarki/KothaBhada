@@ -65,12 +65,9 @@ const Explore3DPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-[68%_32%] xl:grid-cols-[70%_30%] gap-6 items-start">
             <RoomVisualizationSection
               is3dTourStarted={controller.is3dTourStarted}
-              isAutoRotateEnabled={controller.isAutoRotateEnabled}
-              setIsAutoRotateEnabled={controller.setIsAutoRotateEnabled}
               setIs3dTourStarted={controller.setIs3dTourStarted}
-              viewerRef={controller.viewerRef}
-              model3dUrl={controller.model3dUrl}
-              tourPoints={controller.tourPoints}
+              panoramaScenes={controller.panoramaScenes}
+              panoramaImages={controller.panoramaImages}
               roomImages={controller.roomImages}
               activeRoomImageIndex={controller.activeRoomImageIndex}
               showPreviousRoomImage={controller.showPreviousRoomImage}

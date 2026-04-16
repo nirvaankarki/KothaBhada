@@ -14,7 +14,7 @@ const ListingCardsSection = ({ cards, cardType, onRemoveFavorite }) => {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {cards.map((item) => {
         const has2DRoom = Boolean(String(item?.image || '').trim() || (Array.isArray(item?.images) && item.images.length));
-        const has3DRoomTour = Boolean(String(item?.model3dUrl || '').trim());
+        const hasPanoramaTour = Array.isArray(item?.panoramaImages) && item.panoramaImages.length > 0;
 
         return (
           <div key={item._id} className="bg-white rounded-sm border border-gray-100 shadow-sm overflow-hidden">
@@ -24,7 +24,7 @@ const ListingCardsSection = ({ cards, cardType, onRemoveFavorite }) => {
               className="w-full h-44 object-cover"
             />
             <div className="p-4">
-              {(has2DRoom || has3DRoomTour) && (
+              {(has2DRoom || hasPanoramaTour) && (
                 <div className="mb-2">
                   <div className="inline-flex items-center gap-1.5 flex-wrap">
                     {has2DRoom && (
@@ -32,9 +32,9 @@ const ListingCardsSection = ({ cards, cardType, onRemoveFavorite }) => {
                         2D Room
                       </span>
                     )}
-                    {has3DRoomTour && (
+                    {hasPanoramaTour && (
                       <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-emerald-700 border border-emerald-200">
-                        3D Room Tour
+                        360 Tour
                       </span>
                     )}
                   </div>

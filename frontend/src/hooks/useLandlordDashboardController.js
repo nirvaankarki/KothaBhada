@@ -18,8 +18,8 @@ const initialForm = {
   areaSqFt: '',
   image: '',
   images: [],
-  model3dUrl: '',
-  tourPoints: '',
+  panoramaImages: [],
+  panoramaScenes: [],
   ownerPhone: '',
   status: 'active',
 };
@@ -80,6 +80,90 @@ const parseImageListInput = (value) => {
   return [];
 };
 
+const parsePanoramaImageListInput = (value) => {
+  if (Array.isArray(value)) {
+    return Array.from(new Set(value
+      .map((item) => String(item || '').trim())
+      .filter(Boolean)))
+      .slice(0, 12);
+  }
+
+  if (typeof value === 'string') {
+    const cleanedValue = String(value || '').trim();
+    return cleanedValue ? [cleanedValue] : [];
+  }
+
+  return [];
+};
+
+const parsePanoramaSceneLinksInput = (value, fallbackTarget = 0) => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+
+      const targetIndex = Number(item.targetIndex ?? item.toIndex ?? item.sceneIndex ?? fallbackTarget);
+      if (!Number.isInteger(targetIndex) || targetIndex < 0) {
+        return null;
+      }
+
+      const yaw = Number(item.yaw);
+      const pitch = Number(item.pitch);
+
+      return {
+        targetIndex,
+        label: String(item.label || '').trim(),
+        yaw: Number.isFinite(yaw) ? Number(yaw.toFixed(4)) : 0,
+        pitch: Number.isFinite(pitch) ? Number(pitch.toFixed(4)) : 0,
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 8);
+};
+
+const parsePanoramaScenesInput = (value, fallbackImages = []) => {
+  const fallbackScenes = parsePanoramaImageListInput(fallbackImages).map((imageUrl, index) => ({
+    title: `Scene ${index + 1}`,
+    imageUrl,
+    links: [],
+  }));
+
+  if (!Array.isArray(value)) {
+    return fallbackScenes;
+  }
+
+  const scenes = value
+    .map((scene, index) => {
+      if (typeof scene === 'string') {
+        const imageUrl = String(scene || '').trim();
+        if (!imageUrl) return null;
+        return {
+          title: `Scene ${index + 1}`,
+          imageUrl,
+          links: [],
+        };
+      }
+
+      if (!scene || typeof scene !== 'object') return null;
+
+      const imageUrl = String(scene.imageUrl || scene.url || '').trim();
+      if (!imageUrl) return null;
+
+      return {
+        title: String(scene.title || scene.label || scene.name || `Scene ${index + 1}`).trim() || `Scene ${index + 1}`,
+        imageUrl,
+        links: parsePanoramaSceneLinksInput(scene.links || scene.hotspots, index),
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 12);
+
+  return scenes.length ? scenes : fallbackScenes;
+};
+
 const readAsDataUrl = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader();
   reader.onload = (event) => {
@@ -95,104 +179,11 @@ const readAsDataUrl = (file) => new Promise((resolve, reject) => {
   reader.readAsDataURL(file);
 });
 
-const parse3DModelUrl = (value) => String(value || '').trim();
-
-const parseTourPointNumber = (value, fallback = null) => {
-  const parsedValue = Number(value);
-  if (!Number.isFinite(parsedValue)) {
-    return fallback;
-  }
-
-  return Number(parsedValue.toFixed(4));
-};
-
-const parseTourPointsArray = (input) => {
-  if (!Array.isArray(input)) return [];
-
-  return input
-    .map((point, index) => {
-      if (!point || typeof point !== 'object') {
-        return null;
-      }
-
-      const x = parseTourPointNumber(point.x ?? point.positionX ?? point.px);
-      const y = parseTourPointNumber(point.y ?? point.positionY ?? point.py);
-      const z = parseTourPointNumber(point.z ?? point.positionZ ?? point.pz);
-
-      if (x === null || y === null || z === null) {
-        return null;
-      }
-
-      const lookAtX = parseTourPointNumber(point.lookAtX ?? point.targetX ?? point.tx, 0);
-      const lookAtY = parseTourPointNumber(point.lookAtY ?? point.targetY ?? point.ty, 0.82);
-      const lookAtZ = parseTourPointNumber(point.lookAtZ ?? point.targetZ ?? point.tz, 0);
-
-      return {
-        label: String(point.label || point.name || `Viewpoint ${index + 1}`).trim(),
-        x,
-        y,
-        z,
-        lookAtX,
-        lookAtY,
-        lookAtZ,
-      };
-    })
-    .filter(Boolean)
-    .slice(0, 12);
-};
-
-const parseTourPointsInput = (value) => {
-  if (Array.isArray(value)) {
-    return { points: parseTourPointsArray(value), error: '' };
-  }
-
-  const trimmedValue = String(value || '').trim();
-  if (!trimmedValue) {
-    return { points: [], error: '' };
-  }
-
-  try {
-    const parsed = JSON.parse(trimmedValue);
-    if (!Array.isArray(parsed)) {
-      return { points: [], error: 'Tour points must be a JSON array.' };
-    }
-
-    const points = parseTourPointsArray(parsed);
-    if (!points.length) {
-      return { points: [], error: 'Tour points JSON is valid, but no usable points were found.' };
-    }
-
-    return { points, error: '' };
-  } catch {
-    return { points: [], error: 'Tour points must be valid JSON.' };
-  }
-};
-
-const formatTourPointsForTextarea = (input) => {
-  if (!Array.isArray(input) || !input.length) {
-    return '';
-  }
-
-  const points = parseTourPointsArray(input);
-  if (!points.length) {
-    return '';
-  }
-
-  return JSON.stringify(points, null, 2);
-};
-
-const isAllowed3DModel = (file) => {
-  const fileName = String(file?.name || '').toLowerCase();
-  const allowedExtensions = ['.glb', '.gltf'];
-
-  return allowedExtensions.some((extension) => fileName.endsWith(extension));
-};
-
 export const useLandlordDashboardController = () => {
   const navigate = useNavigate();
   const { user, updateUser } = useAuth();
   const fileInputRef = useRef(null);
-  const modelInputRef = useRef(null);
+  const panoramaInputRef = useRef(null);
   const profileImageInputRef = useRef(null);
   const profileKycDocumentInputRef = useRef(null);
 
@@ -240,9 +231,9 @@ export const useLandlordDashboardController = () => {
   const [reportResponseProcessingId, setReportResponseProcessingId] = useState('');
   const [deletingId, setDeletingId] = useState('');
   const [imageName, setImageName] = useState('');
-  const [modelName, setModelName] = useState('');
-  const [uploadingModel, setUploadingModel] = useState(false);
-  const [uploadingModelProgress, setUploadingModelProgress] = useState(0);
+  const [panoramaImageName, setPanoramaImageName] = useState('');
+  const [uploadingPanorama, setUploadingPanorama] = useState(false);
+  const [uploadingPanoramaProgress, setUploadingPanoramaProgress] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -820,74 +811,148 @@ export const useLandlordDashboardController = () => {
   };
 
   const openImagePicker = () => fileInputRef.current?.click();
-  const openModelPicker = () => modelInputRef.current?.click();
+  const openPanoramaPicker = () => panoramaInputRef.current?.click();
 
-  const handleModelSelect = (e) => {
-    const modelFile = e.target.files?.[0];
-    if (!modelFile) return;
+  const handlePanoramaSelect = (e) => {
+    const panoramaFiles = Array.from(e.target.files || []);
+    if (!panoramaFiles.length) return;
 
-    if (!isAllowed3DModel(modelFile)) {
-      setError('Please upload only 3D model files in GLB or GLTF format.');
+    const hasInvalidFile = panoramaFiles.some((file) => !file.type.startsWith('image/'));
+    if (hasInvalidFile) {
+      setError('Please upload only image files for 360 panorama tour scenes.');
       return;
     }
 
-    if (modelFile.size > 512 * 1024 * 1024) {
-      setError('3D model must be smaller than 512MB.');
+    const hasOversizedFile = panoramaFiles.some((file) => file.size > 15 * 1024 * 1024);
+    if (hasOversizedFile) {
+      setError('Each panorama image must be smaller than 15MB.');
       return;
     }
 
     setError('');
-    setUploadingModel(true);
-    setUploadingModelProgress(0);
+    setUploadingPanorama(true);
+    setUploadingPanoramaProgress(0);
 
     const formData = new FormData();
-    formData.append('model', modelFile);
+    panoramaFiles.forEach((file) => {
+      formData.append('panoramaImages', file);
+    });
 
-    api.post('/rooms/upload-model', formData, {
+    api.post('/rooms/upload-panorama-images', formData, {
       timeout: 4 * 60 * 1000,
       onUploadProgress: (progressEvent) => {
         const total = Number(progressEvent?.total || 0);
         const loaded = Number(progressEvent?.loaded || 0);
         if (!total) return;
 
-        const percentage = Math.min(98, Math.round((loaded / total) * 100));
-        setUploadingModelProgress(percentage);
+        const percentage = Math.max(2, Math.min(95, Math.round((loaded / total) * 100)));
+        setUploadingPanoramaProgress(percentage);
       },
     })
       .then((response) => {
-        const uploadedModelUrl = String(response?.data?.modelUrl || '').trim();
-        if (!uploadedModelUrl) {
-          throw new Error('Upload succeeded but no model URL was returned.');
+        const uploadedPanoramaImages = parsePanoramaImageListInput(response?.data?.panoramaImages);
+        if (!uploadedPanoramaImages.length) {
+          throw new Error('Upload succeeded but no panorama image URLs were returned.');
         }
 
-        setForm((prev) => ({
-          ...prev,
-          model3dUrl: uploadedModelUrl,
-        }));
-        setModelName(response?.data?.fileName || modelFile.name);
-        setUploadingModelProgress(100);
+        let nextPanoramaCount = 0;
+        setForm((prev) => {
+          const existingPanoramas = parsePanoramaImageListInput(prev.panoramaImages);
+          const mergedPanoramas = Array.from(new Set([...existingPanoramas, ...uploadedPanoramaImages])).slice(0, 12);
+          const existingScenes = parsePanoramaScenesInput(prev.panoramaScenes, existingPanoramas);
+          const existingSceneByImage = new Map(existingScenes.map((scene) => [scene.imageUrl, scene]));
+          const mergedScenes = mergedPanoramas.map((imageUrl, index) => {
+            const existingScene = existingSceneByImage.get(imageUrl);
+            return {
+              title: String(existingScene?.title || `Scene ${index + 1}`).trim() || `Scene ${index + 1}`,
+              imageUrl,
+              links: Array.isArray(existingScene?.links) ? existingScene.links : [],
+            };
+          });
+          nextPanoramaCount = mergedPanoramas.length;
+
+          return {
+            ...prev,
+            panoramaImages: mergedPanoramas,
+            panoramaScenes: mergedScenes,
+          };
+        });
+
+        setPanoramaImageName(`${nextPanoramaCount} panorama scene${nextPanoramaCount > 1 ? 's' : ''} selected`);
+        setUploadingPanoramaProgress(100);
       })
       .catch((err) => {
         if (err?.code === 'ECONNABORTED') {
-          setError('3D model upload timed out. Please try again with a smaller file or retry later.');
-          setUploadingModelProgress(0);
+          setError('Panorama upload timed out. Please try again with smaller files or retry later.');
+          setUploadingPanoramaProgress(0);
           return;
         }
 
         const backendMessage = String(err?.response?.data?.error || err?.response?.data?.message || '').trim();
-        setError(backendMessage || 'Could not upload 3D model file. Please try again.');
-        setUploadingModelProgress(0);
+        setError(backendMessage || 'Could not upload panorama images. Please try again.');
+        setUploadingPanoramaProgress(0);
       })
       .finally(() => {
-        setUploadingModel(false);
+        setUploadingPanorama(false);
+        if (panoramaInputRef.current) panoramaInputRef.current.value = '';
       });
   };
 
-  const clearSelectedModel = () => {
-    setForm((prev) => ({ ...prev, model3dUrl: '' }));
-    setModelName('');
-    setUploadingModelProgress(0);
-    if (modelInputRef.current) modelInputRef.current.value = '';
+  const clearSelectedPanorama = () => {
+    setForm((prev) => ({ ...prev, panoramaImages: [], panoramaScenes: [] }));
+    setPanoramaImageName('');
+    setUploadingPanoramaProgress(0);
+    if (panoramaInputRef.current) panoramaInputRef.current.value = '';
+  };
+
+  const handleRemoveSelectedPanorama = (panoramaImageToRemove) => {
+    const targetImage = String(panoramaImageToRemove || '').trim();
+    if (!targetImage) return;
+
+    let nextPanoramaCount = 0;
+    setForm((prev) => {
+      const existingPanoramas = parsePanoramaImageListInput(prev.panoramaImages);
+      const nextPanoramas = existingPanoramas.filter((image) => image !== targetImage);
+      nextPanoramaCount = nextPanoramas.length;
+
+      return {
+        ...prev,
+        panoramaImages: nextPanoramas,
+        panoramaScenes: parsePanoramaScenesInput(prev.panoramaScenes, nextPanoramas)
+          .filter((scene) => nextPanoramas.includes(scene.imageUrl)),
+      };
+    });
+
+    setPanoramaImageName(nextPanoramaCount ? `${nextPanoramaCount} panorama scene${nextPanoramaCount > 1 ? 's' : ''} selected` : '');
+    setError('');
+  };
+
+  const handlePanoramaSceneTitleChange = (sceneIndex, nextTitle) => {
+    const parsedSceneIndex = Number(sceneIndex);
+    if (!Number.isInteger(parsedSceneIndex) || parsedSceneIndex < 0) {
+      return;
+    }
+
+    setForm((prev) => {
+      const scenes = parsePanoramaScenesInput(prev.panoramaScenes, prev.panoramaImages);
+      if (!scenes[parsedSceneIndex]) {
+        return prev;
+      }
+
+      const updatedScenes = scenes.map((scene, index) => (
+        index === parsedSceneIndex
+          ? {
+              ...scene,
+              title: String(nextTitle || '').trim().slice(0, 80),
+            }
+          : scene
+      ));
+
+      return {
+        ...prev,
+        panoramaScenes: updatedScenes,
+      };
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -895,8 +960,8 @@ export const useLandlordDashboardController = () => {
     setError('');
     setSuccess('');
 
-    if (uploadingModel) {
-      setError('Please wait for the 3D model upload to finish before publishing.');
+    if (uploadingPanorama) {
+      setError('Please wait for media uploads to finish before publishing.');
       return;
     }
 
@@ -911,16 +976,26 @@ export const useLandlordDashboardController = () => {
       return;
     }
 
-    const { points: parsedTourPoints, error: tourPointsError } = parseTourPointsInput(form.tourPoints);
-    if (tourPointsError) {
-      setError(tourPointsError);
-      return;
-    }
-
     setSubmitting(true);
     try {
       const parsedAreaHighlights = parseAreaHighlightsInput(form.areaHighlights);
       const parsedImages = parseImageListInput(form.images);
+      const parsedPanoramaImages = parsePanoramaImageListInput(form.panoramaImages);
+      const parsedPanoramaScenes = parsePanoramaScenesInput(form.panoramaScenes, parsedPanoramaImages)
+        .map((scene, index, scenes) => {
+          const explicitLinks = Array.isArray(scene.links) ? scene.links : [];
+          const hasExplicitLinks = explicitLinks.length > 0;
+
+          return {
+            title: String(scene.title || `Scene ${index + 1}`).trim() || `Scene ${index + 1}`,
+            imageUrl: scene.imageUrl,
+            links: hasExplicitLinks
+              ? explicitLinks
+              : (scenes.length > 1
+                ? [{ targetIndex: (index + 1) % scenes.length, label: 'Next scene', yaw: 0, pitch: 0 }]
+                : []),
+          };
+        });
 
       const payload = {
         title: form.title.trim(),
@@ -936,8 +1011,8 @@ export const useLandlordDashboardController = () => {
         areaSqFt: Number(form.areaSqFt) || 0,
         image: parsedImages[0] || String(form.image || '').trim(),
         images: parsedImages,
-        model3dUrl: parse3DModelUrl(form.model3dUrl),
-        tourPoints: parsedTourPoints,
+        panoramaImages: parsedPanoramaImages,
+        panoramaScenes: parsedPanoramaScenes,
         ownerPhone: form.ownerPhone.trim(),
         status: form.status,
       };
@@ -959,7 +1034,7 @@ export const useLandlordDashboardController = () => {
       setForm(initialForm);
       setEditingListingId('');
       setImageName('');
-      setModelName('');
+      setPanoramaImageName('');
     } catch (err) {
       setError(err?.response?.data?.message || (editingListingId ? 'Could not update listing.' : 'Could not publish listing.'));
     } finally {
@@ -971,11 +1046,11 @@ export const useLandlordDashboardController = () => {
     setForm(initialForm);
     setEditingListingId('');
     setImageName('');
-    setModelName('');
+    setPanoramaImageName('');
     setError('');
     setSuccess('');
     if (fileInputRef.current) fileInputRef.current.value = '';
-    if (modelInputRef.current) modelInputRef.current.value = '';
+    if (panoramaInputRef.current) panoramaInputRef.current.value = '';
   };
 
   const handleDelete = async (listingId) => {
@@ -1022,13 +1097,15 @@ export const useLandlordDashboardController = () => {
       areaSqFt: String(listing.areaSqFt || ''),
       image: loadedImages[0] || '',
       images: loadedImages,
-      model3dUrl: parse3DModelUrl(listing.model3dUrl),
-      tourPoints: formatTourPointsForTextarea(listing.tourPoints),
+      panoramaImages: parsePanoramaImageListInput(listing.panoramaImages),
+      panoramaScenes: parsePanoramaScenesInput(listing.panoramaScenes, listing.panoramaImages),
       ownerPhone: listing.ownerPhone || '',
       status: listing.status || 'active',
     });
     setImageName(loadedImages.length ? `${loadedImages.length} image${loadedImages.length > 1 ? 's' : ''} loaded` : '');
-    setModelName(parse3DModelUrl(listing.model3dUrl) ? 'Loaded 3D model from listing' : '');
+    setPanoramaImageName(Array.isArray(listing.panoramaImages) && listing.panoramaImages.length
+      ? `${listing.panoramaImages.length} panorama scene${listing.panoramaImages.length > 1 ? 's' : ''} loaded`
+      : '');
     setSuccess('Listing loaded for editing. Update values and save changes.');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -1274,16 +1351,16 @@ export const useLandlordDashboardController = () => {
       reportResponseProcessingId,
       deletingId,
       imageName,
-      modelName,
-      uploadingModel,
-      uploadingModelProgress,
+      panoramaImageName,
+      uploadingPanorama,
+      uploadingPanoramaProgress,
       error,
       success,
       stats,
     },
     refs: {
       fileInputRef,
-      modelInputRef,
+      panoramaInputRef,
       profileImageInputRef,
       profileKycDocumentInputRef,
     },
@@ -1312,12 +1389,14 @@ export const useLandlordDashboardController = () => {
       clearLandlordKycDocument,
       handleProfileSubmit,
       handleImageSelect,
+      handlePanoramaSelect,
       clearSelectedImage,
+      clearSelectedPanorama,
       handleRemoveSelectedImage,
+      handleRemoveSelectedPanorama,
+      handlePanoramaSceneTitleChange,
       openImagePicker,
-      handleModelSelect,
-      clearSelectedModel,
-      openModelPicker,
+      openPanoramaPicker,
       handleUseCurrentLocation,
       handleStartNewListing,
       handleSubmit,

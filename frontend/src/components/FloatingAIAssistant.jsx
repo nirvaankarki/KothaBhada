@@ -24,7 +24,7 @@ function getInitialMessages() {
     {
       id: 'assistant-welcome',
       sender: 'assistant',
-      text: 'Hi, I am your AI rental assistant. Tell me your budget, location, bedrooms, or 3D-tour preference and I will recommend properties.',
+      text: 'Hi, I am your AI rental assistant. Tell me your budget, location, bedrooms, or 360-tour preference and I will recommend properties.',
       timestamp: formatTimestamp(),
       recommendations: [],
     },
@@ -41,7 +41,6 @@ function sanitizeRecommendationList(items) {
     location: String(item?.location || 'Location not specified').trim(),
     price: Number(item?.price || 0),
     reason: String(item?.reason || '').trim(),
-    model3dUrl: String(item?.model3dUrl || '').trim(),
   }));
 }
 

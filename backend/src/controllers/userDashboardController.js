@@ -319,7 +319,7 @@ function scoreRoomMatch(room, preferences) {
     const roomPrice = Number(room?.price || 0);
     const roomBedrooms = Number(room?.bedrooms || 0);
     const roomBathrooms = Number(room?.bathrooms || 0);
-    const has3DModel = Boolean(String(room?.model3dUrl || '').trim());
+    const hasPanoramaTour = Array.isArray(room?.panoramaImages) && room.panoramaImages.length > 0;
     const roomLocation = String(room?.location || '').toLowerCase();
     const roomSearchText = buildRoomSearchText(room);
 
@@ -374,10 +374,10 @@ function scoreRoomMatch(room, preferences) {
         }
     }
 
-    if (preferences.require3DModel) {
-        if (has3DModel) {
+    if (preferences.requireVirtualTour) {
+        if (hasPanoramaTour) {
             score += 12;
-            reasons.push('includes 3D tour support');
+            reasons.push('includes 360 panorama tour support');
         } else {
             score -= 10;
         }
@@ -420,7 +420,9 @@ function toSafeAiRecommendations(items) {
         location: String(item?.location || '').trim(),
         price: Number(item?.price || 0),
         reason: String(item?.reason || '').trim(),
-        model3dUrl: String(item?.model3dUrl || '').trim(),
+        panoramaImages: Array.isArray(item?.panoramaImages)
+            ? item.panoramaImages.map((imageUrl) => String(imageUrl || '').trim()).filter(Boolean).slice(0, 12)
+            : [],
     }));
 }
 
@@ -536,7 +538,7 @@ export async function getAiRecommendations(req, res) {
                 { moderationStatus: { $exists: false } },
             ],
         })
-            .select('title location price bedrooms bathrooms areaSqFt image images model3dUrl keyFeatures areaHighlights createdAt')
+            .select('title location price bedrooms bathrooms areaSqFt image images panoramaImages keyFeatures areaHighlights createdAt')
             .sort({ createdAt: -1 })
             .limit(150)
             .lean();
@@ -569,11 +571,11 @@ export async function getAiRecommendations(req, res) {
         const locationTokens = tokenizeQueryText(preferredLocation).slice(0, 8);
         const keywordTokens = tokenizeQueryText(message).filter((token) => !locationTokens.includes(token));
         const availabilityIntent = /(available|availability|is there|any\s+(room|flat|house|listing)|rent.*available|have.*(room|flat|listing))/i.test(messageLower);
-        const require3DModel = /3d|virtual|tour|model/.test(messageLower);
+        const requireVirtualTour = /3d|360|virtual|tour|panorama/.test(messageLower);
         const hasLocationPreference = Boolean(String(extractedLocation || matchedKnownLocation || plainLocationCandidate || '').trim());
         const hasBudgetPreference = budget.maxPrice !== null || budget.minPrice !== null;
         const hasRoomPreference = (Number.isFinite(bedrooms) && bedrooms !== null) || (Number.isFinite(bathrooms) && bathrooms !== null);
-        const hasFeaturePreference = require3DModel || keywordTokens.length > 0;
+        const hasFeaturePreference = requireVirtualTour || keywordTokens.length > 0;
         const preferenceSignalCount = [hasLocationPreference, hasBudgetPreference, hasRoomPreference, hasFeaturePreference]
             .filter(Boolean)
             .length;
@@ -584,7 +586,7 @@ export async function getAiRecommendations(req, res) {
             budget,
             bedrooms,
             bathrooms,
-            require3DModel,
+            require3DModel: requireVirtualTour,
             availabilityIntent,
         });
         const outOfDomainIntent = isOutOfDomainMessage({
@@ -599,19 +601,19 @@ export async function getAiRecommendations(req, res) {
             budget,
             bedrooms,
             bathrooms,
-            require3DModel,
+            require3DModel: requireVirtualTour,
         });
 
         if (outOfDomainIntent) {
             return respondWithAiReply({
-                reply: 'I can only help with rental services in KothaBhada, such as room availability, location, budget, bedrooms, bathrooms, and 3D tours. Please ask a rental-related question.',
+                reply: 'I can only help with rental services in KothaBhada, such as room availability, location, budget, bedrooms, bathrooms, and 360 tours. Please ask a rental-related question.',
                 recommendations: [],
             });
         }
 
         if (!rentalIntent) {
             const reply = greetingIntent
-                ? "Namaste! I'm KothaBhada Chatbot. Ask me about room rent availability by location, budget, bedrooms, bathrooms, or 3D tour support."
+                ? "Namaste! I'm KothaBhada Chatbot. Ask me about room rent availability by location, budget, bedrooms, bathrooms, or 360 tour support."
                 : 'I can help with rental availability and recommendations. Please share your preferred location, budget, or room type.';
 
             return respondWithAiReply({
@@ -642,7 +644,7 @@ export async function getAiRecommendations(req, res) {
             bathrooms,
             keywordTokens,
             locationTokens,
-            require3DModel,
+            requireVirtualTour,
         };
 
         const strictMatches = activeRooms.filter((room) => {
@@ -660,7 +662,7 @@ export async function getAiRecommendations(req, res) {
                 if (Number(room?.bathrooms || 0) !== bathrooms) return false;
             }
 
-            if (preferences.require3DModel && !String(room?.model3dUrl || '').trim()) return false;
+            if (preferences.requireVirtualTour && !(Array.isArray(room?.panoramaImages) && room.panoramaImages.length > 0)) return false;
             if (!isLocationMatch(room?.location, locationTokens)) return false;
 
             return true;
@@ -681,10 +683,10 @@ export async function getAiRecommendations(req, res) {
             const bathroomSuffix = Number.isFinite(bathrooms) && bathrooms !== null
                 ? ` and ${bathrooms} bathroom${bathrooms === 1 ? '' : 's'}`
                 : '';
-            const threeDSuffix = require3DModel ? ' with 3D tour support' : '';
+            const tourSuffix = requireVirtualTour ? ' with 360 panorama tour support' : '';
 
             return respondWithAiReply({
-                reply: `I could not find an active listing${locationSuffix}${budgetSuffix}${bedroomSuffix}${bathroomSuffix}${threeDSuffix} in our database right now. Please try another location or adjust your filters.`,
+                reply: `I could not find an active listing${locationSuffix}${budgetSuffix}${bedroomSuffix}${bathroomSuffix}${tourSuffix} in our database right now. Please try another location or adjust your filters.`,
                 recommendations: [],
             });
         }
@@ -716,7 +718,9 @@ export async function getAiRecommendations(req, res) {
                 bathrooms: Number(room?.bathrooms || 0),
                 areaSqFt: Number(room?.areaSqFt || 0),
                 image: primaryImage,
-                model3dUrl: String(room?.model3dUrl || '').trim(),
+                panoramaImages: Array.isArray(room?.panoramaImages)
+                    ? room.panoramaImages.map((imageUrl) => String(imageUrl || '').trim()).filter(Boolean).slice(0, 12)
+                    : [],
                 reason: entry.reasonText,
                 score: entry.score,
             };
@@ -740,8 +744,8 @@ export async function getAiRecommendations(req, res) {
             summaryParts.push(`Bedroom preference: ${bedrooms}.`);
         }
 
-        if (preferences.require3DModel) {
-            summaryParts.push('Prioritizing listings with 3D tour support.');
+        if (preferences.requireVirtualTour) {
+            summaryParts.push('Prioritizing listings with 360 panorama tour support.');
         }
 
         return respondWithAiReply({

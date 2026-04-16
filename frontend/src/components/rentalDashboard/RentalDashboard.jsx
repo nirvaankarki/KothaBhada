@@ -802,11 +802,11 @@ const RentalDashboard = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                     {localFavorites.map((item) => {
                       const has2DRoom = Boolean(String(item?.image || '').trim() || (Array.isArray(item?.images) && item.images.length));
-                      const has3DRoomTour = Boolean(String(item?.model3dUrl || '').trim());
+                      const hasPanoramaTour = Array.isArray(item?.panoramaImages) && item.panoramaImages.length > 0;
 
                       return (
                       <article key={item._id || item.listingId} className="rounded-xl border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-                        {(has2DRoom || has3DRoomTour) && (
+                        {(has2DRoom || hasPanoramaTour) && (
                           <div className="mb-2">
                             <div className="inline-flex items-center gap-1.5 flex-wrap">
                               {has2DRoom && (
@@ -814,9 +814,9 @@ const RentalDashboard = ({
                                   2D Room
                                 </span>
                               )}
-                              {has3DRoomTour && (
+                              {hasPanoramaTour && (
                                 <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-emerald-700 border border-emerald-200">
-                                  3D Room Tour
+                                  360 Tour
                                 </span>
                               )}
                             </div>
@@ -869,7 +869,7 @@ const RentalDashboard = ({
                     </div>
                     {uniqueHistoryEntries.slice(0, 8).map((item) => {
                       const has2DRoom = Boolean(String(item?.image || '').trim() || (Array.isArray(item?.images) && item.images.length));
-                      const has3DRoomTour = Boolean(String(item?.model3dUrl || '').trim());
+                      const hasPanoramaTour = Array.isArray(item?.panoramaImages) && item.panoramaImages.length > 0;
 
                       return (
                       <button
@@ -882,7 +882,7 @@ const RentalDashboard = ({
                         className="w-full rounded-xl border border-gray-200 bg-gray-50 p-4 flex items-center justify-between gap-3 text-left hover:bg-gray-100 transition-colors"
                       >
                         <div>
-                          {(has2DRoom || has3DRoomTour) && (
+                          {(has2DRoom || hasPanoramaTour) && (
                             <div className="mb-2">
                               <div className="inline-flex items-center gap-1.5 flex-wrap">
                                 {has2DRoom && (
@@ -890,9 +890,9 @@ const RentalDashboard = ({
                                     2D Room
                                   </span>
                                 )}
-                                {has3DRoomTour && (
+                                {hasPanoramaTour && (
                                   <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-700 border border-emerald-200">
-                                    3D Room Tour
+                                    360 Tour
                                   </span>
                                 )}
                               </div>

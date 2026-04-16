@@ -27,7 +27,7 @@ const landlordHeaderMetaByTab = {
   },
   listings: {
     title: 'Listings',
-    subtitle: 'Create, update, and manage your rental inventory including photos and 3D models.',
+    subtitle: 'Create, update, and manage your rental inventory including photos and 360 panorama tours.',
   },
   chat: {
     title: 'Messages',
@@ -123,20 +123,22 @@ const LandlordDashboardPage = () => {
             submitting={state.submitting}
             locating={state.locating}
             fileInputRef={refs.fileInputRef}
-            modelInputRef={refs.modelInputRef}
+            panoramaInputRef={refs.panoramaInputRef}
             handleImageSelect={handlers.handleImageSelect}
-            handleModelSelect={handlers.handleModelSelect}
+            handlePanoramaSelect={handlers.handlePanoramaSelect}
+            handlePanoramaSceneTitleChange={handlers.handlePanoramaSceneTitleChange}
             openImagePicker={handlers.openImagePicker}
-            openModelPicker={handlers.openModelPicker}
+            openPanoramaPicker={handlers.openPanoramaPicker}
             handleUseCurrentLocation={handlers.handleUseCurrentLocation}
             clearSelectedImage={handlers.clearSelectedImage}
-            clearSelectedModel={handlers.clearSelectedModel}
+            clearSelectedPanorama={handlers.clearSelectedPanorama}
             handleRemoveSelectedImage={handlers.handleRemoveSelectedImage}
+            handleRemoveSelectedPanorama={handlers.handleRemoveSelectedPanorama}
             handleStartNewListing={handlers.handleStartNewListing}
             imageName={state.imageName}
-            modelName={state.modelName}
-            uploadingModel={state.uploadingModel}
-            uploadingModelProgress={state.uploadingModelProgress}
+            panoramaImageName={state.panoramaImageName}
+            uploadingPanorama={state.uploadingPanorama}
+            uploadingPanoramaProgress={state.uploadingPanoramaProgress}
             loading={state.loading}
             listings={state.listings}
             handleViewListing={handlers.handleViewListing}

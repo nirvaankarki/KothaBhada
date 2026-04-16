@@ -250,13 +250,9 @@ async function fetchDynamicAreaHighlightsByLocation(locationText) {
     return fetchDynamicAreaHighlightsByCoordinates(lat, lon);
 }
 
-function getUploadedModelFile(req) {
-    if (req?.file) {
-        return req.file;
-    }
-
+function getUploadedPanoramaImageFiles(req) {
     if (Array.isArray(req?.files) && req.files.length > 0) {
-        return req.files[0];
+        return req.files;
     }
 
     const fileBuckets = req?.files && typeof req.files === 'object'
@@ -264,27 +260,34 @@ function getUploadedModelFile(req) {
         : null;
 
     if (!fileBuckets) {
-        return null;
+        return [];
     }
 
-    const preferredFields = ['model', 'file', 'modelFile', 'model3d'];
-    for (const field of preferredFields) {
+    const preferredFields = ['panoramaImages', 'panoramas', 'images', 'files'];
+    const uploadedFiles = [];
+
+    preferredFields.forEach((field) => {
         const fileList = fileBuckets[field];
         if (Array.isArray(fileList) && fileList.length > 0) {
-            return fileList[0];
+            uploadedFiles.push(...fileList);
         }
+    });
+
+    if (uploadedFiles.length > 0) {
+        return uploadedFiles;
     }
 
-    const firstFieldFiles = Object.values(fileBuckets).find((value) => Array.isArray(value) && value.length > 0);
-    return Array.isArray(firstFieldFiles) ? firstFieldFiles[0] : null;
+    return Object.values(fileBuckets)
+        .filter((value) => Array.isArray(value) && value.length > 0)
+        .flat();
 }
 
-export async function uploadRoomModel(req, res) {
-    let temporaryFilePath = '';
+export async function uploadRoomPanoramaImages(req, res) {
+    const uploadedFiles = getUploadedPanoramaImageFiles(req);
 
     try {
         if (req.user?.role !== 'landlord') {
-            return res.status(403).json({ message: 'Only landlords can upload 3D models' });
+            return res.status(403).json({ message: 'Only landlords can upload panorama images' });
         }
 
         if (!isCloudinaryConfigured()) {
@@ -293,55 +296,69 @@ export async function uploadRoomModel(req, res) {
             });
         }
 
-        const uploadedFile = getUploadedModelFile(req);
-        if (!uploadedFile) {
-            return res.status(400).json({ message: 'No 3D model file uploaded' });
+        if (!uploadedFiles.length) {
+            return res.status(400).json({ message: 'No panorama images uploaded.' });
         }
 
-        temporaryFilePath = String(uploadedFile.path || '').trim();
-        if (!temporaryFilePath) {
-            return res.status(400).json({ message: 'Uploaded file path is missing' });
+        if (uploadedFiles.length > 12) {
+            return res.status(400).json({ message: 'Please upload up to 12 panorama images per listing.' });
         }
 
-        const originalName = String(uploadedFile.originalname || '').trim();
-        const extension = extname(originalName).replace('.', '').toLowerCase() || 'glb';
-        const baseName = originalName.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase() || 'room-model';
-        const publicId = `${Date.now()}-${Math.round(Math.random() * 1e6)}-${baseName}.${extension}`;
+        const panoramaImages = [];
 
-        const modelUrl = await uploadLargeFileToCloudinary(temporaryFilePath, {
-            folder: 'kothabhada/rooms/models',
-            resourceType: 'raw',
-            publicId,
-            chunkSize: 20 * 1024 * 1024,
-            timeoutMs: 4 * 60 * 1000,
-        });
+        for (let index = 0; index < uploadedFiles.length; index += 1) {
+            const uploadedFile = uploadedFiles[index];
+            const filePath = String(uploadedFile?.path || '').trim();
+            if (!filePath) continue;
 
-        if (!modelUrl) {
-            return res.status(500).json({ message: 'Cloudinary upload failed for 3D model' });
+            const originalName = String(uploadedFile?.originalname || '').trim();
+            const extension = extname(originalName).replace('.', '').toLowerCase() || 'jpg';
+            const baseName = originalName
+                .replace(/\.[^.]+$/, '')
+                .replace(/[^a-zA-Z0-9-_]/g, '-')
+                .toLowerCase() || 'panorama-image';
+
+            const imageUrl = await uploadLargeFileToCloudinary(filePath, {
+                folder: 'kothabhada/rooms/panorama-images',
+                resourceType: 'image',
+                publicId: `${Date.now()}-${Math.round(Math.random() * 1e6)}-${baseName}-${index + 1}.${extension}`,
+                chunkSize: 6 * 1024 * 1024,
+                timeoutMs: 2 * 60 * 1000,
+            });
+
+            if (imageUrl) {
+                panoramaImages.push(imageUrl);
+            }
+        }
+
+        if (!panoramaImages.length) {
+            return res.status(500).json({ message: 'Could not upload panorama images.' });
         }
 
         return res.status(201).json({
-            message: '3D model uploaded successfully',
-            modelUrl,
-            fileName: originalName,
-            size: uploadedFile.size,
+            message: 'Panorama images uploaded successfully',
+            panoramaImages,
+            uploadedCount: panoramaImages.length,
         });
     } catch (error) {
         const upstreamStatus = Number(error?.http_code || error?.status || 0);
         const statusCode = upstreamStatus >= 400 && upstreamStatus < 600 ? upstreamStatus : 500;
 
         return res.status(statusCode).json({
-            message: 'Error uploading 3D model',
-            error: error?.message || 'Unknown upload error',
+            message: 'Error uploading panorama images',
+            error: error?.message || 'Unknown panorama upload error',
         });
     } finally {
-        if (temporaryFilePath) {
+        await Promise.all(uploadedFiles.map(async (uploadedFile) => {
+            const filePath = String(uploadedFile?.path || '').trim();
+            if (!filePath) return;
+
             try {
-                await unlink(temporaryFilePath);
+                await unlink(filePath);
             } catch {
-                // Ignore cleanup errors to avoid masking upload response.
+                // Ignore cleanup errors.
             }
-        }
+        }));
     }
 }
 
@@ -383,64 +400,93 @@ function parseAreaHighlights(input) {
     return [];
 }
 
-function parseTourPointNumber(value, fallback = null) {
-    const parsedValue = Number(value);
-    if (!Number.isFinite(parsedValue)) {
-        return fallback;
-    }
-
-    return Number(parsedValue.toFixed(4));
-}
-
-function parseTourPoints(input) {
-    let rawPoints = input;
-
-    if (typeof input === 'string') {
-        const trimmed = String(input || '').trim();
-        if (!trimmed) return [];
-
-        try {
-            rawPoints = JSON.parse(trimmed);
-        } catch {
-            return [];
-        }
-    }
-
-    if (!Array.isArray(rawPoints)) {
+function sanitizePanoramaSceneLinks(links, sceneCount) {
+    if (!Array.isArray(links)) {
         return [];
     }
 
-    return rawPoints
-        .map((point, index) => {
-            if (!point || typeof point !== 'object') {
+    return links
+        .map((link, linkIndex) => {
+            if (!link || typeof link !== 'object') return null;
+
+            const targetIndex = Number(link.targetIndex ?? link.toIndex ?? link.sceneIndex);
+            if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex >= sceneCount) {
                 return null;
             }
 
-            const x = parseTourPointNumber(point.x ?? point.positionX ?? point.px);
-            const y = parseTourPointNumber(point.y ?? point.positionY ?? point.py);
-            const z = parseTourPointNumber(point.z ?? point.positionZ ?? point.pz);
-
-            if (x === null || y === null || z === null) {
-                return null;
-            }
-
-            const lookAtX = parseTourPointNumber(point.lookAtX ?? point.targetX ?? point.tx, 0);
-            const lookAtY = parseTourPointNumber(point.lookAtY ?? point.targetY ?? point.ty, 0.82);
-            const lookAtZ = parseTourPointNumber(point.lookAtZ ?? point.targetZ ?? point.tz, 0);
-
-            const label = String(point.label || point.name || `Viewpoint ${index + 1}`).trim();
+            const yaw = Number(link.yaw);
+            const pitch = Number(link.pitch);
 
             return {
-                label,
-                x,
-                y,
-                z,
-                lookAtX,
-                lookAtY,
-                lookAtZ,
+                targetIndex,
+                label: String(link.label || link.title || `Scene ${targetIndex + 1}`).trim() || `Scene ${targetIndex + 1}`,
+                yaw: Number.isFinite(yaw) ? Number(yaw.toFixed(4)) : 0,
+                pitch: Number.isFinite(pitch) ? Number(pitch.toFixed(4)) : 0,
+                order: Number.isFinite(Number(link.order)) ? Number(link.order) : linkIndex,
             };
         })
         .filter(Boolean)
+        .sort((a, b) => a.order - b.order)
+        .slice(0, 8)
+        .map(({ order, ...rest }) => rest);
+}
+
+function parsePanoramaScenes(input, fallbackImages = []) {
+    let rawScenes = input;
+
+    if (typeof input === 'string') {
+        const trimmed = String(input || '').trim();
+        if (trimmed) {
+            try {
+                rawScenes = JSON.parse(trimmed);
+            } catch {
+                rawScenes = [];
+            }
+        }
+    }
+
+    const normalizedScenes = Array.isArray(rawScenes)
+        ? rawScenes
+            .map((scene, index) => {
+                if (typeof scene === 'string') {
+                    const imageUrl = String(scene || '').trim();
+                    if (!imageUrl) return null;
+                    return {
+                        title: `Scene ${index + 1}`,
+                        imageUrl,
+                        links: [],
+                    };
+                }
+
+                if (!scene || typeof scene !== 'object') return null;
+                const imageUrl = String(scene.imageUrl || scene.url || '').trim();
+                if (!imageUrl) return null;
+
+                return {
+                    title: String(scene.title || scene.label || scene.name || `Scene ${index + 1}`).trim() || `Scene ${index + 1}`,
+                    imageUrl,
+                    links: Array.isArray(scene.links) ? scene.links : (Array.isArray(scene.hotspots) ? scene.hotspots : []),
+                };
+            })
+            .filter(Boolean)
+            .slice(0, 12)
+        : [];
+
+    const fallbackSceneList = normalizedScenes.length
+        ? normalizedScenes
+        : parsePanoramaImages(fallbackImages).map((imageUrl, index) => ({
+            title: `Scene ${index + 1}`,
+            imageUrl,
+            links: [],
+        }));
+
+    return fallbackSceneList
+        .map((scene, index, list) => ({
+            title: String(scene.title || `Scene ${index + 1}`).trim() || `Scene ${index + 1}`,
+            imageUrl: String(scene.imageUrl || '').trim(),
+            links: sanitizePanoramaSceneLinks(scene.links, list.length),
+        }))
+        .filter((scene) => scene.imageUrl)
         .slice(0, 12);
 }
 
@@ -459,6 +505,22 @@ function parseImages(input) {
             .map((item) => String(item || '').trim())
             .filter(Boolean)
             .slice(0, 8);
+    }
+
+    if (typeof input === 'string') {
+        const cleanedInput = String(input || '').trim();
+        return cleanedInput ? [cleanedInput] : [];
+    }
+
+    return [];
+}
+
+function parsePanoramaImages(input) {
+    if (Array.isArray(input)) {
+        return input
+            .map((item) => String(item || '').trim())
+            .filter(Boolean)
+            .slice(0, 12);
     }
 
     if (typeof input === 'string') {
@@ -524,6 +586,48 @@ async function resolveImageList(values) {
     return Array.from(new Set(resolved.filter(Boolean))).slice(0, 8);
 }
 
+async function resolvePanoramaImageUrl(value) {
+    const trimmedValue = String(value || '').trim();
+    if (!trimmedValue) return '';
+
+    if (!isDataUri(trimmedValue)) {
+        return trimmedValue;
+    }
+
+    return uploadDataUriToCloudinary(trimmedValue, {
+        folder: 'kothabhada/rooms/panorama-images',
+        resourceType: 'image',
+    });
+}
+
+async function resolvePanoramaImageList(values) {
+    const sanitized = parsePanoramaImages(values);
+    if (!sanitized.length) return [];
+
+    const resolved = await Promise.all(sanitized.map((value) => resolvePanoramaImageUrl(value)));
+    return Array.from(new Set(resolved.filter(Boolean))).slice(0, 12);
+}
+
+async function resolvePanoramaSceneList(values) {
+    const parsedScenes = parsePanoramaScenes(values);
+    if (!parsedScenes.length) return [];
+
+    const resolvedScenes = await Promise.all(parsedScenes.map(async (scene, index) => {
+        const resolvedImageUrl = await resolvePanoramaImageUrl(scene.imageUrl);
+        if (!resolvedImageUrl) {
+            return null;
+        }
+
+        return {
+            title: String(scene.title || `Scene ${index + 1}`).trim() || `Scene ${index + 1}`,
+            imageUrl: resolvedImageUrl,
+            links: sanitizePanoramaSceneLinks(scene.links, parsedScenes.length),
+        };
+    }));
+
+    return resolvedScenes.filter(Boolean).slice(0, 12);
+}
+
 export async function getAllRooms(req, res) {
     try {
         const rooms = await Room.find(getApprovedListingFilter()).sort({ isFeatured: -1, featuredRank: -1, createdAt: -1 }).lean();
@@ -581,8 +685,8 @@ export async function createRooms(req, res) {
             areaHighlights,
             image,
             images,
-            model3dUrl,
-            tourPoints,
+            panoramaImages,
+            panoramaScenes,
             ownerPhone,
             status,
             tags,
@@ -622,8 +726,11 @@ export async function createRooms(req, res) {
         }
 
         const parsedAreaHighlights = parseAreaHighlights(areaHighlights);
-        const parsedTourPoints = parseTourPoints(tourPoints);
         const parsedImages = await resolveImageList(images);
+        const parsedPanoramaImages = await resolvePanoramaImageList(panoramaImages);
+        const parsedPanoramaScenes = parsePanoramaScenes(panoramaScenes, parsedPanoramaImages);
+        const resolvedPanoramaScenes = await resolvePanoramaSceneList(parsedPanoramaScenes);
+        const normalizedPanoramaImages = resolvedPanoramaScenes.map((scene) => scene.imageUrl).slice(0, 12);
         const resolvedCoverImage = await resolveImageUrl(String(image || '').trim());
         const coverImage = resolvedCoverImage || parsedImages[0] || '';
 
@@ -650,17 +757,13 @@ export async function createRooms(req, res) {
             areaHighlights: parsedAreaHighlights,
             image: coverImage,
             images: parsedImages.length ? parsedImages : (coverImage ? [coverImage] : []),
-            model3dUrl: String(model3dUrl || '').trim(),
-            tourPoints: parsedTourPoints,
+            panoramaImages: normalizedPanoramaImages,
+            panoramaScenes: resolvedPanoramaScenes,
             status: status === 'inactive' ? 'inactive' : 'active',
             moderationStatus: 'pending',
             moderationNote: '',
             moderationReviewedAt: null,
             moderationReviewedBy: null,
-            model3dHealthStatus: model3dUrl ? 'unchecked' : 'unchecked',
-            model3dHealthNote: '',
-            model3dReviewedAt: null,
-            model3dReviewedBy: null,
             tags: parseTags(tags),
         });
 
@@ -687,7 +790,7 @@ export async function updateRooms(req, res) {
             return res.status(403).json({ message: 'You can update only your own listings' });
         }
 
-        const allowedKeys = ['title', 'price', 'description', 'location', 'latitude', 'longitude', 'bedrooms', 'bathrooms', 'areaSqFt', 'keyFeatures', 'areaHighlights', 'image', 'images', 'model3dUrl', 'tourPoints', 'ownerPhone', 'status', 'tags'];
+        const allowedKeys = ['title', 'price', 'description', 'location', 'latitude', 'longitude', 'bedrooms', 'bathrooms', 'areaSqFt', 'keyFeatures', 'areaHighlights', 'image', 'images', 'panoramaImages', 'panoramaScenes', 'ownerPhone', 'status', 'tags'];
         const updates = {};
         for (const key of allowedKeys) {
             if (req.body[key] !== undefined) {
@@ -699,8 +802,27 @@ export async function updateRooms(req, res) {
         if (updates.location !== undefined) updates.location = String(updates.location).trim();
         if (updates.description !== undefined) updates.description = String(updates.description || '').trim();
         if (updates.image !== undefined) updates.image = await resolveImageUrl(String(updates.image || '').trim());
-        if (updates.model3dUrl !== undefined) updates.model3dUrl = String(updates.model3dUrl || '').trim();
-        if (updates.tourPoints !== undefined) updates.tourPoints = parseTourPoints(updates.tourPoints);
+        if (updates.panoramaImages !== undefined) updates.panoramaImages = await resolvePanoramaImageList(updates.panoramaImages);
+        if (updates.panoramaScenes !== undefined) {
+            const parsedScenes = parsePanoramaScenes(updates.panoramaScenes, updates.panoramaImages || room.panoramaImages || []);
+            updates.panoramaScenes = await resolvePanoramaSceneList(parsedScenes);
+            updates.panoramaImages = updates.panoramaScenes.map((scene) => scene.imageUrl).slice(0, 12);
+        } else if (updates.panoramaImages !== undefined) {
+            const existingScenes = parsePanoramaScenes(room.panoramaScenes || [], room.panoramaImages || []);
+            const existingSceneByImage = new Map(existingScenes.map((scene) => [scene.imageUrl, scene]));
+
+            const parsedScenes = updates.panoramaImages.map((imageUrl, index) => {
+                const existingScene = existingSceneByImage.get(imageUrl);
+                return {
+                    title: String(existingScene?.title || `Scene ${index + 1}`).trim() || `Scene ${index + 1}`,
+                    imageUrl,
+                    links: Array.isArray(existingScene?.links) ? existingScene.links : [],
+                };
+            });
+
+            updates.panoramaScenes = await resolvePanoramaSceneList(parsedScenes);
+            updates.panoramaImages = updates.panoramaScenes.map((scene) => scene.imageUrl).slice(0, 12);
+        }
         if (updates.images !== undefined) updates.images = await resolveImageList(updates.images);
         if (updates.ownerPhone !== undefined) updates.ownerPhone = String(updates.ownerPhone || '').trim();
         if (updates.price !== undefined) updates.price = Number(updates.price);
@@ -736,12 +858,6 @@ export async function updateRooms(req, res) {
         updates.moderationNote = '';
         updates.moderationReviewedAt = null;
         updates.moderationReviewedBy = null;
-        if (updates.model3dUrl !== undefined) {
-            updates.model3dHealthStatus = 'unchecked';
-            updates.model3dHealthNote = '';
-            updates.model3dReviewedAt = null;
-            updates.model3dReviewedBy = null;
-        }
 
         const latitudeProvided = req.body.latitude !== undefined;
         const longitudeProvided = req.body.longitude !== undefined;

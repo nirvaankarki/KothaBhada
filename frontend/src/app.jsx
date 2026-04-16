@@ -7,6 +7,7 @@ import ContactPage from './pages/ContactPage';
 import AuthPage from './pages/AuthPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import Explore3DPage from './pages/Explore3DPage';
+import PanoramaTourPage from './pages/PanoramaTourPage';
 import ViewListingPage from './pages/ViewListingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import RentalDashboardPage from './pages/RentalDashboardPage';
@@ -72,6 +73,7 @@ export function App() {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/listing-details" element={<Explore3DPage />} />
+          <Route path="/panorama-tour" element={<PanoramaTourPage />} />
           <Route path="/reviews" element={<ReviewsPage />} />
           <Route
             path="/booking-visit"

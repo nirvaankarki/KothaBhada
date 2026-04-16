@@ -68,7 +68,20 @@ const Login = ({ onToggle }) => {
         return;
       }
 
-      setError(err?.response?.data?.message || 'Invalid credentials');
+      const statusCode = Number(err?.response?.status || 0);
+      const backendMessage = String(err?.response?.data?.message || '').trim();
+
+      if (!err?.response) {
+        setError('Cannot reach server. Please ensure backend is running on http://localhost:5001.');
+        return;
+      }
+
+      if (statusCode >= 500) {
+        setError(backendMessage || 'Server error while logging in. Please try again in a moment.');
+        return;
+      }
+
+      setError(backendMessage || 'Invalid credentials');
     } finally {
       setLoading(false);
     }

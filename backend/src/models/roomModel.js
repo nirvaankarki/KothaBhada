@@ -81,6 +81,47 @@ const roomSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    panoramaImages: {
+        type: [String],
+        default: []
+    },
+    panoramaScenes: {
+        type: [{
+            _id: false,
+            title: {
+                type: String,
+                default: ''
+            },
+            imageUrl: {
+                type: String,
+                required: true
+            },
+            links: {
+                type: [{
+                    _id: false,
+                    targetIndex: {
+                        type: Number,
+                        required: true,
+                        min: 0
+                    },
+                    label: {
+                        type: String,
+                        default: ''
+                    },
+                    yaw: {
+                        type: Number,
+                        default: 0
+                    },
+                    pitch: {
+                        type: Number,
+                        default: 0
+                    }
+                }],
+                default: []
+            }
+        }],
+        default: []
+    },
     model3dHealthStatus: {
         type: String,
         enum: ['unchecked', 'verified', 'broken'],
@@ -100,40 +141,6 @@ const roomSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         default: null,
-    },
-    tourPoints: {
-        type: [{
-            _id: false,
-            label: {
-                type: String,
-                default: ''
-            },
-            x: {
-                type: Number,
-                required: true
-            },
-            y: {
-                type: Number,
-                required: true
-            },
-            z: {
-                type: Number,
-                required: true
-            },
-            lookAtX: {
-                type: Number,
-                default: 0
-            },
-            lookAtY: {
-                type: Number,
-                default: 0.82
-            },
-            lookAtZ: {
-                type: Number,
-                default: 0
-            }
-        }],
-        default: []
     },
     status: {
         type: String,

@@ -229,7 +229,6 @@ const ViewListingPage = () => {
           location: listing.location || '',
           price: Number(listing.price || 0),
           image: getListingImage(listing),
-          model3dUrl: String(listing?.model3dUrl || '').trim(),
           source: 'viewlisting-page',
         });
       } catch {
@@ -249,7 +248,6 @@ const ViewListingPage = () => {
         location: listing.location || '',
         price: Number(listing.price || 0),
         image: getListingImage(listing),
-        model3dUrl: String(listing?.model3dUrl || '').trim(),
         source: 'viewlisting-page',
       });
 
@@ -492,7 +490,7 @@ const ViewListingPage = () => {
                   : [fallbackCoverImage || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1000'];
                 const room2DImageCount = uniqueRoomImages.length;
                 const has2DRoom = Boolean(String(listing?.image || '').trim() || (Array.isArray(listing?.images) && listing.images.length));
-                const has3DRoomTour = Boolean(String(listing?.model3dUrl || '').trim());
+                const hasPanoramaTour = Array.isArray(listing?.panoramaImages) && listing.panoramaImages.length > 0;
                 return (
                   <article
                     key={listingId}
@@ -558,7 +556,7 @@ const ViewListingPage = () => {
                       </div>
 
                       <div className="p-4">
-                        {(has2DRoom || has3DRoomTour) && (
+                        {(has2DRoom || hasPanoramaTour) && (
                           <div className="mb-2">
                             <div className="inline-flex items-center gap-1.5 flex-wrap">
                               {has2DRoom && (
@@ -566,9 +564,9 @@ const ViewListingPage = () => {
                                   2D Room
                                 </span>
                               )}
-                              {has3DRoomTour && (
+                              {hasPanoramaTour && (
                                 <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-emerald-700 border border-emerald-200">
-                                  3D Room Tour
+                                  360 Tour
                                 </span>
                               )}
                             </div>

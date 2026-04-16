@@ -4,7 +4,6 @@ import {
   ImagePlus,
   X,
   XCircle,
-  Box,
   CheckCircle2,
   Building2,
   MapPin,
@@ -29,20 +28,22 @@ const ListingsTab = ({
   submitting,
   locating,
   fileInputRef,
-  modelInputRef,
+  panoramaInputRef,
   handleImageSelect,
-  handleModelSelect,
+  handlePanoramaSelect,
+  handlePanoramaSceneTitleChange,
   openImagePicker,
-  openModelPicker,
+  openPanoramaPicker,
   handleUseCurrentLocation,
   clearSelectedImage,
-  clearSelectedModel,
+  clearSelectedPanorama,
   handleRemoveSelectedImage,
+  handleRemoveSelectedPanorama,
   handleStartNewListing,
   imageName,
-  modelName,
-  uploadingModel,
-  uploadingModelProgress,
+  panoramaImageName,
+  uploadingPanorama,
+  uploadingPanoramaProgress,
   loading,
   listings,
   handleViewListing,
@@ -55,8 +56,6 @@ const ListingsTab = ({
   const [deleteCandidate, setDeleteCandidate] = React.useState(null);
   const [featureInput, setFeatureInput] = React.useState('');
   const [activeImageIndex, setActiveImageIndex] = React.useState(0);
-  const [modelSuccessPulse, setModelSuccessPulse] = React.useState(false);
-  const modelReadyRef = React.useRef(false);
 
   const keyFeatures = Array.isArray(form.keyFeatures)
     ? form.keyFeatures
@@ -64,29 +63,6 @@ const ListingsTab = ({
       .split(/[,\n]/)
       .map((item) => item.trim())
       .filter(Boolean);
-
-  const hasUploadedModel = Boolean(String(form.model3dUrl || '').trim()) && !uploadingModel;
-  const highlightLoadedModelText = hasUploadedModel && modelName === 'Loaded 3D model from listing';
-
-  React.useEffect(() => {
-    if (hasUploadedModel && !modelReadyRef.current) {
-      modelReadyRef.current = true;
-      setModelSuccessPulse(true);
-
-      const timer = setTimeout(() => {
-        setModelSuccessPulse(false);
-      }, 900);
-
-      return () => clearTimeout(timer);
-    }
-
-    if (!hasUploadedModel) {
-      modelReadyRef.current = false;
-      setModelSuccessPulse(false);
-    }
-
-    return undefined;
-  }, [hasUploadedModel]);
 
   React.useEffect(() => {
     if (!isCreateModalOpen || typeof document === 'undefined') return undefined;
@@ -114,6 +90,25 @@ const ListingsTab = ({
 
     return Array.from(new Set(imageList));
   }, [form.images, form.image]);
+
+  const panoramaScenes = React.useMemo(() => {
+    if (!Array.isArray(form.panoramaScenes)) return [];
+
+    return form.panoramaScenes
+      .map((scene, index) => {
+        if (!scene || typeof scene !== 'object') return null;
+
+        const imageUrl = String(scene.imageUrl || scene.url || '').trim();
+        if (!imageUrl) return null;
+
+        return {
+          imageUrl,
+          title: String(scene.title || `Scene ${index + 1}`).trim() || `Scene ${index + 1}`,
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 12);
+  }, [form.panoramaScenes]);
 
   const getModerationMeta = (listingItem) => {
     const moderationStatus = String(listingItem?.moderationStatus || 'pending').toLowerCase();
@@ -261,7 +256,7 @@ const ListingsTab = ({
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-stretch">
                 {listings.map((item) => {
                   const has2DRoom = Boolean(String(item?.image || '').trim() || (Array.isArray(item?.images) && item.images.length));
-                  const has3DRoomTour = Boolean(String(item?.model3dUrl || '').trim());
+                  const hasPanoramaTour = Array.isArray(item?.panoramaImages) && item.panoramaImages.length > 0;
                   const moderationMeta = getModerationMeta(item);
                   const listingStatusMeta = getListingStatusMeta(item);
 
@@ -286,7 +281,7 @@ const ListingsTab = ({
                     </div>
 
                     <div className="p-4 flex-1 flex flex-col">
-                      {(has2DRoom || has3DRoomTour) && (
+                      {(has2DRoom || hasPanoramaTour) && (
                         <div className="mb-2">
                           <div className="inline-flex items-center gap-1.5 flex-wrap">
                             {has2DRoom && (
@@ -294,9 +289,9 @@ const ListingsTab = ({
                                 2D Room
                               </span>
                             )}
-                            {has3DRoomTour && (
+                            {hasPanoramaTour && (
                               <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-emerald-700 border border-emerald-200">
-                                3D Room Tour
+                                360 Tour
                               </span>
                             )}
                           </div>
@@ -673,91 +668,110 @@ const ListingsTab = ({
                     <p className="mt-2 text-[11px] text-gray-500">{imageName || 'PNG, JPG, JPEG up to 5MB each (max 8 images)'}</p>
                   </div>
 
-                  <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-500">3D Model (GLB/GLTF)</label>
+                  <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-500">360 Panorama Tour Scenes</label>
                   <div className="mt-1 p-3 border border-dashed border-gray-300 rounded-xl bg-gray-50">
                     <button
                       type="button"
-                      onClick={openModelPicker}
-                      disabled={uploadingModel}
+                      onClick={openPanoramaPicker}
+                      disabled={uploadingPanorama}
                       className="h-36 w-full rounded-xl overflow-hidden bg-white border border-gray-200 flex items-center justify-center cursor-pointer hover:border-blue-300 transition-colors"
                     >
                       <div
                         className={`text-center text-xs text-gray-500 rounded-lg px-3 py-2 transition-all duration-300 ${
-                          highlightLoadedModelText
+                          panoramaScenes.length
                             ? 'bg-emerald-100/80 border border-emerald-200'
                             : ''
-                        } ${modelSuccessPulse ? 'scale-105 shadow-[0_0_0_3px_rgba(16,185,129,0.2)]' : 'scale-100'}`}
+                        }`}
                       >
-                        {hasUploadedModel ? (
+                        {panoramaScenes.length ? (
                           <CheckCircle2
                             size={20}
-                            className={`mx-auto mb-1.5 text-emerald-600 ${modelSuccessPulse ? 'animate-bounce' : ''}`}
+                            className="mx-auto mb-1.5 text-emerald-600"
                           />
                         ) : (
-                          <Box size={20} className="mx-auto mb-1.5 text-gray-400" />
+                          <ImagePlus size={20} className="mx-auto mb-1.5 text-gray-400" />
                         )}
-                        <p className={highlightLoadedModelText ? 'text-emerald-700 font-semibold' : ''}>
-                          {uploadingModel ? 'Uploading 3D model...' : (modelName || 'Upload 3D model file')}
+                        <p className={panoramaScenes.length ? 'text-emerald-700 font-semibold' : ''}>
+                          {uploadingPanorama ? 'Uploading panorama scenes...' : (panoramaImageName || 'Upload 360 panorama images')}
                         </p>
-                        <p className={`mt-0.5 text-[11px] ${highlightLoadedModelText ? 'text-emerald-700' : 'text-gray-400'}`}>
-                          Only .glb or .gltf files are allowed
+                        <p className={`mt-0.5 text-[11px] ${panoramaScenes.length ? 'text-emerald-700' : 'text-gray-400'}`}>
+                          JPG/PNG/WEBP. Prefer equirectangular images (2:1 ratio).
                         </p>
                       </div>
                     </button>
 
                     <input
-                      ref={modelInputRef}
+                      ref={panoramaInputRef}
                       type="file"
-                      accept=".glb,.gltf,model/gltf-binary,model/gltf+json"
-                      onChange={handleModelSelect}
+                      accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                      multiple
+                      onChange={handlePanoramaSelect}
                       className="hidden"
                     />
 
-                    {form.model3dUrl && (
+                    {panoramaScenes.length > 0 && (
+                      <div className="mt-3 grid grid-cols-4 gap-2">
+                        {panoramaScenes.map((scene, index) => (
+                          <div key={`${scene.imageUrl}-${index}`} className="relative space-y-1">
+                            <img
+                              src={scene.imageUrl}
+                              alt={`Panorama scene ${index + 1}`}
+                              className="h-16 w-full rounded-lg border border-gray-200 object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSelectedPanorama(scene.imageUrl)}
+                              className="absolute -top-1.5 -right-1.5 rounded-full bg-white border border-red-200 text-red-600 hover:bg-red-50 p-0.5"
+                              aria-label={`Remove panorama scene ${index + 1}`}
+                            >
+                              <X size={11} />
+                            </button>
+                            <input
+                              type="text"
+                              value={scene.title}
+                              onChange={(event) => handlePanoramaSceneTitleChange(index, event.target.value)}
+                              maxLength={80}
+                              placeholder={`Scene ${index + 1} title`}
+                              className="w-full rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-700 outline-none focus:ring-1 focus:ring-blue-300"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {panoramaScenes.length > 0 && (
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <button
                           type="button"
-                          onClick={clearSelectedModel}
+                          onClick={clearSelectedPanorama}
                           className="kb-btn kb-btn-soft-danger kb-btn-sm"
                         >
-                          <XCircle size={14} /> Remove 3D Model
+                          <XCircle size={14} /> Remove Panorama Scenes
                         </button>
                       </div>
                     )}
 
-                    {uploadingModel && (
+                    {uploadingPanorama && (
                       <div className="mt-3">
                         <div className="h-2 w-full rounded-full bg-blue-100 overflow-hidden">
                           <div
                             className="h-full bg-blue-600 transition-all duration-200"
-                            style={{ width: `${uploadingModelProgress}%` }}
+                            style={{ width: `${uploadingPanoramaProgress}%` }}
                           />
                         </div>
-                        <p className="mt-1 text-[11px] text-blue-700 font-semibold">Uploading: {uploadingModelProgress}%</p>
+                        <p className="mt-1 text-[11px] text-blue-700 font-semibold">Uploading: {uploadingPanoramaProgress}%</p>
                       </div>
                     )}
 
-                    <p className="mt-2 text-[11px] text-gray-500">Only 3D formats accepted (.glb/.gltf). Max size 512MB.</p>
-                  </div>
-
-                  <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-500">Custom 3D Tour Points (Optional)</label>
-                  <div className="mt-1 p-3 border border-dashed border-gray-300 rounded-xl bg-gray-50">
-                    <textarea
-                      rows={8}
-                      value={form.tourPoints || ''}
-                      onChange={handleChange('tourPoints')}
-                      placeholder={'[{"label":"Entry","x":2.6,"y":1.4,"z":0.2,"lookAtX":0,"lookAtY":0.82,"lookAtZ":0}]'}
-                      className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-mono text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    />
                     <p className="mt-2 text-[11px] text-gray-500">
-                      Use JSON array format. Each point requires x, y, z. Optional: label, lookAtX, lookAtY, lookAtZ.
+                      Upload up to 12 scenes, name each one, and renters can move between scenes using in-view hotspot links.
                     </p>
                   </div>
 
                   <div className="mt-4 flex justify-end">
                     <button
                       type="submit"
-                      disabled={submitting || uploadingModel}
+                      disabled={submitting || uploadingPanorama}
                       className="kb-btn kb-btn-primary"
                     >
                       <Building2 size={15} /> {submitting ? (editingListingId ? 'Saving...' : 'Publishing...') : (editingListingId ? 'Save Changes' : 'Publish Listing')}

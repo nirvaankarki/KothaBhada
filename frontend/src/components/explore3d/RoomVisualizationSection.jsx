@@ -1,45 +1,50 @@
 import React from 'react';
 import {
   Box,
-  RotateCw,
-  RefreshCcw,
-  Maximize,
-  ZoomIn,
-  ZoomOut,
-  MousePointer2,
-  Move,
-  Search,
   AlertCircle,
-  Route,
   Image as ImageIcon,
   Navigation,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import ThreeRoomViewer from './ThreeRoomViewer';
+import MarzipanoViewer from './MarzipanoViewer';
 
 const RoomVisualizationSection = ({
   is3dTourStarted,
-  isAutoRotateEnabled,
-  setIsAutoRotateEnabled,
   setIs3dTourStarted,
-  viewerRef,
-  model3dUrl,
-  tourPoints,
+  panoramaScenes,
+  panoramaImages,
   roomImages,
   activeRoomImageIndex,
   showPreviousRoomImage,
   showNextRoomImage,
   setActiveRoomImageIndex,
 }) => {
-  const has3DModel = Boolean(String(model3dUrl || '').trim());
-  const [isTourModeEnabled, setIsTourModeEnabled] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!is3dTourStarted || !has3DModel) {
-      setIsTourModeEnabled(false);
+  const scenes = React.useMemo(() => {
+    if (Array.isArray(panoramaScenes) && panoramaScenes.length > 0) {
+      return panoramaScenes;
     }
-  }, [is3dTourStarted, has3DModel]);
+
+    if (!Array.isArray(panoramaImages)) {
+      return [];
+    }
+
+    return panoramaImages
+      .map((item, index) => {
+        const imageUrl = String(item || '').trim();
+        if (!imageUrl) return null;
+
+        return {
+          title: `Scene ${index + 1}`,
+          imageUrl,
+          links: [],
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 12);
+  }, [panoramaScenes, panoramaImages]);
+
+  const hasPanoramaTour = scenes.length > 0;
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden flex flex-col border border-slate-100">
@@ -48,12 +53,12 @@ const RoomVisualizationSection = ({
           <div className="min-w-0 md:max-w-[66%]">
             <h2 className="flex items-center gap-2 text-xl font-bold text-[#1a222e]">
               <Box size={20} className="text-[#3A5AFF]" />
-              3D Room Visualization
+              360 Room Tour
             </h2>
             <p className="mt-1 text-xs text-slate-500">
               {is3dTourStarted
-                ? 'Interactive preview canvas with camera controls and real-time loading status.'
-                : 'Preview landlord-uploaded room photos first, then start the interactive 3D tour.'}
+                ? 'Interactive room experience powered by linked panorama scenes.'
+                : 'Preview landlord-uploaded room photos first, then start the interactive tour.'}
             </p>
           </div>
 
@@ -68,8 +73,6 @@ const RoomVisualizationSection = ({
                 type="button"
                 onClick={() => {
                   setIs3dTourStarted(false);
-                  setIsAutoRotateEnabled(false);
-                  setIsTourModeEnabled(false);
                 }}
                 className={`relative z-10 inline-flex items-center justify-center gap-1.5 rounded-l-xl rounded-r-none px-3 py-2.5 text-xs font-bold transition-colors duration-300 ease-in-out ${
                   !is3dTourStarted
@@ -81,110 +84,23 @@ const RoomVisualizationSection = ({
               </button>
               <button
                 type="button"
-                onClick={() => setIs3dTourStarted(true)}
+                onClick={() => {
+                  if (hasPanoramaTour) {
+                    setIs3dTourStarted(true);
+                  }
+                }}
+                disabled={!hasPanoramaTour}
                 className={`relative z-10 inline-flex items-center justify-center gap-1.5 rounded-r-xl rounded-l-none px-3 py-2.5 text-xs font-bold transition-colors duration-300 ease-in-out ${
                   is3dTourStarted
                     ? 'text-white'
-                    : 'text-slate-500 hover:text-slate-700'
+                    : hasPanoramaTour
+                      ? 'text-slate-500 hover:text-slate-700'
+                      : 'text-slate-400'
                 }`}
               >
-                <Navigation size={13} /> 3D Tour
+                <Navigation size={13} /> 360 Tour
               </button>
             </div>
-
-            {is3dTourStarted && has3DModel && (
-              <div className="flex flex-col items-start gap-2 md:items-end">
-                <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setIsTourModeEnabled((prev) => !prev)}
-                    className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${
-                      isTourModeEnabled
-                        ? 'border-[#3A5AFF] bg-[#3A5AFF]/10 text-[#3A5AFF] shadow-sm'
-                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Route size={14} /> {isTourModeEnabled ? 'Walk Mode On' : 'Walk Mode'}
-                  </button>
-
-                  {isTourModeEnabled && (
-                    <div className="inline-flex items-center overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                      <button
-                        type="button"
-                        onClick={() => viewerRef.current?.previousTourPoint?.()}
-                        className="inline-flex items-center px-2.5 py-1.5 text-slate-700 hover:bg-slate-50"
-                        aria-label="Previous viewpoint"
-                        title="Previous viewpoint"
-                      >
-                        <ChevronLeft size={14} />
-                      </button>
-                      <div className="h-4 w-px bg-slate-200" />
-                      <button
-                        type="button"
-                        onClick={() => viewerRef.current?.nextTourPoint?.()}
-                        className="inline-flex items-center px-2.5 py-1.5 text-slate-700 hover:bg-slate-50"
-                        aria-label="Next viewpoint"
-                        title="Next viewpoint"
-                      >
-                        <ChevronRight size={14} />
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="inline-flex items-center overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                    <button
-                      type="button"
-                      onClick={() => viewerRef.current?.zoomOut?.()}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      title="Zoom out"
-                    >
-                      <ZoomOut size={14} />
-                    </button>
-                    <div className="h-4 w-px bg-slate-200" />
-                    <button
-                      type="button"
-                      onClick={() => viewerRef.current?.zoomIn?.()}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      title="Zoom in"
-                    >
-                      <ZoomIn size={14} />
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => viewerRef.current?.resetView()}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 whitespace-nowrap"
-                  >
-                    <RefreshCcw size={14} /> Reset View
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsAutoRotateEnabled((prev) => !prev)}
-                    className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${
-                      isAutoRotateEnabled
-                        ? 'border-[#3A5AFF] bg-[#3A5AFF]/10 text-[#3A5AFF] shadow-sm'
-                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <RotateCw size={14} /> {isAutoRotateEnabled ? 'Auto Rotate On' : 'Auto Rotate'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => viewerRef.current?.toggleFullscreen()}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 whitespace-nowrap"
-                  >
-                    <Maximize size={14} /> Full Screen
-                  </button>
-                </div>
-
-                <p className="text-[11px] text-slate-500">
-                  {isTourModeEnabled
-                    ? 'Walk mode: use Arrow keys or on-screen arrows to move between viewpoints. Drag to look around.'
-                    : 'Tip: Drag to rotate, mouse wheel or +/- to zoom, and right-click drag to pan.'}
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -192,23 +108,17 @@ const RoomVisualizationSection = ({
       <div className="p-4 bg-slate-50/40">
         <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-slate-100 bg-slate-900">
           {is3dTourStarted ? (
-            has3DModel ? (
-              <ThreeRoomViewer
-                ref={viewerRef}
-                modelUrl={model3dUrl}
-                autoRotate={isAutoRotateEnabled}
-                tourMode={isTourModeEnabled}
-                tourPoints={tourPoints}
-              />
+            hasPanoramaTour ? (
+              <MarzipanoViewer panoramaImages={scenes} />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-linear-to-br from-[#0b1220] via-[#0f172a] to-[#1e293b] px-4">
                 <div className="max-w-md rounded-2xl border border-white/20 bg-white/95 p-6 text-center shadow-[0_20px_60px_rgba(15,23,42,0.45)] backdrop-blur">
                   <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 text-red-600 ring-1 ring-red-200">
                     <AlertCircle size={22} />
                   </div>
-                  <h3 className="text-base font-bold text-red-700">3D Tour Not Available</h3>
+                  <h3 className="text-base font-bold text-red-700">360 Tour Not Available</h3>
                   <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                    This listing does not have a 3D model yet. 
+                    This listing does not have panorama scenes yet.
                   </p>
                 </div>
               </div>
@@ -262,33 +172,23 @@ const RoomVisualizationSection = ({
 
                 <button
                   type="button"
-                  onClick={() => setIs3dTourStarted(true)}
+                  onClick={() => {
+                    if (hasPanoramaTour) {
+                      setIs3dTourStarted(true);
+                    }
+                  }}
+                  disabled={!hasPanoramaTour}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#3A5AFF] px-4 py-2 text-xs sm:text-sm font-bold text-white hover:bg-[#2F49E6]"
                 >
-                  <Navigation size={14} /> Start 3D Tour
+                  <Navigation size={14} /> Start 360 Tour
                 </button>
               </div>
             </>
           )}
 
-          {is3dTourStarted && has3DModel && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-              <div className="inline-flex items-center gap-4 rounded-xl border border-white/15 bg-black/45 px-4 py-2 text-white backdrop-blur-md">
-                <div className="inline-flex items-center gap-1.5">
-                  <MousePointer2 size={13} className="text-[#3A5AFF]" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Rotate</span>
-                </div>
-                <div className="h-3.5 w-px bg-white/20" />
-                <div className="inline-flex items-center gap-1.5">
-                  <Search size={13} className="text-[#3A5AFF]" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Zoom</span>
-                </div>
-                <div className="h-3.5 w-px bg-white/20" />
-                <div className="inline-flex items-center gap-1.5">
-                  <Move size={13} className="text-[#3A5AFF]" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Pan</span>
-                </div>
-              </div>
+          {is3dTourStarted && hasPanoramaTour && (
+            <div className="absolute top-3 left-3 rounded-lg border border-white/15 bg-black/45 px-3 py-1.5 text-[11px] font-semibold text-white backdrop-blur">
+              360 scene tour: drag to look around and click hotspots to move scenes.
             </div>
           )}
         </div>

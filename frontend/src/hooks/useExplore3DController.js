@@ -15,62 +15,65 @@ import {
 } from '../utils/explore3dUtils';
 import { getListingId } from '../utils/listingData';
 
-function parseTourPointNumber(value, fallback = null) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    return fallback;
-  }
-
-  return Number(parsed.toFixed(4));
-}
-
-function parseListingTourPoints(input) {
-  let rawTourPoints = input;
-
-  if (typeof input === 'string') {
-    const trimmed = String(input || '').trim();
-    if (!trimmed) return [];
-
-    try {
-      rawTourPoints = JSON.parse(trimmed);
-    } catch {
-      return [];
-    }
-  }
-
-  if (!Array.isArray(rawTourPoints)) {
+function parseListingPanoramaImages(input) {
+  if (!Array.isArray(input)) {
     return [];
   }
 
-  return rawTourPoints
-    .map((point, index) => {
-      if (!point || typeof point !== 'object') return null;
-
-      const x = parseTourPointNumber(point.x ?? point.positionX ?? point.px);
-      const y = parseTourPointNumber(point.y ?? point.positionY ?? point.py);
-      const z = parseTourPointNumber(point.z ?? point.positionZ ?? point.pz);
-
-      if (x === null || y === null || z === null) {
-        return null;
-      }
-
-      const lookAtX = parseTourPointNumber(point.lookAtX ?? point.targetX ?? point.tx, 0);
-      const lookAtY = parseTourPointNumber(point.lookAtY ?? point.targetY ?? point.ty, 0.82);
-      const lookAtZ = parseTourPointNumber(point.lookAtZ ?? point.targetZ ?? point.tz, 0);
-      const label = String(point.label || point.name || `Viewpoint ${index + 1}`).trim();
-
-      return {
-        label,
-        x,
-        y,
-        z,
-        lookAtX,
-        lookAtY,
-        lookAtZ,
-      };
-    })
-    .filter(Boolean)
+  return Array.from(new Set(input
+    .map((item) => String(item || '').trim())
+    .filter(Boolean)))
     .slice(0, 12);
+}
+
+function parseListingPanoramaScenes(input, fallbackImages = []) {
+  if (Array.isArray(input) && input.length > 0) {
+    return input
+      .map((scene, index) => {
+        if (!scene || typeof scene !== 'object') return null;
+
+        const imageUrl = String(scene.imageUrl || scene.url || '').trim();
+        if (!imageUrl) return null;
+
+        const links = Array.isArray(scene.links)
+          ? scene.links
+              .map((link) => {
+                if (!link || typeof link !== 'object') return null;
+
+                const targetIndex = Number(link.targetIndex ?? link.toIndex ?? link.sceneIndex);
+                if (!Number.isInteger(targetIndex) || targetIndex < 0) {
+                  return null;
+                }
+
+                const yaw = Number(link.yaw);
+                const pitch = Number(link.pitch);
+
+                return {
+                  targetIndex,
+                  label: String(link.label || '').trim(),
+                  yaw: Number.isFinite(yaw) ? Number(yaw.toFixed(4)) : 0,
+                  pitch: Number.isFinite(pitch) ? Number(pitch.toFixed(4)) : 0,
+                };
+              })
+              .filter(Boolean)
+              .slice(0, 8)
+          : [];
+
+        return {
+          title: String(scene.title || scene.label || scene.name || `Scene ${index + 1}`).trim() || `Scene ${index + 1}`,
+          imageUrl,
+          links,
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 12);
+  }
+
+  return parseListingPanoramaImages(fallbackImages).map((imageUrl, index) => ({
+    title: `Scene ${index + 1}`,
+    imageUrl,
+    links: [],
+  }));
 }
 
 export function useExplore3DController() {
@@ -83,7 +86,7 @@ export function useExplore3DController() {
   const listingIdFromQuery = searchParams.get('id');
   const tabFromQuery = searchParams.get('tab');
   const openChatFromQuery = tabFromQuery === 'chat';
-  const passedListing = normalizeListing(location.state?.listing);
+  const passedListing = useMemo(() => normalizeListing(location.state?.listing), [location.state?.listing]);
   const effectiveListingId = listingIdFromQuery || passedListing?.listingId || '';
 
   const [listing, setListing] = useState(passedListing);
@@ -216,7 +219,6 @@ export function useExplore3DController() {
           location: listing.location,
           price: listing.price,
           image: getListingImage(listing),
-          model3dUrl: String(listing?.model3dUrl || '').trim(),
           source: 'listing-details-page',
         });
       } catch {
@@ -490,8 +492,11 @@ export function useExplore3DController() {
   const locationPanelHeight = locationBaseHeight + (extraHighlightRows * 46);
 
   const listingDescription = String(listing?.description || '').trim();
-  const model3dUrl = String(listing?.model3dUrl || '').trim();
-  const tourPoints = useMemo(() => parseListingTourPoints(listing?.tourPoints), [listing?.tourPoints]);
+  const panoramaImages = useMemo(() => parseListingPanoramaImages(listing?.panoramaImages), [listing?.panoramaImages]);
+  const panoramaScenes = useMemo(
+    () => parseListingPanoramaScenes(listing?.panoramaScenes, listing?.panoramaImages),
+    [listing?.panoramaScenes, listing?.panoramaImages],
+  );
 
   const roomImages = useMemo(() => {
     const gallery = [];
@@ -532,7 +537,6 @@ export function useExplore3DController() {
         location: listing.location,
         price: listing.price,
         image: getListingImage(listing),
-        model3dUrl: String(listing?.model3dUrl || '').trim(),
       });
       const nextState = Boolean(response.data?.isFavorite);
       setIsFavorite(nextState);
@@ -683,8 +687,8 @@ export function useExplore3DController() {
     areaHighlightsToDisplay,
     locationPanelHeight,
     listingDescription,
-    model3dUrl,
-    tourPoints,
+    panoramaScenes,
+    panoramaImages,
     roomImages,
     handleToggleFavorite,
     handleBookVisitClick,
