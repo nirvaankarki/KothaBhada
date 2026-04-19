@@ -5,6 +5,26 @@ import {
   ShieldAlert,
   Users,
 } from 'lucide-react';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import DashboardHeader from '../components/landlordDashboard/DashboardHeader';
@@ -37,12 +57,69 @@ const adminHeaderMeta = {
 
 const defaultSummary = {
   totalUsers: 0,
+  renters: 0,
+  landlords: 0,
   activeRooms: 0,
   totalListings: 0,
   pendingListings: 0,
+  approvedListings: 0,
+  rejectedListings: 0,
   openReports: 0,
+  inReviewReports: 0,
+  totalReports: 0,
   suspendedUsers: 0,
+  rolePerformance: {
+    renter: {
+      total: 0,
+      activeLast30d: 0,
+      emailVerified: 0,
+      bookingsTotal: 0,
+      bookingsConfirmed: 0,
+      inquiriesTotal: 0,
+      inquiriesResponded: 0,
+      reportsRaised: 0,
+      openReportsRaised: 0,
+      inquiryToBookingRate: 0,
+      bookingConfirmationRate: 0,
+    },
+    landlord: {
+      total: 0,
+      activeLast30d: 0,
+      verifiedCount: 0,
+      kycPendingCount: 0,
+      listingsTotal: 0,
+      listingsActive: 0,
+      listingsPendingModeration: 0,
+      listingsRejected: 0,
+      bookingsReceived: 0,
+      bookingsReceivedConfirmed: 0,
+      inquiriesReceived: 0,
+      inquiriesResponded: 0,
+      reportsAgainst: 0,
+      openReportsAgainst: 0,
+      listingApprovalRate: 0,
+      bookingAcceptanceRate: 0,
+    },
+    trends: {
+      window7d: [],
+      window30d: [],
+    },
+    topPerformers: {
+      landlordsByBookings: [],
+      rentersByBookings: [],
+    },
+  },
 };
+
+const overviewRoleOptions = [
+  { value: 'renter', label: 'Renter Performance' },
+  { value: 'landlord', label: 'Landlord Performance' },
+];
+
+const trendWindowOptions = [
+  { value: '7d', label: '7D' },
+  { value: '30d', label: '30D' },
+];
 
 const listingFilterOptions = [
   { value: 'pending', label: 'Pending' },
@@ -90,6 +167,69 @@ function formatDateTime(value) {
 
 function metricValue(value) {
   return Number(value || 0).toLocaleString();
+}
+
+function percentValue(value) {
+  return `${Number(value || 0).toFixed(2)}%`;
+}
+
+function safeNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function ratioPercent(numerator, denominator) {
+  if (!denominator) return 0;
+  return Number(((safeNumber(numerator) / safeNumber(denominator)) * 100).toFixed(2));
+}
+
+function compactLabel(value, max = 16) {
+  const text = String(value || '').trim();
+  if (!text) return 'Unknown';
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1)}...`;
+}
+
+function buildSummaryFromResponse(next = {}) {
+  const rolePerformance = next?.rolePerformance || {};
+  const renter = rolePerformance?.renter || {};
+  const landlord = rolePerformance?.landlord || {};
+  const trends = rolePerformance?.trends || {};
+  const topPerformers = rolePerformance?.topPerformers || {};
+
+  return {
+    ...defaultSummary,
+    totalUsers: safeNumber(next.totalUsers),
+    renters: safeNumber(next.renters),
+    landlords: safeNumber(next.landlords),
+    activeRooms: safeNumber(next.activeRooms),
+    totalListings: safeNumber(next.totalListings),
+    pendingListings: safeNumber(next.pendingListings),
+    approvedListings: safeNumber(next.approvedListings),
+    rejectedListings: safeNumber(next.rejectedListings),
+    openReports: safeNumber(next.openReports),
+    inReviewReports: safeNumber(next.inReviewReports),
+    totalReports: safeNumber(next.totalReports),
+    suspendedUsers: safeNumber(next.suspendedUsers),
+    rolePerformance: {
+      renter: {
+        ...defaultSummary.rolePerformance.renter,
+        ...renter,
+      },
+      landlord: {
+        ...defaultSummary.rolePerformance.landlord,
+        ...landlord,
+      },
+      trends: {
+        window7d: Array.isArray(trends.window7d) ? trends.window7d : [],
+        window30d: Array.isArray(trends.window30d) ? trends.window30d : [],
+      },
+      topPerformers: {
+        landlordsByBookings: Array.isArray(topPerformers.landlordsByBookings) ? topPerformers.landlordsByBookings : [],
+        rentersByBookings: Array.isArray(topPerformers.rentersByBookings) ? topPerformers.rentersByBookings : [],
+      },
+    },
+  };
 }
 
 function statusPillClass(status) {
@@ -228,6 +368,8 @@ function AdminDashboardPage() {
 
   const [summary, setSummary] = useState(defaultSummary);
   const [overviewLoading, setOverviewLoading] = useState(true);
+  const [overviewRoleFocus, setOverviewRoleFocus] = useState('renter');
+  const [overviewTrendWindow, setOverviewTrendWindow] = useState('7d');
 
   const [listings, setListings] = useState([]);
   const [listingsLoading, setListingsLoading] = useState(false);
@@ -311,14 +453,7 @@ function AdminDashboardPage() {
     try {
       const response = await api.get('/admin/overview');
       const next = response?.data?.summary || {};
-      setSummary({
-        totalUsers: Number(next.totalUsers || 0),
-        activeRooms: Number(next.activeRooms || 0),
-        totalListings: Number(next.totalListings || 0),
-        pendingListings: Number(next.pendingListings || 0),
-        openReports: Number(next.openReports || 0),
-        suspendedUsers: Number(next.suspendedUsers || 0),
-      });
+      setSummary(buildSummaryFromResponse(next));
     } catch (error) {
       setBanner({ type: 'error', message: error?.response?.data?.message || 'Could not load overview.' });
     } finally {
@@ -430,6 +565,242 @@ function AdminDashboardPage() {
   const listingCountLabel = useMemo(() => `${listings.length} listings`, [listings.length]);
   const userCountLabel = useMemo(() => `${users.length} users`, [users.length]);
   const reportCountLabel = useMemo(() => `${reports.length} reports`, [reports.length]);
+
+  const goToListingsPanel = useCallback((moderationStatus = 'all', search = '') => {
+    const nextSearch = String(search || '').trim();
+    setListingFilter(moderationStatus || 'all');
+    setListingSearchInput(nextSearch);
+    setListingSearchApplied(nextSearch);
+    setActiveTab('listings');
+  }, []);
+
+  const goToUsersPanel = useCallback((role = 'all', search = '') => {
+    const nextSearch = String(search || '').trim();
+    setUserFilter(role || 'all');
+    setUserSearchInput(nextSearch);
+    setUserSearchApplied(nextSearch);
+    setActiveTab('users');
+  }, []);
+
+  const goToReportsPanel = useCallback((status = 'all', search = '') => {
+    const nextSearch = String(search || '').trim();
+    setReportFilter(status || 'all');
+    setReportSearchInput(nextSearch);
+    setReportSearchApplied(nextSearch);
+    setActiveTab('reports');
+  }, []);
+
+  const handleOverviewDrillDown = useCallback((drillDown) => {
+    if (!drillDown || typeof drillDown !== 'object') return;
+
+    const tab = String(drillDown.tab || '').toLowerCase();
+    const filter = String(drillDown.filter || 'all').toLowerCase();
+    const search = String(drillDown.search || '');
+
+    if (tab === 'users') {
+      goToUsersPanel(filter, search);
+      return;
+    }
+
+    if (tab === 'listings') {
+      goToListingsPanel(filter, search);
+      return;
+    }
+
+    if (tab === 'reports') {
+      goToReportsPanel(filter, search);
+    }
+  }, [goToListingsPanel, goToReportsPanel, goToUsersPanel]);
+
+  const rolePerformance = summary.rolePerformance || defaultSummary.rolePerformance;
+  const selectedRolePerformance = overviewRoleFocus === 'landlord'
+    ? rolePerformance.landlord
+    : rolePerformance.renter;
+
+  const trendRows = useMemo(() => (
+    overviewTrendWindow === '30d'
+      ? rolePerformance.trends.window30d
+      : rolePerformance.trends.window7d
+  ), [overviewTrendWindow, rolePerformance.trends.window30d, rolePerformance.trends.window7d]);
+
+  const overviewPalette = useMemo(() => {
+    if (overviewRoleFocus === 'landlord') {
+      return {
+        primary: '#0ea5e9',
+        secondary: '#6366f1',
+        soft: 'rgba(14, 165, 233, 0.08)',
+        surface: '#f0f9ff',
+        border: '#bae6fd',
+        gradientFrom: '#ecfeff',
+        gradientTo: '#eef2ff',
+      };
+    }
+
+    return {
+      primary: '#10b981',
+      secondary: '#3b82f6',
+      soft: 'rgba(16, 185, 129, 0.08)',
+      surface: '#ecfdf5',
+      border: '#a7f3d0',
+      gradientFrom: '#ecfdf5',
+      gradientTo: '#eff6ff',
+    };
+  }, [overviewRoleFocus]);
+
+  const trendSeries = useMemo(() => {
+    if (overviewRoleFocus === 'landlord') {
+      return [
+        { key: 'landlordSignups', label: 'Landlord Signups', color: overviewPalette.primary },
+        { key: 'landlordListings', label: 'Listings Added', color: overviewPalette.secondary },
+      ];
+    }
+
+    return [
+      { key: 'renterSignups', label: 'Renter Signups', color: overviewPalette.primary },
+      { key: 'renterBookings', label: 'Booking Requests', color: overviewPalette.secondary },
+    ];
+  }, [overviewPalette.primary, overviewPalette.secondary, overviewRoleFocus]);
+
+  const focusMetricCards = useMemo(() => {
+    if (overviewRoleFocus === 'landlord') {
+      return [
+        {
+          label: 'Verified Landlords',
+          value: metricValue(selectedRolePerformance.verifiedCount),
+          hint: `${metricValue(selectedRolePerformance.kycPendingCount)} pending KYC`,
+          drillDown: { tab: 'users', filter: 'landlord' },
+        },
+        {
+          label: 'Booking Acceptance Rate',
+          value: percentValue(selectedRolePerformance.bookingAcceptanceRate),
+          hint: `${metricValue(selectedRolePerformance.bookingsReceivedConfirmed)} confirmed from ${metricValue(selectedRolePerformance.bookingsReceived)}`,
+          drillDown: { tab: 'users', filter: 'landlord' },
+        },
+        {
+          label: 'Listing Approval Rate',
+          value: percentValue(selectedRolePerformance.listingApprovalRate),
+          hint: `${metricValue(selectedRolePerformance.listingsPendingModeration)} pending moderation`,
+          drillDown: { tab: 'listings', filter: 'pending' },
+        },
+        {
+          label: 'Open Reports Against',
+          value: metricValue(selectedRolePerformance.openReportsAgainst),
+          hint: `${metricValue(selectedRolePerformance.reportsAgainst)} total landlord reports`,
+          drillDown: { tab: 'reports', filter: 'open' },
+        },
+      ];
+    }
+
+    return [
+      {
+        label: 'Active Renters (30D)',
+        value: metricValue(selectedRolePerformance.activeLast30d),
+        hint: `${metricValue(selectedRolePerformance.emailVerified)} email-verified`,
+        drillDown: { tab: 'users', filter: 'user' },
+      },
+      {
+        label: 'Booking Confirmation Rate',
+        value: percentValue(selectedRolePerformance.bookingConfirmationRate),
+        hint: `${metricValue(selectedRolePerformance.bookingsConfirmed)} confirmed from ${metricValue(selectedRolePerformance.bookingsTotal)}`,
+        drillDown: { tab: 'users', filter: 'user' },
+      },
+      {
+        label: 'Inquiry to Booking Rate',
+        value: percentValue(selectedRolePerformance.inquiryToBookingRate),
+        hint: `${metricValue(selectedRolePerformance.inquiriesTotal)} inquiries submitted`,
+        drillDown: { tab: 'users', filter: 'user' },
+      },
+      {
+        label: 'Open Reports Raised',
+        value: metricValue(selectedRolePerformance.openReportsRaised),
+        hint: `${metricValue(selectedRolePerformance.reportsRaised)} total reports by renters`,
+        drillDown: { tab: 'reports', filter: 'open' },
+      },
+    ];
+  }, [overviewRoleFocus, selectedRolePerformance]);
+
+  const trendChartData = useMemo(() => (
+    trendRows.map((row) => ({
+      ...row,
+      dayLabel: String(row?.day || '').slice(5),
+    }))
+  ), [trendRows]);
+
+  const userCompositionData = useMemo(() => {
+    const rows = [
+      { name: 'Renters', value: safeNumber(summary.renters), color: '#10b981' },
+      { name: 'Landlords', value: safeNumber(summary.landlords), color: '#3b82f6' },
+    ];
+    return rows.filter((row) => row.value > 0);
+  }, [summary.renters, summary.landlords]);
+
+  const listingModerationData = useMemo(() => {
+    const rows = [
+      { name: 'Approved', value: safeNumber(summary.approvedListings), color: '#22c55e' },
+      { name: 'Pending', value: safeNumber(summary.pendingListings), color: '#f59e0b' },
+      { name: 'Rejected', value: safeNumber(summary.rejectedListings), color: '#ef4444' },
+    ];
+    return rows.filter((row) => row.value > 0);
+  }, [summary.approvedListings, summary.pendingListings, summary.rejectedListings]);
+
+  const safetyDistributionData = useMemo(() => {
+    const resolvedLike = Math.max(0, safeNumber(summary.totalReports) - safeNumber(summary.openReports) - safeNumber(summary.inReviewReports));
+    const rows = [
+      { name: 'Open', value: safeNumber(summary.openReports), color: '#f97316' },
+      { name: 'In Review', value: safeNumber(summary.inReviewReports), color: '#3b82f6' },
+      { name: 'Resolved/Dismissed', value: resolvedLike, color: '#22c55e' },
+    ];
+    return rows.filter((row) => row.value > 0);
+  }, [summary.inReviewReports, summary.openReports, summary.totalReports]);
+
+  const roleRadarData = useMemo(() => {
+    const renterActiveRate = ratioPercent(rolePerformance.renter.activeLast30d, rolePerformance.renter.total);
+    const landlordActiveRate = ratioPercent(rolePerformance.landlord.activeLast30d, rolePerformance.landlord.total);
+    const renterSafetyScore = 100 - ratioPercent(rolePerformance.renter.openReportsRaised, rolePerformance.renter.reportsRaised);
+    const landlordSafetyScore = 100 - ratioPercent(rolePerformance.landlord.openReportsAgainst, rolePerformance.landlord.reportsAgainst);
+
+    return [
+      {
+        metric: 'Activity',
+        renter: renterActiveRate,
+        landlord: landlordActiveRate,
+      },
+      {
+        metric: 'Conversion',
+        renter: safeNumber(rolePerformance.renter.bookingConfirmationRate),
+        landlord: safeNumber(rolePerformance.landlord.bookingAcceptanceRate),
+      },
+      {
+        metric: 'Approval',
+        renter: safeNumber(rolePerformance.renter.inquiryToBookingRate),
+        landlord: safeNumber(rolePerformance.landlord.listingApprovalRate),
+      },
+      {
+        metric: 'Safety Score',
+        renter: Math.max(0, renterSafetyScore),
+        landlord: Math.max(0, landlordSafetyScore),
+      },
+    ];
+  }, [rolePerformance.landlord, rolePerformance.renter]);
+
+  const topPerformerBarData = useMemo(() => {
+    const rows = overviewRoleFocus === 'landlord'
+      ? rolePerformance.topPerformers.landlordsByBookings
+      : rolePerformance.topPerformers.rentersByBookings;
+
+    return rows.map((entry, index) => ({
+      id: String(entry?._id || entry?.email || `${overviewRoleFocus}-${index}`),
+      name: compactLabel(entry?.name || entry?.email || 'Unknown'),
+      confirmedBookings: safeNumber(entry?.confirmedBookings),
+      totalBookings: safeNumber(entry?.totalBookings),
+    }));
+  }, [overviewRoleFocus, rolePerformance.topPerformers.landlordsByBookings, rolePerformance.topPerformers.rentersByBookings]);
+
+  const chartMotion = useMemo(() => ({
+    isAnimationActive: true,
+    animationDuration: 850,
+    animationEasing: 'ease-out',
+  }), []);
 
   const applyListingSearch = (event) => {
     event.preventDefault();
@@ -691,29 +1062,372 @@ function AdminDashboardPage() {
         ) : null}
 
         {activeTab === 'overview' ? (
-          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="space-y-4">
             {overviewLoading ? (
-              <article className="col-span-full bg-white p-6 rounded-2xl shadow-sm text-sm text-gray-500">
+              <article className="bg-white p-6 rounded-2xl shadow-sm text-sm text-gray-500">
                 Loading overview...
               </article>
             ) : (
               <>
-                <article className="bg-white p-6 rounded-2xl shadow-sm">
-                  <p className="text-sm font-medium text-gray-500">Total Users</p>
-                  <p className="mt-2 text-3xl font-black text-[#132238]">{metricValue(summary.totalUsers)}</p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  <button
+                    type="button"
+                    onClick={() => goToUsersPanel('all')}
+                    className="bg-white p-6 rounded-2xl shadow-sm text-left border border-transparent transition hover:border-slate-200"
+                  >
+                    <p className="text-sm font-medium text-gray-500">Total Managed Users</p>
+                    <p className="mt-2 text-3xl font-black text-[#132238]">{metricValue(summary.totalUsers)}</p>
+                    <p className="mt-1 text-xs text-slate-500">{metricValue(summary.renters)} renters • {metricValue(summary.landlords)} landlords</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => goToListingsPanel(summary.pendingListings > 0 ? 'pending' : 'all')}
+                    className="bg-white p-6 rounded-2xl shadow-sm text-left border border-transparent transition hover:border-slate-200"
+                  >
+                    <p className="text-sm font-medium text-gray-500">Listing Health</p>
+                    <p className="mt-2 text-3xl font-black text-[#132238]">{metricValue(summary.activeRooms)}</p>
+                    <p className="mt-1 text-xs text-slate-500">active • {metricValue(summary.pendingListings)} pending • {metricValue(summary.rejectedListings)} rejected</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => goToReportsPanel(summary.openReports > 0 ? 'open' : 'in_review')}
+                    className="bg-white p-6 rounded-2xl shadow-sm text-left border border-transparent transition hover:border-slate-200"
+                  >
+                    <p className="text-sm font-medium text-gray-500">Safety Queue</p>
+                    <p className="mt-2 text-3xl font-black text-[#132238]">{metricValue(summary.openReports)}</p>
+                    <p className="mt-1 text-xs text-slate-500">open reports • {metricValue(summary.inReviewReports)} in review</p>
+                  </button>
+                </div>
+
+                <article
+                  className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100 transition-colors"
+                  style={{
+                    backgroundImage: `linear-gradient(135deg, ${overviewPalette.gradientFrom} 0%, ${overviewPalette.gradientTo} 100%)`,
+                    borderColor: overviewPalette.border,
+                  }}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-xl font-bold text-[#132238]">Role Performance Board</h3>
+                      <p className="text-sm text-slate-500">Switch role and timeline to inspect renter and landlord performance side by side.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {overviewRoleOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setOverviewRoleFocus(option.value)}
+                          className={`inline-flex h-9 items-center rounded-xl px-3 text-xs font-bold uppercase tracking-wide transition ${
+                            overviewRoleFocus === option.value
+                              ? 'text-white'
+                              : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                          }`}
+                          style={overviewRoleFocus === option.value ? { backgroundColor: overviewPalette.primary } : undefined}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                      {trendWindowOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setOverviewTrendWindow(option.value)}
+                          className={`inline-flex h-9 items-center rounded-xl px-3 text-xs font-bold uppercase tracking-wide transition ${
+                            overviewTrendWindow === option.value
+                              ? 'text-white'
+                              : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                          }`}
+                          style={overviewTrendWindow === option.value ? { backgroundColor: overviewPalette.secondary } : undefined}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {focusMetricCards.map((card) => (
+                      <button
+                        key={card.label}
+                        type="button"
+                        onClick={() => handleOverviewDrillDown(card.drillDown)}
+                        className="rounded-2xl border border-slate-200 px-4 py-3 text-left transition"
+                        style={{
+                          backgroundColor: overviewPalette.surface,
+                          borderColor: overviewPalette.border,
+                        }}
+                      >
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{card.label}</p>
+                        <p className="mt-1 text-2xl font-black text-[#132238]">{card.value}</p>
+                        <p className="mt-1 text-xs text-slate-500">{card.hint}</p>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-3">
+                    <article
+                      className="xl:col-span-2 rounded-2xl border border-slate-200 p-4"
+                      style={{
+                        borderColor: overviewPalette.border,
+                        backgroundImage: `linear-gradient(135deg, #ffffff 0%, ${overviewPalette.surface} 100%)`,
+                      }}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h4 className="text-sm font-bold text-[#132238]">Daily Activity Trend</h4>
+                        <p className="text-xs text-slate-500">{trendRows.length} days loaded</p>
+                      </div>
+
+                      {trendChartData.length === 0 ? (
+                        <p className="mt-4 text-sm text-slate-500">No trend data available yet.</p>
+                      ) : (
+                        <div className="mt-3 h-75 w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={trendChartData} margin={{ top: 12, right: 8, left: -8, bottom: 0 }}>
+                              <defs>
+                                {trendSeries.map((series) => (
+                                  <linearGradient key={series.key} id={`${series.key}Gradient`} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={series.color} stopOpacity={0.35} />
+                                    <stop offset="95%" stopColor={series.color} stopOpacity={0.03} />
+                                  </linearGradient>
+                                ))}
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                              <XAxis dataKey="dayLabel" tick={{ fontSize: 11, fill: '#64748b' }} />
+                              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+                              <Tooltip
+                                formatter={(value, name) => [metricValue(value), name]}
+                                labelFormatter={(label) => `Day ${label}`}
+                                contentStyle={{ borderRadius: 12, borderColor: '#cbd5e1' }}
+                              />
+                              <Legend wrapperStyle={{ fontSize: '12px' }} />
+                              {trendSeries.map((series) => (
+                                <Area
+                                  key={series.key}
+                                  type="monotone"
+                                  dataKey={series.key}
+                                  name={series.label}
+                                  stroke={series.color}
+                                  fill={`url(#${series.key}Gradient)`}
+                                  strokeWidth={2.5}
+                                  isAnimationActive={chartMotion.isAnimationActive}
+                                  animationDuration={chartMotion.animationDuration}
+                                  animationEasing={chartMotion.animationEasing}
+                                />
+                              ))}
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </article>
+
+                    <article className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <h4 className="text-sm font-bold text-[#132238]">Composition Snapshot</h4>
+
+                      <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">User Mix</p>
+                        <div className="h-36 mt-2">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={userCompositionData}
+                                dataKey="value"
+                                nameKey="name"
+                                innerRadius={30}
+                                outerRadius={52}
+                                paddingAngle={3}
+                                isAnimationActive={chartMotion.isAnimationActive}
+                                animationDuration={chartMotion.animationDuration}
+                                animationEasing={chartMotion.animationEasing}
+                              >
+                                {userCompositionData.map((entry) => (
+                                  <Cell key={`user-composition-${entry.name}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip formatter={(value, name) => [metricValue(value), name]} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Listing Moderation</p>
+                        <div className="h-36 mt-2">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={listingModerationData}
+                                dataKey="value"
+                                nameKey="name"
+                                innerRadius={28}
+                                outerRadius={50}
+                                paddingAngle={2}
+                                isAnimationActive={chartMotion.isAnimationActive}
+                                animationDuration={chartMotion.animationDuration}
+                                animationEasing={chartMotion.animationEasing}
+                              >
+                                {listingModerationData.map((entry) => (
+                                  <Cell key={`listing-moderation-${entry.name}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip formatter={(value, name) => [metricValue(value), name]} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
                 </article>
-                <article className="bg-white p-6 rounded-2xl shadow-sm">
-                  <p className="text-sm font-medium text-gray-500">Active Listings</p>
-                  <p className="mt-2 text-3xl font-black text-[#132238]">{metricValue(summary.activeRooms)}</p>
-                </article>
-                <article className="bg-white p-6 rounded-2xl shadow-sm">
-                  <p className="text-sm font-medium text-gray-500">Pending Listings</p>
-                  <p className="mt-2 text-3xl font-black text-[#132238]">{metricValue(summary.pendingListings)}</p>
-                </article>
-                <article className="bg-white p-6 rounded-2xl shadow-sm">
-                  <p className="text-sm font-medium text-gray-500">Open Reports</p>
-                  <p className="mt-2 text-3xl font-black text-[#132238]">{metricValue(summary.openReports)}</p>
-                </article>
+
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                  <article className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 className="text-lg font-bold text-[#132238]">Role Strength Radar</h3>
+                    <p className="mt-1 text-xs text-slate-500">Visual comparison of renter and landlord system health indicators.</p>
+                    <div className="mt-3 h-75">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart data={roleRadarData} outerRadius="72%">
+                          <PolarGrid stroke="#cbd5e1" />
+                          <PolarAngleAxis dataKey="metric" tick={{ fontSize: 11, fill: '#475569' }} />
+                          <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10, fill: '#94a3b8' }} />
+                          <Radar
+                            name="Renters"
+                            dataKey="renter"
+                            stroke={overviewRoleFocus === 'renter' ? overviewPalette.primary : '#10b981'}
+                            fill={overviewRoleFocus === 'renter' ? overviewPalette.primary : '#10b981'}
+                            fillOpacity={0.28}
+                            strokeWidth={2}
+                            isAnimationActive={chartMotion.isAnimationActive}
+                            animationDuration={chartMotion.animationDuration}
+                            animationEasing={chartMotion.animationEasing}
+                          />
+                          <Radar
+                            name="Landlords"
+                            dataKey="landlord"
+                            stroke={overviewRoleFocus === 'landlord' ? overviewPalette.primary : '#3b82f6'}
+                            fill={overviewRoleFocus === 'landlord' ? overviewPalette.primary : '#3b82f6'}
+                            fillOpacity={0.24}
+                            strokeWidth={2}
+                            isAnimationActive={chartMotion.isAnimationActive}
+                            animationDuration={chartMotion.animationDuration}
+                            animationEasing={chartMotion.animationEasing}
+                          />
+                          <Tooltip formatter={(value, name) => [percentValue(value), name]} />
+                          <Legend wrapperStyle={{ fontSize: '12px' }} />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </article>
+
+                  <article className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 className="text-lg font-bold text-[#132238]">Top Performer Comparison</h3>
+                    <p className="mt-1 text-xs text-slate-500">{overviewRoleFocus === 'landlord' ? 'Landlords ranked by booking outcomes.' : 'Renters ranked by successful booking outcomes.'}</p>
+                    {topPerformerBarData.length === 0 ? (
+                      <p className="mt-4 text-sm text-slate-500">No top performer data available yet.</p>
+                    ) : (
+                      <div className="mt-3 h-75">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={topPerformerBarData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} />
+                            <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+                            <Tooltip formatter={(value, name) => [metricValue(value), name]} />
+                            <Legend wrapperStyle={{ fontSize: '12px' }} />
+                            <Bar
+                              dataKey="confirmedBookings"
+                              name="Confirmed Bookings"
+                              fill={overviewPalette.primary}
+                              radius={[8, 8, 0, 0]}
+                              isAnimationActive={chartMotion.isAnimationActive}
+                              animationDuration={chartMotion.animationDuration}
+                              animationEasing={chartMotion.animationEasing}
+                            />
+                            <Bar
+                              dataKey="totalBookings"
+                              name="Total Bookings"
+                              fill={overviewPalette.secondary}
+                              radius={[8, 8, 0, 0]}
+                              isAnimationActive={chartMotion.isAnimationActive}
+                              animationDuration={chartMotion.animationDuration}
+                              animationEasing={chartMotion.animationEasing}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </article>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                  <article className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 xl:col-span-1">
+                    <h3 className="text-base font-bold text-[#132238]">Safety Distribution</h3>
+                    <div className="mt-2 h-55">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={safetyDistributionData}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={46}
+                            outerRadius={74}
+                            paddingAngle={3}
+                            isAnimationActive={chartMotion.isAnimationActive}
+                            animationDuration={chartMotion.animationDuration}
+                            animationEasing={chartMotion.animationEasing}
+                          >
+                            {safetyDistributionData.map((entry) => (
+                              <Cell key={`safety-${entry.name}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value, name) => [metricValue(value), name]} />
+                          <Legend wrapperStyle={{ fontSize: '12px' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </article>
+
+                  <article className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 xl:col-span-2">
+                    <h3 className="text-base font-bold text-[#132238]">Quick Drilldown Leaderboard</h3>
+                    <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Landlords</p>
+                        {rolePerformance.topPerformers.landlordsByBookings.length === 0 ? (
+                          <p className="text-sm text-slate-500">No landlord performance records yet.</p>
+                        ) : rolePerformance.topPerformers.landlordsByBookings.map((entry, index) => (
+                          <button
+                            key={String(entry?._id || entry?.email || `landlord-${index}`)}
+                            type="button"
+                            onClick={() => goToUsersPanel('landlord', entry?.email || entry?.name || '')}
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-left transition hover:border-blue-200 hover:bg-blue-50/40"
+                          >
+                            <p className="text-sm font-bold text-slate-800">{entry?.name || 'Unknown landlord'}</p>
+                            <p className="text-xs text-slate-500">{entry?.email || '-'}</p>
+                            <p className="mt-1 text-xs text-slate-600">
+                              {metricValue(entry?.confirmedBookings)} confirmed • {metricValue(entry?.totalBookings)} total
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Renters</p>
+                        {rolePerformance.topPerformers.rentersByBookings.length === 0 ? (
+                          <p className="text-sm text-slate-500">No renter performance records yet.</p>
+                        ) : rolePerformance.topPerformers.rentersByBookings.map((entry, index) => (
+                          <button
+                            key={String(entry?._id || entry?.email || `renter-${index}`)}
+                            type="button"
+                            onClick={() => goToUsersPanel('user', entry?.email || entry?.name || '')}
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-left transition hover:border-emerald-200 hover:bg-emerald-50/40"
+                          >
+                            <p className="text-sm font-bold text-slate-800">{entry?.name || 'Unknown renter'}</p>
+                            <p className="text-xs text-slate-500">{entry?.email || '-'}</p>
+                            <p className="mt-1 text-xs text-slate-600">
+                              {metricValue(entry?.confirmedBookings)} confirmed • {metricValue(entry?.totalBookings)} total
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </article>
+                </div>
               </>
             )}
           </section>
