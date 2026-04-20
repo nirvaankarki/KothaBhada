@@ -77,6 +77,7 @@ const FloatingAIAssistant = () => {
   const containerRef = useRef(null);
   const historyRequestRef = useRef(0);
   const isLandlordDashboardPage = location.pathname.startsWith('/landlord/dashboard');
+  const isLandlordListingDetailsPage = location.pathname.startsWith('/landlord/listing-details');
   const isAdminDashboardPage = location.pathname.startsWith('/admin/dashboard');
 
   const currentListingId = useMemo(() => {
@@ -166,7 +167,7 @@ const FloatingAIAssistant = () => {
     }
   };
 
-  if (isLandlordDashboardPage || isAdminDashboardPage) {
+  if (isLandlordDashboardPage || isLandlordListingDetailsPage || isAdminDashboardPage) {
     return null;
   }
 

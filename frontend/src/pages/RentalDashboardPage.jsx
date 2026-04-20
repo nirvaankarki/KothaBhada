@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../utils/api';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import RentalDashboard from '../components/rentalDashboard/RentalDashboard';
+import { subscribeRealtimeUpdates } from '../utils/realtimeUpdates';
 
 const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -53,32 +54,63 @@ const RentalDashboardPage = () => {
 
   useAutoDismiss(error, () => setError(''));
 
-  useEffect(() => {
-    async function loadDashboardData() {
+  const loadDashboardData = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
       setLoading(true);
       setError('');
+    }
 
-      try {
-          const [favoritesRes, historyRes, bookingsRes, reportsRes] = await Promise.all([
-          api.get('/user/favorites'),
-          api.get('/user/history'),
-          api.get('/user/bookings'),
-          api.get('/user/reports'),
-        ]);
+    try {
+      const [favoritesRes, historyRes, bookingsRes, reportsRes] = await Promise.all([
+        api.get('/user/favorites'),
+        api.get('/user/history'),
+        api.get('/user/bookings'),
+        api.get('/user/reports'),
+      ]);
 
-        setFavorites(favoritesRes.data?.favorites || []);
-        setHistory(historyRes.data?.history || []);
-        setBookings(bookingsRes.data?.bookings || []);
-        setReports(reportsRes.data?.reports || []);
-      } catch (err) {
+      setFavorites(favoritesRes.data?.favorites || []);
+      setHistory(historyRes.data?.history || []);
+      setBookings(bookingsRes.data?.bookings || []);
+      setReports(reportsRes.data?.reports || []);
+    } catch (err) {
+      if (!silent) {
         setError(err?.response?.data?.message || 'Could not load renter dashboard data.');
-      } finally {
+      }
+    } finally {
+      if (!silent) {
         setLoading(false);
       }
     }
+  }, []);
 
+  useEffect(() => {
     loadDashboardData();
-  }, [refreshKey]);
+  }, [loadDashboardData, refreshKey]);
+
+  useEffect(() => {
+    let refreshTimeoutId = null;
+
+    const unsubscribe = subscribeRealtimeUpdates(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
+
+      if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId);
+      }
+
+      refreshTimeoutId = setTimeout(() => {
+        loadDashboardData({ silent: true });
+      }, 120);
+    });
+
+    return () => {
+      unsubscribe();
+      if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId);
+      }
+    };
+  }, [loadDashboardData]);
 
   const stats = useMemo(() => {
     const totalBookings = bookings.length;

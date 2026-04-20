@@ -77,6 +77,27 @@ function normalizePanoramaImages(input) {
   });
 }
 
+function buildScenesSignature(scenes) {
+  if (!Array.isArray(scenes) || scenes.length === 0) {
+    return '';
+  }
+
+  return JSON.stringify(
+    scenes.map((scene) => ({
+      imageUrl: String(scene?.imageUrl || ''),
+      title: String(scene?.title || ''),
+      links: Array.isArray(scene?.links)
+        ? scene.links.map((link) => ({
+            targetIndex: Number(link?.targetIndex),
+            label: String(link?.label || ''),
+            yaw: Number(Number(link?.yaw || 0).toFixed(4)),
+            pitch: Number(Number(link?.pitch || 0).toFixed(4)),
+          }))
+        : [],
+    }))
+  );
+}
+
 function createSceneHotspot({ label, onClick }) {
   const button = document.createElement('button');
   button.type = 'button';
@@ -112,12 +133,19 @@ const MarzipanoViewer = ({ panoramaImages = [], initialSceneIndex = 0, onSceneCh
   const viewerRef = useRef(null);
   const scenesRef = useRef([]);
   const autorotateRef = useRef(null);
+  const onSceneChangeRef = useRef(onSceneChange);
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
   const [viewerError, setViewerError] = useState('');
   const [isAutoRotating, setIsAutoRotating] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const scenes = useMemo(() => normalizePanoramaImages(panoramaImages), [panoramaImages]);
+  const normalizedScenes = useMemo(() => normalizePanoramaImages(panoramaImages), [panoramaImages]);
+  const scenesSignature = useMemo(() => buildScenesSignature(normalizedScenes), [normalizedScenes]);
+  const scenes = useMemo(() => normalizedScenes, [scenesSignature]);
+
+  useEffect(() => {
+    onSceneChangeRef.current = onSceneChange;
+  }, [onSceneChange]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -171,8 +199,9 @@ const MarzipanoViewer = ({ panoramaImages = [], initialSceneIndex = 0, onSceneCh
         targetScene.switchTo();
         setCurrentSceneIndex(normalizedIndex);
 
-        if (typeof onSceneChange === 'function') {
-          onSceneChange(normalizedIndex, scenes[normalizedIndex]);
+        const handleSceneChange = onSceneChangeRef.current;
+        if (typeof handleSceneChange === 'function') {
+          handleSceneChange(normalizedIndex, scenes[normalizedIndex]);
         }
       };
 
@@ -214,7 +243,7 @@ const MarzipanoViewer = ({ panoramaImages = [], initialSceneIndex = 0, onSceneCh
         container.innerHTML = '';
       }
     };
-  }, [scenes, initialSceneIndex, onSceneChange]);
+  }, [scenes, initialSceneIndex]);
 
   useEffect(() => {
     const viewer = viewerRef.current;
@@ -272,8 +301,9 @@ const MarzipanoViewer = ({ panoramaImages = [], initialSceneIndex = 0, onSceneCh
     targetScene.switchTo();
     setCurrentSceneIndex(normalizedIndex);
 
-    if (typeof onSceneChange === 'function') {
-      onSceneChange(normalizedIndex, scenes[normalizedIndex]);
+    const handleSceneChange = onSceneChangeRef.current;
+    if (typeof handleSceneChange === 'function') {
+      handleSceneChange(normalizedIndex, scenes[normalizedIndex]);
     }
   };
 

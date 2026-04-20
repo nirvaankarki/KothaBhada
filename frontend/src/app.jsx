@@ -54,6 +54,18 @@ export function App() {
           )}
         />
 
+        <Route
+          path="/landlord/listing-details"
+          element={(
+            <ProtectedRoute
+              message="Please log in as a landlord to view landlord listing details."
+              allowedRoles={['landlord']}
+            >
+              <Explore3DPage isLandlordView />
+            </ProtectedRoute>
+          )}
+        />
+
         {/* Admin dashboard - no navbar/footer */}
         <Route
           path="/admin/dashboard"

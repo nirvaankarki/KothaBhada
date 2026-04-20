@@ -25,6 +25,7 @@ const PropertySummarySection = ({
   canReportListing,
   openChatOverlay,
   unreadChatCount,
+  isLandlordView = false,
 }) => {
   return (
     <section className="bg-white rounded-lg shadow overflow-hidden border border-slate-100">
@@ -85,30 +86,32 @@ const PropertySummarySection = ({
           <Info size={13} /> Utilities Included
         </div>
 
-        <div className="mt-6 space-y-3">
-          <button
-            type="button"
-            onClick={handleBookVisitClick}
-            disabled={isBookedListing}
-            className={`w-full font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all ${
-              isBookedListing
-                ? 'bg-red-100 text-red-700 border border-red-200 cursor-not-allowed'
-                : 'bg-[#3A5AFF] hover:bg-[#2F49E6] text-white shadow-lg shadow-[#3A5AFF]/30 active:scale-[0.99]'
-            }`}
-          >
-            <Calendar size={16} /> {isBookedListing ? 'Property Already Booked' : 'Schedule a Visit'}
-          </button>
-
-          {canReportListing && (
+        {!isLandlordView ? (
+          <div className="mt-6 space-y-3">
             <button
               type="button"
-              onClick={handleReportListing}
-              className="w-full font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"
+              onClick={handleBookVisitClick}
+              disabled={isBookedListing}
+              className={`w-full font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all ${
+                isBookedListing
+                  ? 'bg-red-100 text-red-700 border border-red-200 cursor-not-allowed'
+                  : 'bg-[#3A5AFF] hover:bg-[#2F49E6] text-white shadow-lg shadow-[#3A5AFF]/30 active:scale-[0.99]'
+              }`}
             >
-              <ShieldAlert size={16} /> Report This Property
+              <Calendar size={16} /> {isBookedListing ? 'Property Already Booked' : 'Schedule a Visit'}
             </button>
-          )}
-        </div>
+
+            {canReportListing && (
+              <button
+                type="button"
+                onClick={handleReportListing}
+                className="w-full font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"
+              >
+                <ShieldAlert size={16} /> Report This Property
+              </button>
+            )}
+          </div>
+        ) : null}
 
         <section className="mt-6 border-t border-slate-200 pt-5">
           <div className="flex items-center gap-2 mb-4">
@@ -132,18 +135,20 @@ const PropertySummarySection = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={openChatOverlay}
-            className="mt-4 w-full relative inline-flex items-center justify-center gap-2 rounded-xl bg-[#3A5AFF] px-4 py-3.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#2F49E6]"
-          >
-            <MessageCircle size={16} /> Chat Now
-            {unreadChatCount > 0 && (
-              <span className="absolute right-3 inline-flex min-w-5 h-5 px-1.5 rounded-full bg-[#ef4444] text-white text-[10px] leading-5 font-bold items-center justify-center">
-                {unreadChatCount > 99 ? '99+' : unreadChatCount}
-              </span>
-            )}
-          </button>
+          {!isLandlordView ? (
+            <button
+              type="button"
+              onClick={openChatOverlay}
+              className="mt-4 w-full relative inline-flex items-center justify-center gap-2 rounded-xl bg-[#3A5AFF] px-4 py-3.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#2F49E6]"
+            >
+              <MessageCircle size={16} /> Chat Now
+              {unreadChatCount > 0 && (
+                <span className="absolute right-3 inline-flex min-w-5 h-5 px-1.5 rounded-full bg-[#ef4444] text-white text-[10px] leading-5 font-bold items-center justify-center">
+                  {unreadChatCount > 99 ? '99+' : unreadChatCount}
+                </span>
+              )}
+            </button>
+          ) : null}
         </section>
       </div>
     </section>

@@ -23,6 +23,7 @@ import { useToast } from '../context/ToastContext';
 import RatingDisplay from '../components/RatingDisplay';
 import HoverImageSlider from '../components/HoverImageSlider';
 import ListingReportModal from '../components/shared/ListingReportModal';
+import { subscribeRealtimeUpdates } from '../utils/realtimeUpdates';
 
 const PRICE_BUCKETS = [
   { id: 'all', label: 'All Prices' },
@@ -122,10 +123,12 @@ const ViewListingPage = () => {
     showToast({ type: 'info', title: 'Notice', message });
   }, [message, showToast]);
 
-  const loadListings = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    setMessage('');
+  const loadListings = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setLoading(true);
+      setError('');
+      setMessage('');
+    }
 
     try {
       const response = await api.get('/rooms/demo');
@@ -133,19 +136,48 @@ const ViewListingPage = () => {
 
       setListings(fetched);
 
-      if (fetched.length === 0) {
+      if (!silent && fetched.length === 0) {
         setMessage('No property listings are available at the moment.');
       }
     } catch {
-      setListings([]);
-      setError('Could not load listings from server. Please try again later.');
+      if (!silent) {
+        setListings([]);
+        setError('Could not load listings from server. Please try again later.');
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
     loadListings();
+  }, [loadListings]);
+
+  useEffect(() => {
+    let refreshTimeoutId = null;
+
+    const unsubscribe = subscribeRealtimeUpdates(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
+
+      if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId);
+      }
+
+      refreshTimeoutId = setTimeout(() => {
+        loadListings({ silent: true });
+      }, 120);
+    });
+
+    return () => {
+      unsubscribe();
+      if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId);
+      }
+    };
   }, [loadListings]);
 
   useEffect(() => {

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../utils/api';
 import { useAutoDismiss } from './useAutoDismiss';
 import { useToast } from '../context/ToastContext';
+import { subscribeRealtimeUpdates } from '../utils/realtimeUpdates';
 
 const allowedTabs = new Set(['favorites', 'history', 'inquiries', 'bookings', 'reports']);
 
@@ -75,6 +76,47 @@ export const useUserDashboardController = () => {
   useAutoDismiss(error, () => setError(''));
   useAutoDismiss(success, () => setSuccess(''));
 
+  const refreshUserDashboardData = useCallback(async ({ silent = true } = {}) => {
+    if (!silent) {
+      setLoading(true);
+      setError('');
+    }
+
+    try {
+      const [favoritesRes, historyRes, inquiriesRes, bookingsRes, reportsRes] = await Promise.all([
+        api.get('/user/favorites'),
+        api.get('/user/history'),
+        api.get('/user/inquiries'),
+        api.get('/user/bookings'),
+        api.get('/user/reports'),
+      ]);
+
+      setFavorites(favoritesRes.data?.favorites || []);
+      setHistory(historyRes.data?.history || []);
+      setInquiries(inquiriesRes.data?.inquiries || []);
+
+      const latestBookings = bookingsRes.data?.bookings || [];
+      setBookings(latestBookings);
+      setReports(reportsRes.data?.reports || []);
+
+      bookingStatusMapRef.current = latestBookings.reduce((acc, booking) => {
+        if (booking?._id) {
+          acc[booking._id] = booking.status || 'pending';
+        }
+        return acc;
+      }, {});
+      hasInitializedBookingMapRef.current = true;
+    } catch (err) {
+      if (!silent) {
+        setError(err?.response?.data?.message || 'Could not load your dashboard');
+      }
+    } finally {
+      if (!silent) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (allowedTabs.has(queryTab)) {
       setActiveTab(queryTab);
@@ -92,40 +134,33 @@ export const useUserDashboardController = () => {
   }, [success, showToast]);
 
   useEffect(() => {
-    async function loadDashboardData() {
-      setLoading(true);
-      setError('');
-      try {
-        const [favoritesRes, historyRes, inquiriesRes, bookingsRes, reportsRes] = await Promise.all([
-          api.get('/user/favorites'),
-          api.get('/user/history'),
-          api.get('/user/inquiries'),
-          api.get('/user/bookings'),
-          api.get('/user/reports'),
-        ]);
+    refreshUserDashboardData({ silent: false });
+  }, [refreshUserDashboardData]);
 
-        setFavorites(favoritesRes.data?.favorites || []);
-        setHistory(historyRes.data?.history || []);
-        setInquiries(inquiriesRes.data?.inquiries || []);
-        const initialBookings = bookingsRes.data?.bookings || [];
-        setBookings(initialBookings);
-        setReports(reportsRes.data?.reports || []);
-        bookingStatusMapRef.current = initialBookings.reduce((acc, booking) => {
-          if (booking?._id) {
-            acc[booking._id] = booking.status || 'pending';
-          }
-          return acc;
-        }, {});
-        hasInitializedBookingMapRef.current = true;
-      } catch (err) {
-        setError(err?.response?.data?.message || 'Could not load your dashboard');
-      } finally {
-        setLoading(false);
+  useEffect(() => {
+    let refreshTimeoutId = null;
+
+    const unsubscribe = subscribeRealtimeUpdates(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
       }
-    }
 
-    loadDashboardData();
-  }, []);
+      if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId);
+      }
+
+      refreshTimeoutId = setTimeout(() => {
+        refreshUserDashboardData();
+      }, 120);
+    });
+
+    return () => {
+      unsubscribe();
+      if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId);
+      }
+    };
+  }, [refreshUserDashboardData]);
 
   useEffect(() => {
     if (!hasInitializedBookingMapRef.current) return;

@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowLeft } from 'lucide-react';
 import AuthRequiredModal from '../components/AuthRequiredModal';
 import ChatOverlay from '../components/explore3d/ChatOverlay';
 import KeyFeaturesSection from '../components/explore3d/KeyFeaturesSection';
@@ -10,8 +11,17 @@ import RoomVisualizationSection from '../components/explore3d/RoomVisualizationS
 import ListingReportModal from '../components/shared/ListingReportModal';
 import { useExplore3DController } from '../hooks/useExplore3DController';
 
-const Explore3DPage = () => {
-  const controller = useExplore3DController();
+const Explore3DPage = ({ isLandlordView = false }) => {
+  const controller = useExplore3DController({ isLandlordView });
+
+  const handleBackNavigation = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      controller.navigate(-1);
+      return;
+    }
+
+    controller.navigate('/landlord/dashboard');
+  };
 
   if (controller.isLoading && !controller.listing) {
     return (
@@ -29,10 +39,10 @@ const Explore3DPage = () => {
           <p className="text-sm text-gray-600 mt-2">We could not find details for this listing.</p>
           <button
             type="button"
-            onClick={() => controller.navigate('/viewlisting')}
+            onClick={() => controller.navigate(isLandlordView ? '/landlord/dashboard' : '/viewlisting')}
             className="mt-4 kb-btn kb-btn-secondary"
           >
-            Back to Listings
+            {isLandlordView ? 'Back to Dashboard' : 'Back to Listings'}
           </button>
         </div>
       </div>
@@ -41,24 +51,40 @@ const Explore3DPage = () => {
 
   return (
     <div className="min-h-screen bg-[#f3f4f6] font-sans px-4 md:px-8 py-4 md:py-8">
-      <AuthRequiredModal
-        open={controller.showAuthModal}
-        message="Please log in or sign up to save this listing to favorites."
-        onCancel={() => controller.setShowAuthModal(false)}
-        onConfirm={() => controller.navigate('/login', { state: { from: controller.location.pathname + controller.location.search } })}
-      />
+      {isLandlordView ? (
+        <div className="w-full max-w-350 mx-auto mb-4">
+          <button
+            type="button"
+            onClick={handleBackNavigation}
+            className="flex items-center gap-2 text-[#3b66ff] font-semibold hover:text-blue-700 transition-colors"
+          >
+            <ArrowLeft size={20} /> Back
+          </button>
+        </div>
+      ) : null}
 
-      <ListingReportModal
-        open={controller.isListingReportModalOpen}
-        listingTitle={controller.listing?.title || ''}
-        reasonCategory={controller.listingReportReasonCategory}
-        description={controller.listingReportDescription}
-        onChangeReason={controller.setListingReportReasonCategory}
-        onChangeDescription={controller.setListingReportDescription}
-        onCancel={controller.closeListingReportModal}
-        onSubmit={controller.submitListingReport}
-        isSubmitting={controller.listingReportSubmitting}
-      />
+      {!isLandlordView ? (
+        <AuthRequiredModal
+          open={controller.showAuthModal}
+          message="Please log in or sign up to save this listing to favorites."
+          onCancel={() => controller.setShowAuthModal(false)}
+          onConfirm={() => controller.navigate('/login', { state: { from: controller.location.pathname + controller.location.search } })}
+        />
+      ) : null}
+
+      {!isLandlordView ? (
+        <ListingReportModal
+          open={controller.isListingReportModalOpen}
+          listingTitle={controller.listing?.title || ''}
+          reasonCategory={controller.listingReportReasonCategory}
+          description={controller.listingReportDescription}
+          onChangeReason={controller.setListingReportReasonCategory}
+          onChangeDescription={controller.setListingReportDescription}
+          onCancel={controller.closeListingReportModal}
+          onSubmit={controller.submitListingReport}
+          isSubmitting={controller.listingReportSubmitting}
+        />
+      ) : null}
 
       <div className="w-full max-w-350 mx-auto">
         <div className="flex flex-col gap-6">
@@ -87,6 +113,7 @@ const Explore3DPage = () => {
                 canReportListing={controller.canReportListing}
                 openChatOverlay={controller.openChatOverlay}
                 unreadChatCount={controller.unreadChatCount}
+                isLandlordView={isLandlordView}
               />
             </div>
           </div>
@@ -108,31 +135,37 @@ const Explore3DPage = () => {
                   formatDistance={controller.formatDistance}
                 />
 
-                <ReviewSummarySection
-                  isLoadingDetailsReviews={controller.isLoadingDetailsReviews}
-                  detailsReviewSummary={controller.detailsReviewSummary}
-                  scrollToReviewsSection={controller.scrollToReviewsSection}
-                />
+                {!isLandlordView ? (
+                  <ReviewSummarySection
+                    isLoadingDetailsReviews={controller.isLoadingDetailsReviews}
+                    detailsReviewSummary={controller.detailsReviewSummary}
+                    scrollToReviewsSection={controller.scrollToReviewsSection}
+                  />
+                ) : null}
 
-                <ReviewsSection
-                  isAuthenticated={controller.isAuthenticated}
-                  listingId={controller.listing.listingId}
-                  reviewRefreshTrigger={controller.reviewRefreshTrigger}
-                  setReviewRefreshTrigger={controller.setReviewRefreshTrigger}
-                  reviewsSectionRef={controller.reviewsSectionRef}
-                />
+                {!isLandlordView ? (
+                  <ReviewsSection
+                    isAuthenticated={controller.isAuthenticated}
+                    listingId={controller.listing.listingId}
+                    reviewRefreshTrigger={controller.reviewRefreshTrigger}
+                    setReviewRefreshTrigger={controller.setReviewRefreshTrigger}
+                    reviewsSectionRef={controller.reviewsSectionRef}
+                  />
+                ) : null}
               </section>
             </div>
           </section>
         </div>
       </div>
 
-      <ChatOverlay
-        isOpen={controller.isChatOverlayOpen}
-        onClose={controller.closeChatOverlay}
-        listingKey={controller.listingKey}
-        listing={controller.listing}
-      />
+      {!isLandlordView ? (
+        <ChatOverlay
+          isOpen={controller.isChatOverlayOpen}
+          onClose={controller.closeChatOverlay}
+          listingKey={controller.listingKey}
+          listing={controller.listing}
+        />
+      ) : null}
     </div>
   );
 };

@@ -56,6 +56,16 @@ const roomSchema = new mongoose.Schema({
         default: 1,
         min: 0
     },
+    lengthFt: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
+    breadthFt: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
     areaSqFt: {
         type: Number,
         default: 0,

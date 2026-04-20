@@ -14,6 +14,8 @@ import {
   normalizeListing,
 } from '../utils/explore3dUtils';
 import { getListingId } from '../utils/listingData';
+import { subscribeRealtimeUpdates } from '../utils/realtimeUpdates';
+import { isLandlordRole, resolveRole } from '../utils/roles';
 
 function parseListingPanoramaImages(input) {
   if (!Array.isArray(input)) {
@@ -76,7 +78,7 @@ function parseListingPanoramaScenes(input, fallbackImages = []) {
   }));
 }
 
-export function useExplore3DController() {
+export function useExplore3DController({ isLandlordView = false } = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, token, user } = useAuth();
@@ -85,7 +87,7 @@ export function useExplore3DController() {
   const searchParams = new URLSearchParams(location.search);
   const listingIdFromQuery = searchParams.get('id');
   const tabFromQuery = searchParams.get('tab');
-  const openChatFromQuery = tabFromQuery === 'chat';
+  const openChatFromQuery = !isLandlordView && tabFromQuery === 'chat';
   const passedListing = useMemo(() => normalizeListing(location.state?.listing), [location.state?.listing]);
   const effectiveListingId = listingIdFromQuery || passedListing?.listingId || '';
 
@@ -125,10 +127,12 @@ export function useExplore3DController() {
   useAutoDismiss(loadError, () => setLoadError(''));
 
   useEffect(() => {
+    if (isLandlordView) return;
+
     if (tabFromQuery === 'chat') {
       setIsChatOverlayOpen(true);
     }
-  }, [tabFromQuery]);
+  }, [tabFromQuery, isLandlordView]);
 
   useEffect(() => {
     if (!loadError) return;
@@ -181,9 +185,44 @@ export function useExplore3DController() {
     };
   }, [effectiveListingId, passedListing]);
 
+  useEffect(() => {
+    if (!effectiveListingId) {
+      return () => {};
+    }
+
+    let refreshTimeoutId = null;
+
+    const unsubscribe = subscribeRealtimeUpdates(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
+
+      if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId);
+      }
+
+      refreshTimeoutId = setTimeout(async () => {
+        try {
+          const response = await api.get(`/rooms/${effectiveListingId}`);
+          setListing(normalizeListing(response.data));
+        } catch {
+          // Keep previous listing state when silent realtime refresh fails.
+        }
+      }, 120);
+    });
+
+    return () => {
+      unsubscribe();
+      if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId);
+      }
+    };
+  }, [effectiveListingId]);
+
   const listingKey = getListingId(listing);
-  const activeRole = String(user?.role || '').toLowerCase();
-  const canReportListing = isAuthenticated && activeRole === 'user';
+  const activeRole = resolveRole(user?.role, token);
+  const isActiveLandlord = isLandlordRole(activeRole);
+  const canReportListing = !isLandlordView && isAuthenticated && activeRole === 'user';
 
   useEffect(() => {
     if (!listing || !isAuthenticated) return;
@@ -235,7 +274,7 @@ export function useExplore3DController() {
   }, [listing, listingKey, isAuthenticated, token]);
 
   useEffect(() => {
-    if (!isAuthenticated || !token || !listingKey) {
+    if (isLandlordView || !isAuthenticated || !token || !listingKey) {
       setUnreadChatCount(0);
       seenOwnerMessageAtRef.current = '';
       initializedOwnerMessageRef.current = false;
@@ -322,7 +361,7 @@ export function useExplore3DController() {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
     };
-  }, [isChatOverlayOpen, isAuthenticated, token, listingKey]);
+  }, [isChatOverlayOpen, isAuthenticated, token, listingKey, isLandlordView]);
 
   useEffect(() => {
     if (!listingKey) {
@@ -547,6 +586,10 @@ export function useExplore3DController() {
   };
 
   const handleBookVisitClick = () => {
+    if (isLandlordView || isActiveLandlord) {
+      return;
+    }
+
     if (isBookedListing) {
       showToast({
         type: 'warning',
@@ -560,6 +603,10 @@ export function useExplore3DController() {
   };
 
   const openListingReportModal = () => {
+    if (isLandlordView) {
+      return;
+    }
+
     if (!canReportListing) {
       showToast({ type: 'warning', title: 'Not allowed', message: 'Only renters can report listed properties.' });
       return;
@@ -634,6 +681,10 @@ export function useExplore3DController() {
   };
 
   const openChatOverlay = () => {
+    if (isLandlordView) {
+      return;
+    }
+
     setUnreadChatCount(0);
     setIsChatOverlayOpen(true);
   };

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { MapPin, CalendarDays, Heart, ArrowUpRight, Bed, Bath, Square } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -7,6 +7,7 @@ import api from '../utils/api';
 import { FALLBACK_LISTINGS, getListingId } from '../utils/listingData';
 import RatingDisplay from './RatingDisplay';
 import HoverImageSlider from './HoverImageSlider';
+import { subscribeRealtimeUpdates } from '../utils/realtimeUpdates';
 
 function getListingImage(listing) {
   return String(listing?.image || listing?.images?.[0] || '').trim();
@@ -234,62 +235,74 @@ const FeaturedListings = () => {
   const [loading, setLoading] = useState(true);
   const [favoriteIds, setFavoriteIds] = useState(new Set());
 
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadFeaturedListings() {
+  const loadFeaturedListings = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
       setLoading(true);
-      try {
-        const response = await api.get('/rooms/demo');
-        const fetched = Array.isArray(response.data) ? response.data : [];
-
-        if (!ignore) {
-          const source = fetched.length > 0 ? fetched : FALLBACK_LISTINGS;
-          setListings(source.slice(0, 3));
-        }
-      } catch {
-        if (!ignore) {
-          setListings(FALLBACK_LISTINGS.slice(0, 3));
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
-      }
     }
 
-    loadFeaturedListings();
-    return () => {
-      ignore = true;
-    };
+    try {
+      const response = await api.get('/rooms/demo');
+      const fetched = Array.isArray(response.data) ? response.data : [];
+      const source = fetched.length > 0 ? fetched : FALLBACK_LISTINGS;
+      setListings(source.slice(0, 3));
+    } catch {
+      setListings(FALLBACK_LISTINGS.slice(0, 3));
+    } finally {
+      if (!silent) {
+        setLoading(false);
+      }
+    }
   }, []);
 
-  useEffect(() => {
-    let ignore = false;
+  const loadFavorites = useCallback(async () => {
+    if (!isAuthenticated || !token) {
+      setFavoriteIds(new Set());
+      return;
+    }
 
-    async function loadFavorites() {
-      if (!isAuthenticated || !token) {
-        setFavoriteIds(new Set());
+    try {
+      const res = await api.get('/user/favorites');
+      setFavoriteIds(new Set((res.data?.favorites || []).map((item) => item.listingId)));
+    } catch {
+      setFavoriteIds(new Set());
+    }
+  }, [isAuthenticated, token]);
+
+  useEffect(() => {
+    loadFeaturedListings();
+  }, [loadFeaturedListings]);
+
+  useEffect(() => {
+    loadFavorites();
+  }, [loadFavorites]);
+
+  useEffect(() => {
+    let refreshTimeoutId = null;
+
+    const unsubscribe = subscribeRealtimeUpdates(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
         return;
       }
 
-      try {
-        const res = await api.get('/user/favorites');
-        if (!ignore) {
-          setFavoriteIds(new Set((res.data?.favorites || []).map((item) => item.listingId)));
-        }
-      } catch {
-        if (!ignore) {
-          setFavoriteIds(new Set());
-        }
+      if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId);
       }
-    }
 
-    loadFavorites();
+      refreshTimeoutId = setTimeout(() => {
+        loadFeaturedListings({ silent: true });
+        if (isAuthenticated) {
+          loadFavorites();
+        }
+      }, 120);
+    });
+
     return () => {
-      ignore = true;
+      unsubscribe();
+      if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId);
+      }
     };
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, loadFavorites, loadFeaturedListings]);
 
   const handleToggleFavorite = async (listing) => {
     const listingId = getListingId(listing);

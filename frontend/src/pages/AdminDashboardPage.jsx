@@ -28,6 +28,7 @@ import {
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import DashboardHeader from '../components/landlordDashboard/DashboardHeader';
+import { subscribeRealtimeUpdates } from '../utils/realtimeUpdates';
 
 const adminTabs = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -448,21 +449,31 @@ function AdminDashboardPage() {
     }
   }, [notifications, unreadNotifications, refreshNotifications]);
 
-  const fetchOverview = useCallback(async () => {
-    setOverviewLoading(true);
+  const fetchOverview = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setOverviewLoading(true);
+    }
+
     try {
       const response = await api.get('/admin/overview');
       const next = response?.data?.summary || {};
       setSummary(buildSummaryFromResponse(next));
     } catch (error) {
-      setBanner({ type: 'error', message: error?.response?.data?.message || 'Could not load overview.' });
+      if (!silent) {
+        setBanner({ type: 'error', message: error?.response?.data?.message || 'Could not load overview.' });
+      }
     } finally {
-      setOverviewLoading(false);
+      if (!silent) {
+        setOverviewLoading(false);
+      }
     }
   }, []);
 
-  const fetchListings = useCallback(async () => {
-    setListingsLoading(true);
+  const fetchListings = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setListingsLoading(true);
+    }
+
     try {
       const params = new URLSearchParams();
       if (listingFilter !== 'all') params.set('moderationStatus', listingFilter);
@@ -472,15 +483,22 @@ function AdminDashboardPage() {
       const response = await api.get(`/admin/listings?${params.toString()}`);
       setListings(Array.isArray(response?.data?.listings) ? response.data.listings : []);
     } catch (error) {
-      setListings([]);
-      setBanner({ type: 'error', message: error?.response?.data?.message || 'Could not load listings.' });
+      if (!silent) {
+        setListings([]);
+        setBanner({ type: 'error', message: error?.response?.data?.message || 'Could not load listings.' });
+      }
     } finally {
-      setListingsLoading(false);
+      if (!silent) {
+        setListingsLoading(false);
+      }
     }
   }, [listingFilter, listingSearchApplied]);
 
-  const fetchUsers = useCallback(async () => {
-    setUsersLoading(true);
+  const fetchUsers = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setUsersLoading(true);
+    }
+
     try {
       const params = new URLSearchParams();
       if (userFilter !== 'all') params.set('role', userFilter);
@@ -490,15 +508,22 @@ function AdminDashboardPage() {
       const response = await api.get(`/admin/users?${params.toString()}`);
       setUsers(Array.isArray(response?.data?.users) ? response.data.users : []);
     } catch (error) {
-      setUsers([]);
-      setBanner({ type: 'error', message: error?.response?.data?.message || 'Could not load users.' });
+      if (!silent) {
+        setUsers([]);
+        setBanner({ type: 'error', message: error?.response?.data?.message || 'Could not load users.' });
+      }
     } finally {
-      setUsersLoading(false);
+      if (!silent) {
+        setUsersLoading(false);
+      }
     }
   }, [userFilter, userSearchApplied]);
 
-  const fetchReports = useCallback(async () => {
-    setReportsLoading(true);
+  const fetchReports = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setReportsLoading(true);
+    }
+
     try {
       const params = new URLSearchParams();
       if (reportFilter !== 'all') params.set('status', reportFilter);
@@ -508,10 +533,14 @@ function AdminDashboardPage() {
       const response = await api.get(`/admin/reports?${params.toString()}`);
       setReports(Array.isArray(response?.data?.reports) ? response.data.reports : []);
     } catch (error) {
-      setReports([]);
-      setBanner({ type: 'error', message: error?.response?.data?.message || 'Could not load reports.' });
+      if (!silent) {
+        setReports([]);
+        setBanner({ type: 'error', message: error?.response?.data?.message || 'Could not load reports.' });
+      }
     } finally {
-      setReportsLoading(false);
+      if (!silent) {
+        setReportsLoading(false);
+      }
     }
   }, [reportFilter, reportSearchApplied]);
 
@@ -525,6 +554,35 @@ function AdminDashboardPage() {
     if (activeTab === 'users') fetchUsers();
     if (activeTab === 'reports') fetchReports();
   }, [activeTab, fetchListings, fetchReports, fetchUsers]);
+
+  useEffect(() => {
+    let refreshTimeoutId = null;
+
+    const unsubscribe = subscribeRealtimeUpdates(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
+
+      if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId);
+      }
+
+      refreshTimeoutId = setTimeout(() => {
+        const refreshTasks = [fetchOverview({ silent: true })];
+        if (activeTab === 'listings') refreshTasks.push(fetchListings({ silent: true }));
+        if (activeTab === 'users') refreshTasks.push(fetchUsers({ silent: true }));
+        if (activeTab === 'reports') refreshTasks.push(fetchReports({ silent: true }));
+        Promise.all(refreshTasks);
+      }, 120);
+    });
+
+    return () => {
+      unsubscribe();
+      if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId);
+      }
+    };
+  }, [activeTab, fetchListings, fetchOverview, fetchReports, fetchUsers]);
 
   useEffect(() => {
     let stopped = false;

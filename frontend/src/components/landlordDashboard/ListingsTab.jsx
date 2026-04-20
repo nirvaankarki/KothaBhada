@@ -64,6 +64,14 @@ const ListingsTab = ({
       .map((item) => item.trim())
       .filter(Boolean);
 
+  const parsedLengthFt = Number(form.lengthFt);
+  const parsedBreadthFt = Number(form.breadthFt);
+  const computedAreaSqFt = Number.isFinite(parsedLengthFt) && parsedLengthFt > 0
+    && Number.isFinite(parsedBreadthFt) && parsedBreadthFt > 0
+    ? Number((parsedLengthFt * parsedBreadthFt).toFixed(2))
+    : 0;
+  const areaPreviewSqFt = computedAreaSqFt || (Number(form.areaSqFt) || 0);
+
   React.useEffect(() => {
     if (!isCreateModalOpen || typeof document === 'undefined') return undefined;
 
@@ -500,16 +508,41 @@ const ListingsTab = ({
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Area (sq.ft) <span className="text-red-500">*</span>
+                      Length (ft) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
                       min="0"
-                      value={form.areaSqFt}
-                      onChange={handleChange('areaSqFt')}
-                      placeholder="e.g. 450"
+                      step="0.01"
+                      value={form.lengthFt}
+                      onChange={handleChange('lengthFt')}
+                      placeholder="e.g. 20"
                       className="mt-1 w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-300"
                     />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Breadth (ft) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.breadthFt}
+                      onChange={handleChange('breadthFt')}
+                      placeholder="e.g. 15"
+                      className="mt-1 w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-300"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Calculated Area (sq.ft)
+                    </label>
+                    <div className="mt-1 w-full px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-xl text-sm font-semibold text-blue-800">
+                      {areaPreviewSqFt > 0 ? `${areaPreviewSqFt} sq.ft` : 'Enter length and breadth to calculate area'}
+                    </div>
                   </div>
 
                   <div>

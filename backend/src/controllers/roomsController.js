@@ -499,6 +499,26 @@ function parseCoordinate(value) {
     return Number.isFinite(parsedValue) ? parsedValue : null;
 }
 
+function parseDimensionFeet(value) {
+    const parsedValue = Number(value);
+    if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+        return 0;
+    }
+
+    return Number(parsedValue.toFixed(2));
+}
+
+function calculateAreaSqFt(lengthFt, breadthFt) {
+    const parsedLengthFt = parseDimensionFeet(lengthFt);
+    const parsedBreadthFt = parseDimensionFeet(breadthFt);
+
+    if (!parsedLengthFt || !parsedBreadthFt) {
+        return 0;
+    }
+
+    return Number((parsedLengthFt * parsedBreadthFt).toFixed(2));
+}
+
 function parseImages(input) {
     if (Array.isArray(input)) {
         return input
@@ -680,6 +700,8 @@ export async function createRooms(req, res) {
             longitude,
             bedrooms,
             bathrooms,
+            lengthFt,
+            breadthFt,
             areaSqFt,
             keyFeatures,
             areaHighlights,
@@ -703,6 +725,20 @@ export async function createRooms(req, res) {
         const numericPrice = Number(price);
         if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
             return res.status(400).json({ message: 'Price must be a valid number greater than 0' });
+        }
+
+        const parsedLengthFt = parseDimensionFeet(lengthFt);
+        const parsedBreadthFt = parseDimensionFeet(breadthFt);
+        const calculatedAreaSqFt = calculateAreaSqFt(parsedLengthFt, parsedBreadthFt);
+        const fallbackAreaSqFt = Number(areaSqFt);
+        const resolvedAreaSqFt = calculatedAreaSqFt > 0
+            ? calculatedAreaSqFt
+            : (Number.isFinite(fallbackAreaSqFt) && fallbackAreaSqFt > 0
+                ? Number(fallbackAreaSqFt.toFixed(2))
+                : 0);
+
+        if (resolvedAreaSqFt <= 0) {
+            return res.status(400).json({ message: 'Please provide valid length and breadth in feet to calculate area.' });
         }
 
         const parsedLatitude = parseCoordinate(latitude);
@@ -752,7 +788,9 @@ export async function createRooms(req, res) {
             longitude: parsedLongitude,
             bedrooms: Number(bedrooms) || 1,
             bathrooms: Number(bathrooms) || 1,
-            areaSqFt: Number(areaSqFt) || 0,
+            lengthFt: parsedLengthFt,
+            breadthFt: parsedBreadthFt,
+            areaSqFt: resolvedAreaSqFt,
             keyFeatures: parsedKeyFeatures,
             areaHighlights: parsedAreaHighlights,
             image: coverImage,
@@ -790,7 +828,7 @@ export async function updateRooms(req, res) {
             return res.status(403).json({ message: 'You can update only your own listings' });
         }
 
-        const allowedKeys = ['title', 'price', 'description', 'location', 'latitude', 'longitude', 'bedrooms', 'bathrooms', 'areaSqFt', 'keyFeatures', 'areaHighlights', 'image', 'images', 'panoramaImages', 'panoramaScenes', 'ownerPhone', 'status', 'tags'];
+        const allowedKeys = ['title', 'price', 'description', 'location', 'latitude', 'longitude', 'bedrooms', 'bathrooms', 'lengthFt', 'breadthFt', 'areaSqFt', 'keyFeatures', 'areaHighlights', 'image', 'images', 'panoramaImages', 'panoramaScenes', 'ownerPhone', 'status', 'tags'];
         const updates = {};
         for (const key of allowedKeys) {
             if (req.body[key] !== undefined) {
@@ -828,7 +866,25 @@ export async function updateRooms(req, res) {
         if (updates.price !== undefined) updates.price = Number(updates.price);
         if (updates.bedrooms !== undefined) updates.bedrooms = Number(updates.bedrooms) || 0;
         if (updates.bathrooms !== undefined) updates.bathrooms = Number(updates.bathrooms) || 0;
-        if (updates.areaSqFt !== undefined) updates.areaSqFt = Number(updates.areaSqFt) || 0;
+        if (updates.lengthFt !== undefined) updates.lengthFt = parseDimensionFeet(updates.lengthFt);
+        if (updates.breadthFt !== undefined) updates.breadthFt = parseDimensionFeet(updates.breadthFt);
+
+        const hasDimensionUpdate = updates.lengthFt !== undefined || updates.breadthFt !== undefined;
+        if (hasDimensionUpdate) {
+            const nextLengthFt = updates.lengthFt !== undefined ? updates.lengthFt : parseDimensionFeet(room.lengthFt);
+            const nextBreadthFt = updates.breadthFt !== undefined ? updates.breadthFt : parseDimensionFeet(room.breadthFt);
+            const nextAreaSqFt = calculateAreaSqFt(nextLengthFt, nextBreadthFt);
+
+            if (nextAreaSqFt <= 0) {
+                return res.status(400).json({ message: 'Length and breadth must both be greater than 0.' });
+            }
+
+            updates.lengthFt = nextLengthFt;
+            updates.breadthFt = nextBreadthFt;
+            updates.areaSqFt = nextAreaSqFt;
+        } else if (updates.areaSqFt !== undefined) {
+            updates.areaSqFt = Number(updates.areaSqFt) || 0;
+        }
         if (updates.keyFeatures !== undefined) {
             updates.keyFeatures = parseKeyFeatures(updates.keyFeatures);
             if (!updates.keyFeatures.length) {

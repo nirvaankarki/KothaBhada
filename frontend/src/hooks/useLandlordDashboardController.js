@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAutoDismiss } from './useAutoDismiss';
 import { useAuth } from '../context/AuthContext';
+import { subscribeRealtimeUpdates } from '../utils/realtimeUpdates';
 
 const initialForm = {
   title: '',
@@ -15,6 +16,8 @@ const initialForm = {
   areaHighlights: [],
   bedrooms: '1',
   bathrooms: '1',
+  lengthFt: '',
+  breadthFt: '',
   areaSqFt: '',
   image: '',
   images: [],
@@ -62,6 +65,26 @@ const parseAreaHighlightsInput = (value) => {
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, 10);
+};
+
+const parsePositiveDimension = (value) => {
+  const parsedValue = Number(value);
+  if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+    return 0;
+  }
+
+  return Number(parsedValue.toFixed(2));
+};
+
+const calculateAreaSqFt = (lengthFt, breadthFt) => {
+  const parsedLengthFt = parsePositiveDimension(lengthFt);
+  const parsedBreadthFt = parsePositiveDimension(breadthFt);
+
+  if (!parsedLengthFt || !parsedBreadthFt) {
+    return 0;
+  }
+
+  return Number((parsedLengthFt * parsedBreadthFt).toFixed(2));
 };
 
 const parseImageListInput = (value) => {
@@ -259,49 +282,70 @@ export const useLandlordDashboardController = () => {
     }
   }, []);
 
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadDashboardData() {
+  const refreshLandlordDashboardData = useCallback(async ({ silent = true } = {}) => {
+    if (!silent) {
       setLoading(true);
       setError('');
-      try {
-        const [listingsRes, inquiriesRes, bookingsRes, chatsRes, notificationsRes, reportsRes, ownerReportsRes] = await Promise.all([
-          api.get('/rooms/mine'),
-          api.get('/user/owner/inquiries'),
-          api.get('/user/owner/bookings'),
-          api.get('/user/owner/chats'),
-          api.get('/user/notifications'),
-          api.get('/user/reports'),
-          api.get('/user/owner/reports'),
-        ]);
-
-        if (!ignore) {
-          setListings(Array.isArray(listingsRes.data) ? listingsRes.data : []);
-          setOwnerInquiries(inquiriesRes.data?.inquiries || []);
-          setOwnerBookings(bookingsRes.data?.bookings || []);
-          setReports(reportsRes.data?.reports || []);
-          setOwnerListingReports(ownerReportsRes.data?.reports || []);
-          setOwnerChats(chatsRes.data?.chats || []);
-          setNotifications(notificationsRes.data?.notifications || []);
-          setUnreadNotifications(notificationsRes.data?.unreadCount || 0);
-        }
-      } catch (err) {
-        if (!ignore) {
-          setError(err?.response?.data?.message || 'Could not load your listings.');
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
-      }
     }
 
-    loadDashboardData();
-    return () => {
-      ignore = true;
-    };
+    try {
+      const [listingsRes, inquiriesRes, bookingsRes, chatsRes, notificationsRes, reportsRes, ownerReportsRes] = await Promise.all([
+        api.get('/rooms/mine'),
+        api.get('/user/owner/inquiries'),
+        api.get('/user/owner/bookings'),
+        api.get('/user/owner/chats'),
+        api.get('/user/notifications'),
+        api.get('/user/reports'),
+        api.get('/user/owner/reports'),
+      ]);
+
+      setListings(Array.isArray(listingsRes.data) ? listingsRes.data : []);
+      setOwnerInquiries(inquiriesRes.data?.inquiries || []);
+      setOwnerBookings(bookingsRes.data?.bookings || []);
+      setReports(reportsRes.data?.reports || []);
+      setOwnerListingReports(ownerReportsRes.data?.reports || []);
+      setOwnerChats(chatsRes.data?.chats || []);
+      setNotifications(notificationsRes.data?.notifications || []);
+      setUnreadNotifications(notificationsRes.data?.unreadCount || 0);
+    } catch (err) {
+      if (!silent) {
+        setError(err?.response?.data?.message || 'Could not load your listings.');
+      }
+    } finally {
+      if (!silent) {
+        setLoading(false);
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    refreshLandlordDashboardData({ silent: false });
+  }, [refreshLandlordDashboardData]);
+
+  useEffect(() => {
+    let refreshTimeoutId = null;
+
+    const unsubscribe = subscribeRealtimeUpdates(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+      }
+
+      if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId);
+      }
+
+      refreshTimeoutId = setTimeout(() => {
+        refreshLandlordDashboardData();
+      }, 120);
+    });
+
+    return () => {
+      unsubscribe();
+      if (refreshTimeoutId) {
+        clearTimeout(refreshTimeoutId);
+      }
+    };
+  }, [refreshLandlordDashboardData]);
 
   useEffect(() => {
     let stopped = false;
@@ -469,7 +513,23 @@ export const useLandlordDashboardController = () => {
   ]);
 
   const handleChange = (key) => (e) => {
-    setForm((prev) => ({ ...prev, [key]: e.target.value }));
+    const nextValue = e.target.value;
+
+    if (key === 'lengthFt' || key === 'breadthFt') {
+      setForm((prev) => {
+        const nextForm = { ...prev, [key]: nextValue };
+        const calculatedAreaSqFt = calculateAreaSqFt(nextForm.lengthFt, nextForm.breadthFt);
+
+        return {
+          ...nextForm,
+          areaSqFt: calculatedAreaSqFt > 0 ? String(calculatedAreaSqFt) : '',
+        };
+      });
+      setError('');
+      return;
+    }
+
+    setForm((prev) => ({ ...prev, [key]: nextValue }));
     setError('');
   };
 
@@ -976,6 +1036,22 @@ export const useLandlordDashboardController = () => {
       return;
     }
 
+    const parsedLengthFt = parsePositiveDimension(form.lengthFt);
+    const parsedBreadthFt = parsePositiveDimension(form.breadthFt);
+    const calculatedAreaSqFt = calculateAreaSqFt(parsedLengthFt, parsedBreadthFt);
+    const existingListingAreaSqFt = editingListingId
+      ? Number(listings.find((item) => item._id === editingListingId)?.areaSqFt || 0)
+      : 0;
+
+    if (!editingListingId && calculatedAreaSqFt <= 0) {
+      setError('Please enter valid length and breadth in feet to calculate area.');
+      return;
+    }
+
+    const areaSqFtToSave = calculatedAreaSqFt > 0
+      ? calculatedAreaSqFt
+      : (Number(form.areaSqFt) || existingListingAreaSqFt || 0);
+
     setSubmitting(true);
     try {
       const parsedAreaHighlights = parseAreaHighlightsInput(form.areaHighlights);
@@ -1008,7 +1084,7 @@ export const useLandlordDashboardController = () => {
         areaHighlights: parsedAreaHighlights,
         bedrooms: Number(form.bedrooms) || 0,
         bathrooms: Number(form.bathrooms) || 0,
-        areaSqFt: Number(form.areaSqFt) || 0,
+        areaSqFt: areaSqFtToSave,
         image: parsedImages[0] || String(form.image || '').trim(),
         images: parsedImages,
         panoramaImages: parsedPanoramaImages,
@@ -1016,6 +1092,11 @@ export const useLandlordDashboardController = () => {
         ownerPhone: form.ownerPhone.trim(),
         status: form.status,
       };
+
+      if (parsedLengthFt > 0 && parsedBreadthFt > 0) {
+        payload.lengthFt = parsedLengthFt;
+        payload.breadthFt = parsedBreadthFt;
+      }
 
       if (editingListingId) {
         const res = await api.put(`/rooms/${editingListingId}`, payload);
@@ -1069,7 +1150,12 @@ export const useLandlordDashboardController = () => {
   };
 
   const handleViewListing = (listing) => {
-    navigate('/listing-details', {
+    const listingId = String(listing?.listingId || listing?._id || listing?.id || '').trim();
+    const listingPath = listingId
+      ? `/landlord/listing-details?id=${encodeURIComponent(listingId)}`
+      : '/landlord/listing-details';
+
+    navigate(listingPath, {
       state: {
         listing: {
           ...listing,
@@ -1082,6 +1168,9 @@ export const useLandlordDashboardController = () => {
   const handleEditDraft = (listing) => {
     setEditingListingId(listing._id || '');
     const loadedImages = parseImageListInput(listing.images?.length ? listing.images : listing.image);
+    const loadedLengthFt = parsePositiveDimension(listing.lengthFt);
+    const loadedBreadthFt = parsePositiveDimension(listing.breadthFt);
+    const loadedAreaSqFt = calculateAreaSqFt(loadedLengthFt, loadedBreadthFt) || Number(listing.areaSqFt) || 0;
 
     setForm({
       title: listing.title || '',
@@ -1094,7 +1183,9 @@ export const useLandlordDashboardController = () => {
       areaHighlights: parseAreaHighlightsInput(listing.areaHighlights),
       bedrooms: String(listing.bedrooms ?? 1),
       bathrooms: String(listing.bathrooms ?? 1),
-      areaSqFt: String(listing.areaSqFt || ''),
+      lengthFt: loadedLengthFt > 0 ? String(loadedLengthFt) : '',
+      breadthFt: loadedBreadthFt > 0 ? String(loadedBreadthFt) : '',
+      areaSqFt: loadedAreaSqFt > 0 ? String(loadedAreaSqFt) : '',
       image: loadedImages[0] || '',
       images: loadedImages,
       panoramaImages: parsePanoramaImageListInput(listing.panoramaImages),
