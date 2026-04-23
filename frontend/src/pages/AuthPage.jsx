@@ -52,7 +52,7 @@ const AuthPage = () => {
 
       {/* 3. THE MAIN AUTH CARD (Floating in the center) */}
       <div 
-        className={`relative z-10 w-full max-w-5xl bg-white rounded-2xl shadow-[0_35px_100px_rgba(0,0,0,0.5)] overflow-hidden transition-all duration-500 ease-in-out ${
+        className={`relative z-10 w-full max-w-5xl rounded-2xl bg-transparent shadow-[0_35px_100px_rgba(0,0,0,0.5)] overflow-hidden transition-all duration-500 ease-in-out ${
           isLogin ? 'h-[650px]' : 'h-[750px]'
         }`}
       >

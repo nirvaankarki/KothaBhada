@@ -87,6 +87,27 @@ const Login = ({ onToggle }) => {
     }
   };
 
+  const roleOptions = [
+    {
+      id: 'user',
+      label: 'Renter',
+      subtitle: 'Looking for properties',
+      icon: House,
+    },
+    {
+      id: 'landlord',
+      label: 'Landlord',
+      subtitle: 'Manage your listings',
+      icon: Building2,
+    },
+    {
+      id: 'admin',
+      label: 'Admin',
+      subtitle: 'Review and moderate platform',
+      icon: ShieldCheck,
+    },
+  ];
+
   return (
     <div className="flex w-full h-full animate-fadeIn">
       <div className="w-[55%] flex flex-col items-center justify-center p-12 bg-white">
@@ -206,11 +227,19 @@ const Login = ({ onToggle }) => {
         </div>
       </div>
 
-      <div className="w-[45%] bg-[#1F2937] flex flex-col items-center justify-center text-center p-12 text-white relative">
-        <div className="absolute top-10 left-10 text-xl font-bold">Kotha<span className="text-[#3b66ff]">Bhada</span></div>
-        <h2 className="text-4xl font-bold mb-8">Hello, Friend!</h2>
-        <p className="mb-12 text-lg leading-relaxed max-w-87.5 font-regular opacity-90">New to KothaBhada? <br />Create an account to get started.</p>
-        <button onClick={onToggle} className="border-2 border-white text-white px-16 py-3 rounded-sm font-bold uppercase tracking-widest hover:bg-white hover:text-[#3b66ff] transition-all duration-300 active:scale-95">Sign Up</button>
+      <div className="w-[45%] flex flex-col items-center justify-center text-center p-12 text-white relative overflow-hidden bg-[#102244]/35 backdrop-blur-md">
+        <div className="pointer-events-none absolute inset-0 bg-[#0f1d35]/55"></div>
+
+        <Link
+          to="/"
+          className="absolute top-10 left-10 z-10 text-xl font-bold drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)] transition-opacity hover:opacity-85"
+          aria-label="Go to KothaBhada home page"
+        >
+          Kotha<span className="text-[#3b66ff]">Bhada</span>
+        </Link>
+        <h2 className="text-4xl font-bold mb-8 relative z-10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">Hello, Friend!</h2>
+        <p className="mb-12 text-lg leading-relaxed max-w-87.5 font-regular opacity-95 relative z-10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">New to KothaBhada? <br />Create an account to get started.</p>
+        <button onClick={onToggle} className="relative z-10 border-2 border-white text-white px-16 py-3 rounded-sm font-bold uppercase tracking-widest hover:bg-white hover:text-[#3b66ff] transition-all duration-300 active:scale-95">Sign Up</button>
       </div>
     </div>
   );

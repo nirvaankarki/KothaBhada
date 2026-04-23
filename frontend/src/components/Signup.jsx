@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { User, Mail, Lock, ChevronDown, UserCircle, Eye, EyeOff } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../utils/api';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
 import { useAuth } from '../context/AuthContext';
@@ -61,11 +61,19 @@ const Signup = ({ onToggle }) => {
 
   return (
     <div className="flex w-full h-full animate-fadeIn">
-      <div className="w-[45%] bg-[#1F2937] flex flex-col items-center justify-center text-center p-12 text-white relative">
-        <div className="absolute top-10 left-10 text-xl font-bold">Kotha<span className="text-[#3b66ff]">Bhada</span></div>
-        <h2 className="text-4xl font-bold mb-8">Welcome Back!</h2>
-        <p className="mb-12 text-lg opacity-90 max-w-[280px]">Already have an account? <br/>Log in to continue.</p>
-        <button onClick={onToggle} className="border-2 border-white text-white px-16 py-3 rounded-sm font-bold uppercase tracking-widest hover:bg-white hover:text-[#1F2937] transition-all">Sign In</button>
+      <div className="w-[45%] flex flex-col items-center justify-center text-center p-12 text-white relative overflow-hidden bg-[#102244]/35 backdrop-blur-md">
+        <div className="pointer-events-none absolute inset-0 bg-[#0f1d35]/55"></div>
+
+        <Link
+          to="/"
+          className="absolute top-10 left-10 z-10 text-xl font-bold drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)] transition-opacity hover:opacity-85"
+          aria-label="Go to KothaBhada home page"
+        >
+          Kotha<span className="text-[#3b66ff]">Bhada</span>
+        </Link>
+        <h2 className="text-4xl font-bold mb-8 relative z-10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">Welcome Back!</h2>
+        <p className="mb-12 text-lg opacity-95 max-w-70 relative z-10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">Already have an account? <br/>Log in to continue.</p>
+        <button onClick={onToggle} className="relative z-10 border-2 border-white text-white px-16 py-3 rounded-sm font-bold uppercase tracking-widest hover:bg-white hover:text-[#1F2937] transition-all">Sign In</button>
       </div>
 
       <div className="w-[55%] flex flex-col items-center justify-center p-10 bg-white">
@@ -123,9 +131,9 @@ const Signup = ({ onToggle }) => {
 
         <div className="w-full max-w-sm flex flex-col items-center mt-8">
           <div className="w-full flex items-center mb-6">
-            <div className="flex-grow h-px bg-gray-300"></div>
+            <div className="grow h-px bg-gray-300"></div>
             <span className="px-4 text-[12px] font-semibold text-gray-500 tracking-widest uppercase">OR CONTINUE WITH</span>
-            <div className="flex-grow h-px bg-gray-300"></div>
+            <div className="grow h-px bg-gray-300"></div>
           </div>
 
           <button type="button" className="flex items-center justify-center gap-3 w-full py-2 border-2 border-gray-300 rounded-sm hover:bg-blue-50 transition-all">
