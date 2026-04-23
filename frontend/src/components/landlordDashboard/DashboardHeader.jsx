@@ -65,17 +65,18 @@ const DashboardHeader = ({
 
   return (
     <>
-      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-7">
+      <header className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-3xl font-black text-gray-800">{title}</h2>
+          <h2 className="text-3xl font-black tracking-tight text-gray-800">{title}</h2>
           <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
         </div>
-        <div className="flex items-center gap-5">
+
+        <div className="flex items-center justify-end gap-3">
           <div className="relative" ref={notificationMenuRef}>
             <button
               type="button"
               onClick={() => setIsNotificationOpen((prev) => !prev)}
-              className="relative p-2 text-gray-400 hover:text-gray-600"
+              className="relative rounded-2xl border border-slate-200 bg-white p-2.5 text-gray-400 shadow-sm transition-colors hover:text-gray-600"
             >
               <Bell size={22} />
               {unreadNotifications > 0 && (
@@ -146,7 +147,7 @@ const DashboardHeader = ({
             <button
               type="button"
               onClick={() => setIsProfileMenuOpen((prev) => !prev)}
-              className="flex items-center gap-3 bg-white px-3 py-2 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+              className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm transition-shadow hover:shadow-md"
               aria-label="Open landlord profile menu"
             >
               {profilePhoto ? (

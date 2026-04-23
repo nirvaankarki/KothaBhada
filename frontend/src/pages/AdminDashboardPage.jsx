@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Home,
   LayoutDashboard,
+  LogOut,
   ShieldAlert,
   Users,
 } from 'lucide-react';
@@ -250,15 +251,15 @@ function getAdminPanelFromNotification(notification) {
   return 'overview';
 }
 
-function AdminSidebar({ activeTab, onTabChange, summary }) {
+function AdminSidebar({ activeTab, onTabChange, summary, onLogout }) {
   return (
-    <aside className="hidden lg:flex w-64 bg-[#0f172a] text-white flex-col sticky top-0 h-screen overflow-hidden">
-      <div className="p-8">
-        <h1 className="text-2xl font-black text-white">Kotha<span className="text-blue-500">Bhada</span></h1>
-        <p className="text-[11px] uppercase tracking-widest text-slate-400 mt-2">Admin Panel</p>
+    <aside className="hidden lg:flex w-72 shrink-0 flex-col bg-[#111315] text-white sticky top-0 h-screen overflow-hidden">
+      <div className="px-8 py-7">
+        <h1 className="text-2xl font-black tracking-tight text-white">Kotha<span className="text-[#006aff]">Bhada</span></h1>
+        <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Admin Panel</p>
       </div>
 
-      <nav className="flex-1">
+      <nav className="flex-1 space-y-1 overflow-y-auto pb-5">
         {adminTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -273,23 +274,40 @@ function AdminSidebar({ activeTab, onTabChange, summary }) {
               key={tab.id}
               type="button"
               onClick={() => onTabChange(tab.id)}
-              className={`w-full px-6 py-3 flex items-center gap-3 transition-colors ${
+              className={`mx-3 flex w-[calc(100%-24px)] items-center gap-3 rounded-xl px-4 py-3 text-left transition-all duration-200 ${
                 isActive
-                  ? 'bg-blue-600/20 border-r-4 border-blue-500 text-white'
-                  : 'text-slate-300 hover:bg-slate-800/70'
+                  ? 'bg-[#006aff] text-white shadow-[0_10px_24px_rgba(0,106,255,0.28)]'
+                  : 'text-slate-300 hover:bg-white/5 hover:text-white'
               }`}
             >
               <Icon size={18} />
-              <span className="text-sm font-medium">{tab.label}</span>
+              <span className="text-sm font-semibold">{tab.label}</span>
               {badgeCount > 0 ? (
-                <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-[11px] font-medium text-white inline-flex items-center justify-center">
+                <span className={`ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
+                  isActive ? 'bg-white/20 text-white' : 'bg-rose-500 text-white'
+                }`}>
                   {badgeCount > 99 ? '99+' : badgeCount}
                 </span>
               ) : null}
             </button>
           );
         })}
+
+        <p className="px-8 pt-6 pb-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">
+          Moderation
+        </p>
       </nav>
+
+      <div className="p-6">
+        <button
+          type="button"
+          onClick={onLogout}
+          className="flex w-full items-center gap-3 rounded-xl bg-white/10 px-4 py-3 text-sm font-bold text-slate-200 transition-all hover:bg-white/20"
+        >
+          <LogOut size={18} />
+          Logout
+        </button>
+      </div>
     </aside>
   );
 }
@@ -359,7 +377,7 @@ function ActionConfirmModal({ modal, busy, error, onCancel, onConfirm, onChange 
 }
 
 function AdminDashboardPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState('overview');
   const [banner, setBanner] = useState({ type: '', message: '' });
@@ -1070,12 +1088,25 @@ function AdminDashboardPage() {
   };
 
   const headerMeta = adminHeaderMeta[activeTab] || adminHeaderMeta.overview;
+  const nowLabel = new Date().toLocaleString(undefined, {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const moderationCompletionRate = summary.totalListings
+    ? Math.round((safeNumber(summary.approvedListings) / safeNumber(summary.totalListings)) * 100)
+    : 0;
+  const safetyResolveRate = summary.totalReports
+    ? Math.round((Math.max(0, safeNumber(summary.totalReports) - safeNumber(summary.openReports) - safeNumber(summary.inReviewReports)) / safeNumber(summary.totalReports)) * 100)
+    : 0;
 
   return (
-    <div className="flex min-h-screen bg-[#f4f7fe] font-sans text-gray-800">
-      <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} summary={summary} />
+    <div className="flex min-h-screen overflow-hidden bg-[#fcfcfd] font-sans text-gray-800">
+      <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} summary={summary} onLogout={logout} />
 
-      <main className="flex-1 p-5 md:p-8 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto p-5 md:p-8 lg:p-10">
         <DashboardHeader
           profilePhoto={user?.profilePhoto}
           profileName={user?.name || user?.email || 'Admin'}
@@ -1127,6 +1158,80 @@ function AdminDashboardPage() {
               </article>
             ) : (
               <>
+                <article className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm md:p-7">
+                  <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-lg font-black tracking-tight text-[#132238]">Today&apos;s Statistics</h3>
+                      <p className="mt-1 text-xs font-medium text-slate-500">{nowLabel}</p>
+                    </div>
+                    <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">Live</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <button
+                      type="button"
+                      onClick={() => goToListingsPanel(summary.pendingListings > 0 ? 'pending' : 'all')}
+                      className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-blue-200 hover:bg-blue-50/40"
+                    >
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Pending Listings</p>
+                      <p className="mt-1 text-2xl font-black text-slate-800">{metricValue(summary.pendingListings)}</p>
+                      <p className="mt-1 text-xs text-slate-500">Awaiting moderation decision</p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => goToReportsPanel(summary.openReports > 0 ? 'open' : 'in_review')}
+                      className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-orange-200 hover:bg-orange-50/40"
+                    >
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Open Reports</p>
+                      <p className="mt-1 text-2xl font-black text-slate-800">{metricValue(summary.openReports)}</p>
+                      <p className="mt-1 text-xs text-slate-500">Active safety cases in queue</p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => goToReportsPanel('in_review')}
+                      className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-indigo-200 hover:bg-indigo-50/40"
+                    >
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">In Review</p>
+                      <p className="mt-1 text-2xl font-black text-slate-800">{metricValue(summary.inReviewReports)}</p>
+                      <p className="mt-1 text-xs text-slate-500">Cases under moderator review</p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => goToUsersPanel('all')}
+                      className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-rose-200 hover:bg-rose-50/40"
+                    >
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Suspended Users</p>
+                      <p className="mt-1 text-2xl font-black text-slate-800">{metricValue(summary.suspendedUsers)}</p>
+                      <p className="mt-1 text-xs text-slate-500">Accounts currently restricted</p>
+                    </button>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="mb-2 flex items-center justify-between text-xs font-semibold text-slate-500">
+                        <span>Listing Moderation Completion</span>
+                        <span>{moderationCompletionRate}%</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-white">
+                        <div className="h-2 rounded-full bg-[#006aff]" style={{ width: `${moderationCompletionRate}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="mb-2 flex items-center justify-between text-xs font-semibold text-slate-500">
+                        <span>Safety Resolution</span>
+                        <span>{safetyResolveRate}%</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-white">
+                        <div className="h-2 rounded-full bg-emerald-500" style={{ width: `${safetyResolveRate}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   <button
                     type="button"

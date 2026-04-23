@@ -86,14 +86,14 @@ const LandlordDashboardPage = () => {
   const activeHeaderMeta = landlordHeaderMetaByTab[state.activeTab] || landlordHeaderMetaByTab.dashboard;
 
   return (
-    <div className="flex min-h-screen bg-[#f4f7fe] font-sans text-gray-800">
+    <div className="flex min-h-screen overflow-hidden bg-[#fcfcfd] font-sans text-gray-800">
       <LandlordSidebar
         activeTab={state.activeTab}
         setActiveTab={handlers.setActiveTab}
         stats={state.stats}
       />
 
-      <main className="flex-1 p-5 md:p-8 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto p-5 md:p-8 lg:p-10">
         <DashboardHeader
           profilePhoto={state.profileForm.profilePhoto}
           profileName={state.profileForm.name}
