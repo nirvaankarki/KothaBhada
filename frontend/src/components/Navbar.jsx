@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { UserCircle2, Pencil, Check, X, Upload, Trash2, Bell } from 'lucide-react';
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
+import { UserCircle2, Pencil, Check, X, Upload, Trash2, Bell, Menu } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
@@ -10,6 +10,7 @@ import ConfirmModal from './ConfirmModal';
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, authLoading, token, user, logout, updateUser } = useAuth();
   const activeRole = resolveRole(user?.role, token);
   const dashboardPath = getDashboardPathByRole(activeRole);
@@ -28,6 +29,7 @@ const Navbar = () => {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [showClearNotificationsConfirm, setShowClearNotificationsConfirm] = useState(false);
   const [showRemovePhotoConfirm, setShowRemovePhotoConfirm] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const fileInputRef = useRef(null);
   const menuRef = useRef(null);
   const notificationRef = useRef(null);
@@ -66,6 +68,10 @@ const Navbar = () => {
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
+
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!isAuthenticated || authLoading) return;
@@ -309,15 +315,15 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-[#1a222e] text-white px-10 py-6 flex items-center justify-between font-sans">
+    <nav className="relative bg-[#1a222e] text-white px-4 py-4 md:px-10 md:py-6 flex items-center justify-between font-sans">
       {/* Logo Section */}
-      <Link to="/" className="text-2xl font-bold tracking-tight">
+      <Link to="/" className="text-xl md:text-2xl font-bold tracking-tight">
         <span>Kotha</span>
         <span className="text-[#3b82f6]">Bhada</span>
       </Link>
 
       {/* Navigation Links */}
-      <div className="flex space-x-12 items-center">
+      <div className="hidden md:flex space-x-12 items-center">
         <NavLink 
           to="/about" 
           className={({ isActive }) =>
@@ -355,7 +361,7 @@ const Navbar = () => {
       </div>
 
       {isAuthenticated ? (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           <div className="relative" ref={notificationRef}>
             <button
               type="button"
@@ -429,7 +435,7 @@ const Navbar = () => {
 
           <div className="relative" ref={menuRef} key={user?.id || user?.email || 'anon'}>
             {authLoading ? (
-              <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-white/10">
+              <div className="hidden sm:flex items-center gap-2 px-2 py-1 rounded-full bg-white/10">
                 <div className="w-6 h-6 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                 <span className="text-sm font-semibold text-white/80">Loading...</span>
               </div>
@@ -449,7 +455,7 @@ const Navbar = () => {
               ) : (
                 <UserCircle2 size={23} className="text-white" />
               )}
-              <span className="text-sm font-semibold text-white max-w-28 truncate">{user?.name || 'Profile'}</span>
+              <span className="hidden sm:inline text-sm font-semibold text-white max-w-28 truncate">{user?.name || 'Profile'}</span>
             </button>
             )}
 
@@ -695,15 +701,73 @@ const Navbar = () => {
               </div>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => setIsMobileNavOpen((prev) => !prev)}
+            className="inline-flex md:hidden items-center justify-center rounded-lg border border-white/20 bg-white/5 p-2"
+            aria-label="Toggle navigation"
+          >
+            <Menu size={18} />
+          </button>
         </div>
       ) : (
-        <div>
+        <div className="flex items-center gap-2">
           <Link
             to="/signup"
-            className="text-base font-semibold hover:text-gray-400 transition-colors"
+            className="text-sm md:text-base font-semibold hover:text-gray-400 transition-colors"
           >
             Sign Up
           </Link>
+          <button
+            type="button"
+            onClick={() => setIsMobileNavOpen((prev) => !prev)}
+            className="inline-flex md:hidden items-center justify-center rounded-lg border border-white/20 bg-white/5 p-2"
+            aria-label="Toggle navigation"
+          >
+            <Menu size={18} />
+          </button>
+        </div>
+      )}
+
+      {isMobileNavOpen && (
+        <div className="absolute left-0 right-0 top-full z-30 border-t border-white/10 bg-[#111926] px-4 py-3 md:hidden">
+          <div className="flex flex-col gap-1.5">
+            <NavLink
+              to="/about"
+              className={({ isActive }) =>
+                `rounded-lg px-3 py-2 text-sm font-semibold ${isActive ? 'bg-[#3b82f6]/20 text-[#93c5fd]' : 'text-white/90 hover:bg-white/10'}`
+              }
+            >
+              ABOUT
+            </NavLink>
+            <NavLink
+              to="/viewlisting"
+              className={({ isActive }) =>
+                `rounded-lg px-3 py-2 text-sm font-semibold ${isActive ? 'bg-[#3b82f6]/20 text-[#93c5fd]' : 'text-white/90 hover:bg-white/10'}`
+              }
+            >
+              VIEW LISTING
+            </NavLink>
+            {isAuthenticated && (
+              <NavLink
+                to={dashboardPath}
+                className={({ isActive }) =>
+                  `rounded-lg px-3 py-2 text-sm font-semibold ${isActive ? 'bg-[#3b82f6]/20 text-[#93c5fd]' : 'text-white/90 hover:bg-white/10'}`
+                }
+              >
+                DASHBOARD
+              </NavLink>
+            )}
+            <NavLink
+              to="/contact"
+              className={({ isActive }) =>
+                `rounded-lg px-3 py-2 text-sm font-semibold ${isActive ? 'bg-[#3b82f6]/20 text-[#93c5fd]' : 'text-white/90 hover:bg-white/10'}`
+              }
+            >
+              CONTACT
+            </NavLink>
+          </div>
         </div>
       )}
 

@@ -119,7 +119,7 @@ const PropertySummarySection = ({
             <h3 className="text-base md:text-lg font-bold text-slate-800">Contact Owner</h3>
           </div>
           <div className="space-y-2.5 rounded-2xl p-4">
-            <div className="flex items-center gap-3 text-sm font-semibold text-slate-600">
+            <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-600">
               <User size={16} className="text-slate-400" /> {listing.ownerName || 'Property Owner'}
               {listing.ownerIsVerified ? (
                 <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">

@@ -48,7 +48,7 @@ const UserDashboardPage = () => {
   } = useUserDashboardController();
 
   return (
-    <div className="min-h-screen bg-[#f6f8fc] px-6 md:px-10 lg:px-16 py-10">
+    <div className="min-h-screen bg-[#f6f8fc] px-4 sm:px-6 md:px-10 lg:px-16 py-8 md:py-10">
       <ConfirmModal
         open={showClearHistoryConfirm}
         title="Clear Viewing History?"
@@ -69,8 +69,8 @@ const UserDashboardPage = () => {
         confirmVariant="danger"
       />
 
-      <div className="max-w-300 mx-auto">
-        <h1 className="text-4xl font-black text-[#1a222e] mb-6 tracking-tight">My Dashboard</h1>
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl sm:text-4xl font-black text-[#1a222e] mb-6 tracking-tight">My Dashboard</h1>
 
         <DashboardTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
@@ -79,7 +79,7 @@ const UserDashboardPage = () => {
         ) : (
           <>
             {activeTab === 'history' && history.length > 0 && (
-              <div className="mb-4 flex justify-end">
+              <div className="mb-4 flex justify-start sm:justify-end">
                 <button
                   type="button"
                   onClick={handleClearHistoryRequest}

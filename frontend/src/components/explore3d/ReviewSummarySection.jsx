@@ -66,7 +66,7 @@ const ReviewSummarySection = ({
 
                   <div className="space-y-1.5">
                     {distribution.map(({ star, count, percentage }) => (
-                      <div key={star} className="grid grid-cols-[14px_1fr_24px] items-center gap-2">
+                      <div key={star} className="grid grid-cols-[12px_1fr_20px] sm:grid-cols-[14px_1fr_24px] items-center gap-2">
                         <span className="text-[11px] font-semibold text-slate-600">{star}</span>
                         <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
                           <div className="h-full rounded-full bg-[#fbbc04]" style={{ width: `${percentage}%` }} />

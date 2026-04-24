@@ -198,10 +198,10 @@ const ContactForm = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto py-20 px-6 md:px-20">
-      <div className="text-center mb-20">
-        <h1 className="text-4xl md:text-5xl font-black text-[#1a222e] tracking-tight">Have any question?</h1>
-        <h2 className="text-4xl md:text-5xl font-black text-[#1a222e] tracking-tight">We're here to help you!</h2>
+    <div className="max-w-7xl mx-auto py-14 md:py-20 px-4 sm:px-6 md:px-20">
+      <div className="text-center mb-12 md:mb-20">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#1a222e] tracking-tight">Have any question?</h1>
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#1a222e] tracking-tight">We're here to help you!</h2>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-32 items-start">
@@ -209,10 +209,10 @@ const ContactForm = () => {
         {/* Left Side: Contact Form */}
         <div className="flex flex-col gap-10">
           <div className="flex items-center gap-4">
-            <h3 className="text-3xl font-bold text-[#3b66ff] whitespace-nowrap">Contact Form</h3>
-            <div className="flex items-center flex-grow">
+            <h3 className="text-2xl sm:text-3xl font-bold text-[#3b66ff]">Contact Form</h3>
+            <div className="flex items-center grow">
               <div className="w-3.5 h-3.5 bg-[#ff5a3c] rounded-full shrink-0"></div>
-              <div className="h-[2.5px] bg-[#ff5a3c] w-full max-w-[150px]"></div>
+              <div className="h-[2.5px] bg-[#ff5a3c] w-full max-w-37.5"></div>
             </div>
           </div>
 
@@ -261,10 +261,10 @@ const ContactForm = () => {
         <div className="flex flex-col gap-10">
             {/* ... keep your existing Contact Info code here ... */}
             <div className="flex items-center gap-4">
-            <h3 className="text-3xl font-bold text-[#3b66ff] whitespace-nowrap">Contact Information</h3>
-            <div className="flex items-center flex-grow">
+            <h3 className="text-2xl sm:text-3xl font-bold text-[#3b66ff]">Contact Information</h3>
+            <div className="flex items-center grow">
               <div className="w-3.5 h-3.5 bg-[#ff5a3c] rounded-full shrink-0"></div>
-              <div className="h-[2.5px] bg-[#ff5a3c] w-full max-w-[150px]"></div>
+              <div className="h-[2.5px] bg-[#ff5a3c] w-full max-w-37.5"></div>
             </div>
           </div>
 
@@ -303,7 +303,7 @@ const ContactForm = () => {
 
           {/* Social Icons */}
           <div className="mt-10 flex flex-col items-center gap-6">
-            <h4 className="text-2xl font-black text-[#1a222e] uppercase">OR CONNECT WITH US</h4>
+            <h4 className="text-xl sm:text-2xl font-black text-[#1a222e] uppercase text-center">OR CONNECT WITH US</h4>
             <div className="flex gap-6 text-gray-600">
               <a href="#" className="hover:text-blue-600 transition-all"><Facebook size={28} /></a>
               <a href="#" className="hover:text-pink-600 transition-all"><Instagram size={28} /></a>

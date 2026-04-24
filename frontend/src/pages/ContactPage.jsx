@@ -18,7 +18,7 @@ const ContactPage = () => {
       ></div>
 
       {/* 2. THE CONTENT LAYER */}
-      <div className="relative z-10 p-8">
+      <div className="relative z-10 p-4 sm:p-8">
         <ContactForm />
       </div>
 

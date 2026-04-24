@@ -274,7 +274,7 @@ const ReviewsList = ({ listingId, refreshTrigger }) => {
 
               <div className="space-y-2">
                 {ratingDistribution.map(({ star, count, percentage }) => (
-                  <div key={star} className="grid grid-cols-[42px_1fr_44px] items-center gap-3">
+                  <div key={star} className="grid grid-cols-[34px_1fr_36px] sm:grid-cols-[42px_1fr_44px] items-center gap-2 sm:gap-3">
                     <span className="text-sm font-medium text-gray-700">{star} star</span>
                     <div className="h-2.5 overflow-hidden rounded-full bg-gray-200">
                       <div

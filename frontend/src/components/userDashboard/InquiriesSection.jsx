@@ -88,12 +88,12 @@ const InquiriesSection = ({
 
             return (
               <div key={inquiry._id} className="bg-white border border-gray-100 shadow-sm rounded-sm p-4">
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                   <div>
                     <h3 className="text-sm font-bold text-[#1a222e]">{inquiry.title}</h3>
                     <p className="text-xs text-gray-500">{inquiry.location}</p>
                   </div>
-                  <span className={`text-[11px] px-2 py-1 rounded-full font-semibold ${statusPill(inquiry.status)}`}>
+                  <span className={`inline-flex w-fit text-[11px] px-2 py-1 rounded-full font-semibold ${statusPill(inquiry.status)}`}>
                     {formatStatusLabel(inquiry.status)}
                   </span>
                 </div>
@@ -112,7 +112,7 @@ const InquiriesSection = ({
                 </div>
 
                 {inquiry.status !== 'closed' && (
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
                     <input
                       type="text"
                       value={replyDrafts[inquiry._id] || ''}
@@ -128,7 +128,7 @@ const InquiriesSection = ({
                     <button
                       type="button"
                       onClick={() => handleSendReply(inquiry._id)}
-                      className="px-3 py-2 text-sm font-bold rounded-sm bg-[#3b66ff] text-white hover:bg-[#2f55d4]"
+                      className="px-3 py-2 text-sm font-bold rounded-sm bg-[#3b66ff] text-white hover:bg-[#2f55d4] sm:w-auto w-full"
                     >
                       Send
                     </button>

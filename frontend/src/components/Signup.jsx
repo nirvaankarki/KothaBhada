@@ -60,8 +60,8 @@ const Signup = ({ onToggle }) => {
   };
 
   return (
-    <div className="flex w-full h-full animate-fadeIn">
-      <div className="w-[45%] flex flex-col items-center justify-center text-center p-12 text-white relative overflow-hidden bg-[#102244]/35 backdrop-blur-md">
+    <div className="flex w-full h-full min-h-155 animate-fadeIn flex-col md:flex-row">
+      <div className="hidden md:flex w-[45%] flex-col items-center justify-center text-center p-12 text-white relative overflow-hidden bg-[#102244]/35 backdrop-blur-md">
         <div className="pointer-events-none absolute inset-0 bg-[#0f1d35]/55"></div>
 
         <Link
@@ -76,8 +76,8 @@ const Signup = ({ onToggle }) => {
         <button onClick={onToggle} className="relative z-10 border-2 border-white text-white px-16 py-3 rounded-sm font-bold uppercase tracking-widest hover:bg-white hover:text-[#1F2937] transition-all">Sign In</button>
       </div>
 
-      <div className="w-[55%] flex flex-col items-center justify-center p-10 bg-white">
-        <h1 className="text-4xl font-black text-[#3b66ff] tracking-tight mb-8">Create Account</h1>
+      <div className="w-full md:w-[55%] flex flex-col items-center justify-center p-6 sm:p-8 md:p-10 bg-white">
+        <h1 className="text-3xl sm:text-4xl font-black text-[#3b66ff] tracking-tight mb-8 text-center">Create Account</h1>
 
         <form className="w-full max-w-sm space-y-3.5" onSubmit={handleSubmit}>
           <div className="relative">
@@ -140,6 +140,13 @@ const Signup = ({ onToggle }) => {
             <span className="text-[#ea4335] text-2xl font-bold">G</span>
             <span className="text-black font-bold text-lg">Google</span>
           </button>
+
+          <p className="mt-6 text-sm text-gray-600 md:hidden">
+            Already have an account?{' '}
+            <button type="button" onClick={onToggle} className="font-semibold text-[#3b66ff] hover:underline">
+              Sign In
+            </button>
+          </p>
         </div>
       </div>
     </div>

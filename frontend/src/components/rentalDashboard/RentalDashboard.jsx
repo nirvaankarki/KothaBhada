@@ -760,38 +760,38 @@ const RentalDashboard = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('favorites')}
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  className={`w-full sm:w-auto px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     activeTab === 'favorites' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  <span className="inline-flex items-center gap-2"><Heart size={14} /> Favorites</span>
+                  <span className="inline-flex w-full items-center justify-center gap-2"><Heart size={14} /> Favorites</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('history')}
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  className={`w-full sm:w-auto px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     activeTab === 'history' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  <span className="inline-flex items-center gap-2"><History size={14} /> History</span>
+                  <span className="inline-flex w-full items-center justify-center gap-2"><History size={14} /> History</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('bookings')}
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  className={`w-full sm:w-auto px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     activeTab === 'bookings' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  <span className="inline-flex items-center gap-2"><CalendarDays size={14} /> Booking Confirmations</span>
+                  <span className="inline-flex w-full items-center justify-center gap-2"><CalendarDays size={14} /> Booking Confirmations</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('reports')}
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  className={`w-full sm:w-auto px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
                     activeTab === 'reports' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  <span className="inline-flex items-center gap-2"><ShieldAlert size={14} /> Reports</span>
+                  <span className="inline-flex w-full items-center justify-center gap-2"><ShieldAlert size={14} /> Reports</span>
                 </button>
               </div>
 
@@ -879,7 +879,7 @@ const RentalDashboard = ({
                           if (!item?.listingId) return;
                           navigate(`/listing-details?id=${encodeURIComponent(String(item.listingId))}`);
                         }}
-                        className="w-full rounded-xl border border-gray-200 bg-gray-50 p-4 flex items-center justify-between gap-3 text-left hover:bg-gray-100 transition-colors"
+                        className="w-full rounded-xl border border-gray-200 bg-gray-50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-left hover:bg-gray-100 transition-colors"
                       >
                         <div>
                           {(has2DRoom || hasPanoramaTour) && (
@@ -903,7 +903,7 @@ const RentalDashboard = ({
                           <h4 className="text-sm font-semibold text-gray-900 line-clamp-1">{item.title || 'Viewed Listing'}</h4>
                           <p className="mt-1 text-xs text-gray-600">{item.location || 'Location not set'}</p>
                         </div>
-                        <span className="text-[11px] text-gray-500">{item.viewedAt ? new Date(item.viewedAt).toLocaleString() : 'Recently viewed'}</span>
+                        <span className="text-[11px] text-gray-500 sm:text-right">{item.viewedAt ? new Date(item.viewedAt).toLocaleString() : 'Recently viewed'}</span>
                       </button>
                       );
                     })}
@@ -916,12 +916,12 @@ const RentalDashboard = ({
                   <p className="text-sm text-gray-500">No booking confirmations yet.</p>
                 ) : (
                   <div className="space-y-6">
-                    <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3">
                       <div>
                         <p className="text-sm font-semibold text-gray-900">Recent update window</p>
                         <p className="text-[11px] text-gray-500">Quickly focus booking confirmations by latest update time.</p>
                       </div>
-                      <div className="flex flex-wrap justify-end gap-2">
+                      <div className="flex flex-wrap justify-start sm:justify-end gap-2">
                         {BOOKING_WINDOW_OPTIONS.map((option) => {
                           const isActive = selectedBookingWindow === option.id;
                           return (
@@ -944,7 +944,7 @@ const RentalDashboard = ({
                     </div>
 
                     <div className="rounded-xl border border-gray-200 bg-white p-4">
-                      <div className="mb-3 flex items-center justify-between gap-3">
+                      <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                         <h4 className="text-sm font-semibold text-gray-900">Recent Booking Status Updates</h4>
                         <p className="text-[11px] text-gray-500">Latest updates are highlighted first</p>
                       </div>

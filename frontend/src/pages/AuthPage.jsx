@@ -47,34 +47,34 @@ const AuthPage = () => {
         <div className="absolute inset-0 bg-[#1a222e]/60 mix-blend-multiply"></div>
         
         {/* Vignette effect (darker edges) for a high-profile look */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60"></div>
+        <div className="absolute inset-0 bg-linear-to-b from-black/40 via-transparent to-black/60"></div>
       </div>
 
       {/* 3. THE MAIN AUTH CARD (Floating in the center) */}
-      <div 
-        className={`relative z-10 w-full max-w-5xl rounded-2xl bg-transparent shadow-[0_35px_100px_rgba(0,0,0,0.5)] overflow-hidden transition-all duration-500 ease-in-out ${
-          isLogin ? 'h-[650px]' : 'h-[750px]'
-        }`}
-      >
+      <div className="relative z-10 w-full max-w-5xl rounded-2xl bg-transparent shadow-[0_35px_100px_rgba(0,0,0,0.5)] overflow-hidden transition-all duration-500 ease-in-out">
         {authNotice && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-sm bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold shadow-sm">
             {authNotice}
           </div>
         )}
 
-        {/* Sliding Container */}
+        <div className="md:hidden">
+          {isLogin ? <Login onToggle={toggle} /> : <Signup onToggle={toggle} />}
+        </div>
+
+        {/* Sliding Container (Desktop) */}
         <div
-          className={`flex w-[200%] h-full transition-transform duration-700 ease-in-out ${
+          className={`hidden md:flex w-[200%] transition-transform duration-700 ease-in-out ${
             isLogin ? 'translate-x-0' : '-translate-x-1/2'
           }`}
         >
           {/* Left half = Login */}
-          <div className="w-1/2 h-full flex-shrink-0">
+          <div className="w-1/2 h-full shrink-0">
             <Login onToggle={toggle} />
           </div>
           
           {/* Right half = Signup */}
-          <div className="w-1/2 h-full flex-shrink-0">
+          <div className="w-1/2 h-full shrink-0">
             <Signup onToggle={toggle} />
           </div>
         </div>

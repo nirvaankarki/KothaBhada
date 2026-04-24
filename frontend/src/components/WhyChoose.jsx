@@ -33,7 +33,7 @@ const WhyChoose = () => {
   ];
 
   return (
-    <section className="py-24 px-6 md:px-20 bg-gradient-to-tr from-white via-white to-blue-50">
+    <section className="py-24 px-6 md:px-20 bg-linear-to-tr from-white via-white to-blue-50">
       <div className="max-w-7xl mx-auto">
         {/* Section Heading */}
         <h2 className="text-3xl md:text-5xl font-extrabold text-[#1a222e] text-center mb-16 tracking-tight uppercase">
@@ -45,7 +45,7 @@ const WhyChoose = () => {
           {features.map((feature, index) => (
             <div 
               key={index} 
-              className="relative group overflow-hidden rounded-2xl shadow-xl border border-gray-100 aspect-video md:aspect-[16/10] bg-black"
+              className="relative group overflow-hidden rounded-2xl shadow-xl border border-gray-100 aspect-video md:aspect-16/10 bg-black"
             >
               {/* 1. THE IMAGE: Added brightness and contrast filters */}
               <img 
@@ -57,7 +57,7 @@ const WhyChoose = () => {
               {/* 2. THE LINEAR EFFECT (Overlay): 
                   This creates a dark linear gradient from the bottom to the top. 
                   It only affects the "look" of the image behind it. */}
-              <div className="absolute inset-0 bg-gradient-to-t from-blue-900/70 via-black/20 to-transparent opacity-80 transition-opacity duration-500 group-hover:opacity-40" />
+              <div className="absolute inset-0 bg-linear-to-t from-blue-900/70 via-black/20 to-transparent opacity-80 transition-opacity duration-500 group-hover:opacity-40" />
 
               {/* 3. THE BADGE: Stays 100% sharp because it's a sibling of the overlay */}
               <div className={`absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 flex items-center gap-3 px-5 py-2.5 rounded-full backdrop-blur-md ${feature.badgeColor} border border-white/30 shadow-lg`}>

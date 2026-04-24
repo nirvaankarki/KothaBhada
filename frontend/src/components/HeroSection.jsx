@@ -6,7 +6,7 @@ const AUTH_VIDEO_URL = "https://res.cloudinary.com/dqp0mzdwf/video/upload/v17717
 
 const HeroSection = () => {
   return (
-    <section className="relative w-full h-[600px] md:h-[800px] flex items-center overflow-hidden">
+    <section className="relative w-full h-140 sm:h-155 md:h-200 flex items-center overflow-hidden">
       
       {/* 1. CINEMATIC VIDEO BACKGROUND */}
       <div className="absolute inset-0 z-0">
@@ -27,16 +27,16 @@ const HeroSection = () => {
         <div className="absolute inset-0 bg-[#1a222e]/50 mix-blend-multiply"></div>
         
         {/* Layer B: Horizontal Gradient (Heavier on the left to make text pop) */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent"></div>
+        <div className="absolute inset-0 bg-linear-to-r from-black/80 via-black/40 to-transparent"></div>
         
         {/* Layer C: Subtle Vignette (Darker edges for cinematic depth) */}
         <div className="absolute inset-0 bg-radial-gradient from-transparent to-black/30"></div>
       </div>
 
-      <div className="container mx-auto px-6 md:px-20 relative z-10">
+      <div className="container mx-auto px-4 sm:px-6 md:px-20 relative z-10">
         
         {/* Decorative Frame and Content Wrapper */}
-        <div className="relative max-w-4xl pt-16 pb-16 pl-12 pr-16">
+        <div className="relative max-w-4xl pt-8 sm:pt-12 md:pt-16 pb-8 sm:pb-12 md:pb-16 pl-0 sm:pl-4 md:pl-12 pr-0 sm:pr-6 md:pr-16">
           
           {/* Top Decorative Line */}
           {/* <div className="absolute top-0 left-0 w-full h-[3px] bg-white/80"></div> */}
@@ -45,13 +45,13 @@ const HeroSection = () => {
           {/* <div className="absolute top-0 right-0 w-[3px] h-full bg-white/80 shadow-lg"></div> */}
 
           {/* Text Content */}
-          <div className="flex flex-col gap-8 ml-[-40px] md:ml-[-50px] animate-fadeIn">
-            <h1 className="text-white text-5xl md:text-8xl font-black uppercase leading-[1.05] tracking-tighter drop-shadow-2xl">
+          <div className="flex flex-col gap-6 sm:gap-8 ml-0 md:-ml-12.5 animate-fadeIn">
+            <h1 className="text-white text-4xl sm:text-5xl md:text-8xl font-black uppercase leading-[1.05] tracking-tighter drop-shadow-2xl">
               Explore <br />
               <span className="text-[#3b66ff]">Rooms</span> Virtually
             </h1>
 
-            <p className="text-white/90 text-lg md:text-2xl font-medium max-w-lg leading-relaxed drop-shadow-md">
+            <p className="text-white/90 text-base sm:text-lg md:text-2xl font-medium max-w-lg leading-relaxed drop-shadow-md">
               Discover rooms in 360°, compare instantly, and let our AI assistant guide you to the perfect rental faster.
             </p>
 

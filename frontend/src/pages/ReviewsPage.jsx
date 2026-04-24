@@ -19,7 +19,7 @@ const ReviewsPage = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
         <div className="max-w-4xl mx-auto">
           <button
             onClick={() => navigate(-1)}
@@ -38,7 +38,7 @@ const ReviewsPage = () => {
 
   return (
     <div className="min-h-screen bg-linear-to-b from-[#f5f8ff] to-[#f7f7f7]">
-      <div className="mx-auto max-w-5xl p-6">
+      <div className="mx-auto max-w-5xl p-4 sm:p-6">
         <div className="mb-6">
           <button
             onClick={() => navigate(-1)}
@@ -47,7 +47,7 @@ const ReviewsPage = () => {
             <ChevronLeft size={20} />
             Back to Listing
           </button>
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900">Property Ratings & Reviews</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900">Property Ratings & Reviews</h1>
           <p className="mt-2 text-sm text-gray-600">
             Detailed feedback from real renters, organized for quick and confident decisions.
           </p>

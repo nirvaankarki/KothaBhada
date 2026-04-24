@@ -23,20 +23,20 @@ const WhatMakesUsDifferent = () => {
 
   return (
     /* Transparent background to show the parent's background image */
-    <section className="relative py-20 px-6 md:px-20 overflow-hidden">
+    <section className="relative py-14 md:py-20 px-4 sm:px-6 md:px-20 overflow-hidden">
       
       <div className="max-w-7xl mx-auto relative z-10">
         
         {/* Header Section: Title + Orange Line */}
-        <div className="flex items-center gap-4 mb-16">
-          <h2 className="text-4xl md:text-5xl font-black text-[#1a222e] tracking-tight whitespace-nowrap">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-12 md:mb-16">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#1a222e] tracking-tight">
             What Makes Us Different?
           </h2>
           
           {/* Decorative Orange Line with Dot */}
-          <div className="flex items-center flex-grow">
+          <div className="flex items-center grow">
             <div className="w-4 h-4 bg-[#ff5a3c] rounded-full shrink-0"></div>
-            <div className="h-[3px] bg-[#ff5a3c] w-full"></div>
+            <div className="h-0.75 bg-[#ff5a3c] w-full"></div>
           </div>
         </div>
 
@@ -59,7 +59,7 @@ const WhatMakesUsDifferent = () => {
               </div>
 
               {/* Description */}
-              <p className="text-gray-500 text-base md:text-lg leading-relaxed pl-10">
+              <p className="text-gray-500 text-base md:text-lg leading-relaxed pl-8 sm:pl-10">
                 {item.description}
               </p>
               

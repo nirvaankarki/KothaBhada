@@ -374,7 +374,7 @@ const ViewListingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-[#fafbfc] to-[#f3f5f9] px-5 md:px-10 lg:px-16 py-10">
+    <div className="min-h-screen bg-linear-to-b from-[#fafbfc] to-[#f3f5f9] px-4 sm:px-5 md:px-10 lg:px-16 py-8 md:py-10">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-4xl md:text-5xl font-black tracking-tight text-[#132238]">View Listings</h1>
@@ -436,16 +436,16 @@ const ViewListingPage = () => {
               ))}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
               <span className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 <ArrowUpDown size={14} /> Sort
               </span>
-              <div className="relative">
+              <div className="relative w-full sm:w-auto">
                 <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="appearance-none pl-3 pr-10 py-2 text-sm bg-gray-50 rounded outline-none focus:ring-2 focus:ring-blue-200 border-none shadow-sm"
+                  className="w-full appearance-none pl-3 pr-10 py-2 text-sm bg-gray-50 rounded outline-none focus:ring-2 focus:ring-blue-200 border-none shadow-sm"
                 >
                   {SORT_OPTIONS.map((option) => (
                     <option key={option.id} value={option.id}>
@@ -634,7 +634,7 @@ const ViewListingPage = () => {
                           {listing.description || 'No description available for this listing.'}
                         </p>
 
-                        <div className="mt-3 flex items-start justify-between gap-3 border-t border-gray-100 pt-3">
+                        <div className="mt-3 flex flex-wrap items-start justify-between gap-3 border-t border-gray-100 pt-3">
                           <p className="inline-flex items-center gap-1.5 text-xs text-gray-500">
                             <CalendarDays size={12} /> {formatDate(listing.createdAt)}
                           </p>

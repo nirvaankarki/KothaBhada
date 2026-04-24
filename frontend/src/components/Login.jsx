@@ -109,9 +109,9 @@ const Login = ({ onToggle }) => {
   ];
 
   return (
-    <div className="flex w-full h-full animate-fadeIn">
-      <div className="w-[55%] flex flex-col items-center justify-center p-12 bg-white">
-        <h1 className={`text-4xl font-black text-[#3b66ff] tracking-tight transition-all duration-300 ${error ? 'mb-4' : 'mb-10'}`}>
+    <div className="flex w-full h-full min-h-155 animate-fadeIn flex-col md:flex-row">
+      <div className="w-full md:w-[55%] flex flex-col items-center justify-center p-6 sm:p-8 md:p-12 bg-white">
+        <h1 className={`text-3xl sm:text-4xl font-black text-[#3b66ff] tracking-tight transition-all duration-300 text-center ${error ? 'mb-4' : 'mb-8 md:mb-10'}`}>
           Sign in to KothaBhada
         </h1>
 
@@ -120,41 +120,41 @@ const Login = ({ onToggle }) => {
             <label className="block text-xs font-bold tracking-widest text-gray-500 uppercase mb-2">
               Account Type
             </label>
-            <div className="grid grid-cols-3 gap-2 rounded-sm bg-gray-100 p-1">
+            <div className="grid grid-cols-3 gap-1.5 rounded-sm bg-gray-100 p-1">
               <button
                 type="button"
                 onClick={() => setLoginIntentRole('user')}
-                className={`flex items-center justify-center gap-2 rounded-sm py-2 text-sm font-semibold transition-colors ${
+                className={`flex items-center justify-center gap-1 rounded-sm py-2 text-xs sm:text-sm font-semibold transition-colors ${
                   loginIntentRole === 'user'
                     ? 'bg-[#3b66ff] text-white shadow-sm'
                     : 'text-gray-600 hover:text-gray-800'
                 }`}
               >
-                <House size={16} />
+                <House size={14} className="hidden sm:inline" />
                 Renter
               </button>
               <button
                 type="button"
                 onClick={() => setLoginIntentRole('landlord')}
-                className={`flex items-center justify-center gap-2 rounded-sm py-2 text-sm font-semibold transition-colors ${
+                className={`flex items-center justify-center gap-1 rounded-sm py-2 text-xs sm:text-sm font-semibold transition-colors ${
                   loginIntentRole === 'landlord'
                     ? 'bg-[#3b66ff] text-white shadow-sm'
                     : 'text-gray-600 hover:text-gray-800'
                 }`}
               >
-                <Building2 size={16} />
+                <Building2 size={14} className="hidden sm:inline" />
                 Landlord
               </button>
               <button
                 type="button"
                 onClick={() => setLoginIntentRole('admin')}
-                className={`flex items-center justify-center gap-2 rounded-sm py-2 text-sm font-semibold transition-colors ${
+                className={`flex items-center justify-center gap-1 rounded-sm py-2 text-xs sm:text-sm font-semibold transition-colors ${
                   loginIntentRole === 'admin'
                     ? 'bg-[#3b66ff] text-white shadow-sm'
                     : 'text-gray-600 hover:text-gray-800'
                 }`}
               >
-                <ShieldCheck size={16} />
+                <ShieldCheck size={14} className="hidden sm:inline" />
                 Admin
               </button>
             </div>
@@ -224,10 +224,17 @@ const Login = ({ onToggle }) => {
             <span className="text-[#ea4335] text-2xl font-bold">G</span>
             <span className="text-black font-bold text-lg">Google</span>
           </button>
+
+          <p className="mt-6 text-sm text-gray-600 md:hidden">
+            New to KothaBhada?{' '}
+            <button type="button" onClick={onToggle} className="font-semibold text-[#3b66ff] hover:underline">
+              Sign Up
+            </button>
+          </p>
         </div>
       </div>
 
-      <div className="w-[45%] flex flex-col items-center justify-center text-center p-12 text-white relative overflow-hidden bg-[#102244]/35 backdrop-blur-md">
+      <div className="hidden md:flex w-[45%] flex-col items-center justify-center text-center p-12 text-white relative overflow-hidden bg-[#102244]/35 backdrop-blur-md">
         <div className="pointer-events-none absolute inset-0 bg-[#0f1d35]/55"></div>
 
         <Link

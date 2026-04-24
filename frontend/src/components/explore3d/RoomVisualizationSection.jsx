@@ -162,7 +162,7 @@ const RoomVisualizationSection = ({
                 </>
               )}
 
-              <div className="absolute inset-x-4 bottom-4 flex items-end justify-between gap-3">
+              <div className="absolute inset-x-4 bottom-4 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-white">2D Room Preview</p>
                   <p className="text-[11px] text-white/80">

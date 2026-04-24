@@ -38,7 +38,7 @@ const BookingVisitPage = () => {
     <div className="min-h-screen bg-linear-to-b from-white to-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 md:px-20 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-20 py-4">
           <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-[#3b66ff] font-semibold hover:text-blue-700 transition-colors"
@@ -49,12 +49,12 @@ const BookingVisitPage = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 md:px-20 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-20 py-8 md:py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12">
           {/* Booking Form */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-md p-8">
-              <h1 className="text-3xl font-black text-[#1a222e] mb-6">Book a Visit</h1>
+            <div className="bg-white rounded-lg shadow-md p-5 sm:p-6 md:p-8">
+              <h1 className="text-2xl sm:text-3xl font-black text-[#1a222e] mb-6">Book a Visit</h1>
               <BookingForm
                 listingId={listingKey}
                 ownerId={listing?.ownerId || listing?.owner}
@@ -72,7 +72,7 @@ const BookingVisitPage = () => {
 
           {/* Listing Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-md overflow-hidden sticky top-24">
+            <div className="bg-white rounded-lg shadow-md overflow-hidden lg:sticky lg:top-24">
               {/* Listing Image */}
               <div className="h-48 overflow-hidden bg-gray-200">
                 {listing.image && (
