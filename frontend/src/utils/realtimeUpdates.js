@@ -82,7 +82,7 @@ function ensureRealtimeConnection() {
 
   const streamCandidates = buildRealtimeStreamUrls();
   const streamUrl = streamCandidates[connectionUrlIndex % streamCandidates.length];
-  realtimeEventSource = new EventSource(streamUrl, { withCredentials: true });
+  realtimeEventSource = new EventSource(streamUrl);
 
   realtimeEventSource.addEventListener('platform-update', handleRealtimePayload);
   realtimeEventSource.onmessage = handleRealtimePayload;
