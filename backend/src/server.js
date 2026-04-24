@@ -46,10 +46,6 @@ dotenv.config();
 const app = express();
 let dbConnected = false;
 const MUTATING_HTTP_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-const ALLOWED_CORS_ORIGINS = new Set([
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-]);
 
 // Initialize database connection
 (async () => {
@@ -65,19 +61,7 @@ const ALLOWED_CORS_ORIGINS = new Set([
   }
 })();
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || ALLOWED_CORS_ORIGINS.has(origin)) {
-      callback(null, true);
-      return;
-    }
-
-    callback(new Error('CORS origin not allowed'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors({ origin: '*' }));
 
 // Increase payload size limit for image uploads (50MB max)
 app.use(express.json({ limit: '50mb' }));
