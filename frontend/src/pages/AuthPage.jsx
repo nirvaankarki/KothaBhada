@@ -47,7 +47,7 @@ const AuthPage = () => {
         <div className="absolute inset-0 bg-[#1a222e]/60 mix-blend-multiply"></div>
         
         {/* Vignette effect (darker edges) for a high-profile look */}
-        <div className="absolute inset-0 bg-linear-to-b from-black/40 via-transparent to-black/60"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60"></div>
       </div>
 
       {/* 3. THE MAIN AUTH CARD (Floating in the center) */}
@@ -69,12 +69,12 @@ const AuthPage = () => {
           }`}
         >
           {/* Left half = Login */}
-          <div className="w-1/2 h-full shrink-0">
+          <div className="w-1/2 h-full flex-shrink-0">
             <Login onToggle={toggle} />
           </div>
           
           {/* Right half = Signup */}
-          <div className="w-1/2 h-full shrink-0">
+          <div className="w-1/2 h-full flex-shrink-0">
             <Signup onToggle={toggle} />
           </div>
         </div>

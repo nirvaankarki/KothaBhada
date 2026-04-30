@@ -1103,7 +1103,7 @@ function AdminDashboardPage() {
     : 0;
 
   return (
-    <div className="flex min-h-screen overflow-hidden bg-[#fcfcfd] font-sans text-gray-800">
+    <div className="flex min-h-screen bg-[#fcfcfd] font-sans text-gray-800">
       <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} summary={summary} onLogout={logout} />
 
       <main className="flex-1 overflow-y-auto p-5 md:p-8 lg:p-10">
@@ -1699,112 +1699,187 @@ function AdminDashboardPage() {
         ) : null}
 
         {activeTab === 'users' ? (
-          <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-xl font-bold text-[#132238]">Account Access</h3>
-              <button type="button" onClick={fetchUsers} className="kb-btn kb-btn-secondary kb-btn-sm">Refresh</button>
+          <section className="bg-white rounded-2xl shadow-sm">
+            {/* HEADER */}
+            <div className="p-6 md:p-8 border-b border-slate-200">
+              <h2 className="text-3xl font-black text-slate-800 mb-2 tracking-tight">User Management</h2>
+              <p className="text-slate-500 font-medium">
+                Manage all users in one place. Control access, assign roles, and monitor activity across your platform.
+              </p>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              {userFilterOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setUserFilter(option.value)}
-                  className={`inline-flex h-9 items-center justify-center rounded-xl px-3 text-xs font-bold uppercase tracking-wide transition ${
-                    userFilter === option.value
-                      ? 'bg-[#132238] text-white'
-                      : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {option.label}
+            {/* TOOLBAR */}
+            <div className="p-6 md:p-8 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Search */}
+                <div className="relative">
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                  <input 
+                    type="text" 
+                    value={userSearchInput}
+                    onChange={(event) => setUserSearchInput(event.target.value)}
+                    placeholder="Search" 
+                    className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-full w-64 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-medium"
+                  />
+                </div>
+                
+                {/* Filters */}
+                <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-full text-sm font-bold hover:bg-slate-50 transition-all">
+                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  Role
+                  <svg className="w-3.5 h-3.5 text-slate-400 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
                 </button>
-              ))}
+                <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-full text-sm font-bold hover:bg-slate-50 transition-all">
+                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  Status
+                  <svg className="w-3.5 h-3.5 text-slate-400 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                </button>
+                <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-full text-sm font-bold hover:bg-slate-50 transition-all">
+                  <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  Date
+                  <svg className="w-3.5 h-3.5 text-slate-400 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button onClick={fetchUsers} className="flex items-center gap-2 px-5 py-2.5 border border-slate-200 bg-white text-slate-600 rounded-full text-sm font-bold hover:bg-slate-50 transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  Export
+                </button>
+                <button className="flex items-center gap-2 px-6 py-2.5 bg-slate-800 text-white rounded-full text-sm font-bold hover:bg-slate-900 transition-all shadow-lg active:scale-95">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                  Add User
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={applyUserSearch} className="mt-3 flex flex-col gap-2 sm:flex-row">
-              <input
-                type="text"
-                value={userSearchInput}
-                onChange={(event) => setUserSearchInput(event.target.value)}
-                placeholder="Search by name or email"
-                className="h-10 grow rounded-xl border border-gray-300 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-blue-300"
-              />
-              <button type="submit" className="kb-btn kb-btn-secondary kb-btn-sm">Search</button>
-            </form>
-
-            <p className="mt-3 text-xs font-medium text-slate-500">{userCountLabel}</p>
-
-            <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200">
-              <table className="min-w-full divide-y divide-slate-200 text-sm">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wide text-slate-500">User</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wide text-slate-500">Role</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wide text-slate-500">Status</th>
-                    <th className="px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wide text-slate-500">Actions</th>
+            {/* TABLE */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-700 text-white text-xs font-bold uppercase tracking-wider">
+                    <th className="p-4 w-12 text-center">
+                      <input type="checkbox" className="rounded border-slate-400 bg-transparent" />
+                    </th>
+                    <th className="p-4 text-left cursor-pointer group">
+                      <div className="flex items-center gap-2">
+                        Full Name
+                        <svg className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4" /></svg>
+                      </div>
+                    </th>
+                    <th className="p-4 text-left cursor-pointer group">
+                      <div className="flex items-center gap-2">
+                        Email
+                        <svg className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4" /></svg>
+                      </div>
+                    </th>
+                    <th className="p-4 text-left cursor-pointer group">
+                      <div className="flex items-center gap-2">
+                        Username
+                        <svg className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4" /></svg>
+                      </div>
+                    </th>
+                    <th className="p-4 text-left cursor-pointer group">
+                      <div className="flex items-center gap-2">
+                        Status
+                        <svg className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4" /></svg>
+                      </div>
+                    </th>
+                    <th className="p-4 text-left cursor-pointer group">
+                      <div className="flex items-center gap-2">
+                        Role
+                        <svg className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4" /></svg>
+                      </div>
+                    </th>
+                    <th className="p-4 text-left cursor-pointer group">
+                      <div className="flex items-center gap-2">
+                        Joined Date
+                        <svg className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4" /></svg>
+                      </div>
+                    </th>
+                    <th className="p-4 text-left cursor-pointer group">
+                      <div className="flex items-center gap-2">
+                        Last Active
+                        <svg className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m0 0l4 4m10-4v12m0 0l4-4m0 0l-4-4" /></svg>
+                      </div>
+                    </th>
+                    <th className="p-4 text-center font-bold">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
+                <tbody className="divide-y divide-slate-100">
                   {usersLoading ? (
-                    <tr><td className="px-4 py-4 text-slate-500" colSpan={4}>Loading users...</td></tr>
+                    <tr><td className="p-4 text-slate-500 text-center" colSpan={9}>Loading users...</td></tr>
                   ) : users.length === 0 ? (
-                    <tr><td className="px-4 py-4 text-slate-500" colSpan={4}>No users found.</td></tr>
+                    <tr><td className="p-4 text-slate-500 text-center" colSpan={9}>No users found.</td></tr>
                   ) : users.map((entry) => {
                     const id = String(entry?.id || '');
                     const status = String(entry?.accountStatus || 'active').toLowerCase();
                     const busy = actionBusyId === `user:${id}`;
+                    const isLandlord = entry?.role === 'landlord';
+                    const isRenter = entry?.role === 'user';
+                    const userName = entry?.name || 'Unknown user';
+                    const initials = userName.split(' ').map(n => n.charAt(0)).join('').toUpperCase();
+                    const avatarBg = isLandlord ? 'bg-indigo-100 text-indigo-600' : isRenter ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-600';
+                    const roleDisplay = isLandlord ? 'Landlord' : isRenter ? 'Renter' : (entry?.role || 'user').charAt(0).toUpperCase() + (entry?.role || 'user').slice(1);
+                    const lastActive = entry?.lastLoginAt ? formatDateTime(entry.lastLoginAt) : 'Never';
 
                     return (
-                      <tr key={id}>
-                        <td className="px-4 py-3 align-top text-xs text-slate-700">
-                          <p className="text-sm font-semibold text-slate-800">{entry?.name || 'Unknown user'}</p>
-                          <p>{entry?.email || '-'}</p>
-                          <p className="text-slate-500">Last login: {formatDateTime(entry?.lastLoginAt)}</p>
+                      <tr key={id} className="hover:bg-slate-50/60 transition-colors">
+                        {/* CHECKBOX */}
+                        <td className="p-4 text-center">
+                          <input type="checkbox" className="rounded border-slate-300 text-blue-600" />
                         </td>
-                        <td className="px-4 py-3 align-top text-xs">
-                          <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-semibold capitalize text-slate-700">
-                            {entry?.role || 'user'}
-                          </span>
+                        {/* FULL NAME */}
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${avatarBg}`}>
+                              {initials || '?'}
+                            </div>
+                            <span className="font-bold text-slate-700 whitespace-nowrap">{userName}</span>
+                          </div>
                         </td>
-                        <td className="px-4 py-3 align-top text-xs">
-                          <span className={`inline-flex rounded-full border px-2.5 py-1 font-semibold capitalize ${statusPillClass(status)}`}>
-                            {status.replace('_', ' ')}
-                          </span>
+                        {/* EMAIL */}
+                        <td className="p-4 text-slate-600 font-medium text-sm">{entry?.email || '-'}</td>
+                        {/* USERNAME */}
+                        <td className="p-4 text-slate-600 font-medium text-sm">{entry?.username || '-'}</td>
+                        {/* STATUS */}
+                        <td className="p-4">
+                          {status === 'active' ? (
+                            <span className="px-4 py-1 rounded-full bg-emerald-500 text-white text-[11px] font-black uppercase tracking-wider shadow-sm">Active</span>
+                          ) : status === 'suspended' ? (
+                            <span className="px-4 py-1 rounded-full bg-orange-500 text-white text-[11px] font-black uppercase tracking-wider shadow-sm">Suspended</span>
+                          ) : status === 'shadow_banned' ? (
+                            <span className="px-4 py-1 rounded-full bg-slate-600 text-white text-[11px] font-black uppercase tracking-wider shadow-sm">Shadow Banned</span>
+                          ) : (
+                            <span className="px-4 py-1 rounded-full bg-red-500 text-white text-[11px] font-black uppercase tracking-wider shadow-sm">Banned</span>
+                          )}
                         </td>
-                        <td className="px-4 py-3 align-top">
-                          <div className="flex flex-wrap gap-2">
+                        {/* ROLE */}
+                        <td className="p-4 text-slate-600 font-semibold text-sm">{roleDisplay}</td>
+                        {/* JOINED DATE */}
+                        <td className="p-4 text-slate-500 font-medium text-sm whitespace-nowrap">{formatDateTime(entry?.createdAt)}</td>
+                        {/* LAST ACTIVE */}
+                        <td className="p-4 text-slate-500 font-medium text-sm whitespace-nowrap">{lastActive}</td>
+                        {/* ACTIONS */}
+                        <td className="p-4">
+                          <div className="flex justify-center items-center gap-3">
                             <button
                               type="button"
-                              disabled={busy || status === 'active'}
+                              disabled={busy}
                               onClick={() => openUserStatusModal(entry, 'active')}
-                              className="kb-btn kb-btn-soft-success kb-btn-sm disabled:cursor-not-allowed"
+                              className="text-slate-400 hover:text-blue-600 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Edit user"
                             >
-                              {busy ? 'Saving...' : 'Activate'}
+                              <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             </button>
                             <button
                               type="button"
-                              disabled={busy || status === 'suspended'}
-                              onClick={() => openUserStatusModal(entry, 'suspended')}
-                              className="kb-btn kb-btn-soft-warning kb-btn-sm disabled:cursor-not-allowed"
-                            >
-                              {busy ? 'Saving...' : 'Suspend'}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busy || status === 'shadow_banned'}
-                              onClick={() => openUserStatusModal(entry, 'shadow_banned')}
-                              className="kb-btn kb-btn-soft-info kb-btn-sm disabled:cursor-not-allowed"
-                            >
-                              {busy ? 'Saving...' : 'Shadow-ban'}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busy || status === 'banned'}
+                              disabled={busy}
                               onClick={() => openUserStatusModal(entry, 'banned')}
-                              className="kb-btn kb-btn-soft-danger kb-btn-sm disabled:cursor-not-allowed"
+                              className="text-slate-400 hover:text-red-500 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                              title="Delete user"
                             >
-                              {busy ? 'Saving...' : 'Ban'}
+                              <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>
                           </div>
                         </td>
@@ -1813,6 +1888,42 @@ function AdminDashboardPage() {
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* PAGINATION */}
+            <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/30">
+              <div className="flex items-center gap-4 text-sm font-semibold text-slate-500">
+                <div className="flex items-center gap-2">
+                  Rows per page 
+                  <div className="flex items-center gap-1 bg-white border border-slate-200 px-2 py-1 rounded-lg cursor-pointer">
+                    10
+                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                  </div>
+                </div>
+                <span>of {users.length} rows</span>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-slate-800 hover:border-slate-300 transition-all">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+                </button>
+                <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-slate-800 hover:border-slate-300 transition-all">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <div className="flex items-center gap-1 mx-2">
+                  <span className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 text-white font-bold text-xs">1</span>
+                  <span className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-slate-600 font-bold text-xs cursor-pointer">2</span>
+                  <span className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-slate-600 font-bold text-xs cursor-pointer">3</span>
+                  <span className="px-2 text-slate-400">...</span>
+                  <span className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white text-slate-600 font-bold text-xs cursor-pointer">10</span>
+                </div>
+                <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-slate-800 hover:border-slate-300 transition-all">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </button>
+                <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-slate-800 hover:border-slate-300 transition-all">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l7-7-7-7m-6 7l7-7-7-7" /></svg>
+                </button>
+              </div>
             </div>
           </section>
         ) : null}
