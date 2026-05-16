@@ -41,7 +41,8 @@ const Signup = ({ onToggle }) => {
 
       if (response.data?.token && isLandlordRole(response.data?.user?.role)) {
         await login(response.data.token, response.data.user);
-        navigate('/landlord/dashboard');
+        // After signup, redirect to home page instead of dashboard
+        navigate('/', { replace: true });
         return;
       }
 

@@ -58,8 +58,8 @@ const Login = ({ onToggle }) => {
         return;
       }
 
-      const postLoginPath = getDashboardPathByRole(activeRole);
-      navigate(postLoginPath, { replace: true });
+      // After login, redirect to home page instead of dashboard
+      navigate('/', { replace: true });
     } catch (err) {
       if (err?.response?.data?.requiresEmailVerification) {
         navigate('/verify-email', {

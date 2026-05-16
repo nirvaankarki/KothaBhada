@@ -14,6 +14,13 @@ import { useExplore3DController } from '../hooks/useExplore3DController';
 const Explore3DPage = ({ isLandlordView = false }) => {
   const controller = useExplore3DController({ isLandlordView });
 
+  // Ensure page starts at the top when a listing is opened
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
+  }, [controller.listing?.listingId]);
+
   const handleBackNavigation = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
       controller.navigate(-1);
