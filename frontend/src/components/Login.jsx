@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, House, Building2, ShieldCheck } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useAutoDismiss } from '../hooks/useAutoDismiss';
@@ -16,6 +16,7 @@ const Login = ({ onToggle }) => {
   const [error, setError] = useState('');
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, logout } = useAuth();
   const { showToast } = useToast();
 
@@ -58,8 +59,12 @@ const Login = ({ onToggle }) => {
         return;
       }
 
-      // After login, redirect to home page instead of dashboard
-      navigate('/', { replace: true });
+      const fromPath = location.state?.from;
+      if (fromPath && !['/login', '/signup', '/forgot-password', '/verify-email'].includes(fromPath)) {
+        navigate(fromPath, { replace: true });
+      } else {
+        navigate(getDashboardPathByRole(activeRole), { replace: true });
+      }
     } catch (err) {
       if (err?.response?.data?.requiresEmailVerification) {
         navigate('/verify-email', {

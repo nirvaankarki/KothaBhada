@@ -59,8 +59,7 @@ const VerifyEmailPage = () => {
       if (fromPath && !['/login', '/signup', '/forgot-password', '/verify-email'].includes(fromPath)) {
         navigate(fromPath, { replace: true });
       } else {
-        // After verification/login, send user to home page instead of dashboard
-        navigate('/', { replace: true });
+        navigate(getDashboardPathByRole(activeRole), { replace: true });
       }
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to verify email');
