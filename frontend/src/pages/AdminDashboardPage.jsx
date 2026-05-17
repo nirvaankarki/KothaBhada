@@ -1103,10 +1103,10 @@ function AdminDashboardPage() {
     : 0;
 
   return (
-    <div className="flex min-h-screen bg-[#fcfcfd] font-sans text-gray-800">
+    <div className="flex h-screen bg-[#fcfcfd] font-sans text-gray-800">
       <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} summary={summary} onLogout={logout} />
 
-      <main className="flex-1 overflow-y-auto p-5 md:p-8 lg:p-10">
+      <main className="flex-1 min-h-0 overflow-y-auto p-5 md:p-8 lg:p-10">
         <DashboardHeader
           profilePhoto={user?.profilePhoto}
           profileName={user?.name || user?.email || 'Admin'}
