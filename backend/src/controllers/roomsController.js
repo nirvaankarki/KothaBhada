@@ -714,6 +714,12 @@ export async function createRooms(req, res) {
             tags,
         } = req.body;
 
+        // Reject obvious negative inputs early with a clear message
+        if ((lengthFt !== undefined && lengthFt !== null && String(lengthFt).trim() !== '' && Number(lengthFt) < 0)
+            || (breadthFt !== undefined && breadthFt !== null && String(breadthFt).trim() !== '' && Number(breadthFt) < 0)) {
+            return res.status(400).json({ message: 'Length and breadth must be non-negative numbers.' });
+        }
+
         if (!title || !String(title).trim()) {
             return res.status(400).json({ message: 'Listing title is required' });
         }
@@ -834,6 +840,14 @@ export async function updateRooms(req, res) {
             if (req.body[key] !== undefined) {
                 updates[key] = req.body[key];
             }
+        }
+
+        // Reject negative dimension updates explicitly
+        if (req.body.lengthFt !== undefined && req.body.lengthFt !== null && String(req.body.lengthFt).trim() !== '' && Number(req.body.lengthFt) < 0) {
+            return res.status(400).json({ message: 'Length must be a non-negative number.' });
+        }
+        if (req.body.breadthFt !== undefined && req.body.breadthFt !== null && String(req.body.breadthFt).trim() !== '' && Number(req.body.breadthFt) < 0) {
+            return res.status(400).json({ message: 'Breadth must be a non-negative number.' });
         }
 
         if (updates.title !== undefined) updates.title = String(updates.title).trim();

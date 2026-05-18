@@ -115,6 +115,7 @@ const LandlordDashboardPage = () => {
           <ListingsTab
             stats={state.stats}
             form={state.form}
+            fieldErrors={state.fieldErrors}
             editingListingId={state.editingListingId}
             handleChange={handlers.handleChange}
             handleAddKeyFeature={handlers.handleAddKeyFeature}

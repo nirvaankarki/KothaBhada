@@ -22,6 +22,7 @@ const ListingsTab = ({
   form,
   editingListingId,
   handleChange,
+  fieldErrors = {},
   handleAddKeyFeature,
   handleRemoveKeyFeature,
   handleSubmit,
@@ -519,6 +520,9 @@ const ListingsTab = ({
                       placeholder="e.g. 20"
                       className="mt-1 w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-300"
                     />
+                    {fieldErrors.lengthFt && (
+                      <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.lengthFt}</p>
+                    )}
                   </div>
 
                   <div>
@@ -534,6 +538,9 @@ const ListingsTab = ({
                       placeholder="e.g. 15"
                       className="mt-1 w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-300"
                     />
+                    {fieldErrors.breadthFt && (
+                      <p className="mt-1 text-[12px] text-rose-600">{fieldErrors.breadthFt}</p>
+                    )}
                   </div>
 
                   <div className="md:col-span-2">

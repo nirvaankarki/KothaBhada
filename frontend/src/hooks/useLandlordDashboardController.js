@@ -259,6 +259,7 @@ export const useLandlordDashboardController = () => {
   const [uploadingPanoramaProgress, setUploadingPanoramaProgress] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
   useAutoDismiss(error, () => setError(''));
   useAutoDismiss(success, () => setSuccess(''));
@@ -516,6 +517,19 @@ export const useLandlordDashboardController = () => {
     const nextValue = e.target.value;
 
     if (key === 'lengthFt' || key === 'breadthFt') {
+      // Prevent negative dimensions on the client-side and update calculated area
+      if (nextValue !== '' && Number(nextValue) < 0) {
+        setFieldErrors((prev) => ({ ...prev, [key]: `${key === 'lengthFt' ? 'Length' : 'Breadth'} cannot be negative.` }));
+        return;
+      }
+
+      // clear any previous field error for this key
+      setFieldErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[key];
+        return copy;
+      });
+
       setForm((prev) => {
         const nextForm = { ...prev, [key]: nextValue };
         const calculatedAreaSqFt = calculateAreaSqFt(nextForm.lengthFt, nextForm.breadthFt);
@@ -525,7 +539,6 @@ export const useLandlordDashboardController = () => {
           areaSqFt: calculatedAreaSqFt > 0 ? String(calculatedAreaSqFt) : '',
         };
       });
-      setError('');
       return;
     }
 
@@ -1020,6 +1033,12 @@ export const useLandlordDashboardController = () => {
     setError('');
     setSuccess('');
 
+    // Block submission if there are inline field errors
+    if (fieldErrors.lengthFt || fieldErrors.breadthFt) {
+      setError('Please fix form errors before submitting.');
+      return;
+    }
+
     if (uploadingPanorama) {
       setError('Please wait for media uploads to finish before publishing.');
       return;
@@ -1414,6 +1433,7 @@ export const useLandlordDashboardController = () => {
   return {
     state: {
       form,
+      fieldErrors,
       editingListingId,
       profileForm,
       activeTab,
